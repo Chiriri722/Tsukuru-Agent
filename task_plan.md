@@ -104,5 +104,9 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - Start-Process -ArgumentList에 공백 포함 경로 전달 시 분할 오류(ENOENT 'C:\\...\\Tsukuru'): 배열 인수는 quoting 없이 결합됨 — 인수 문자열을 변수로 만들고 경로를 큰따옴표로 감싸 전달. 이후 node -e 인라인 요청 생성 2회도 PS 이중 인용 문제(TerminatorExpectedAtEndOfString)로 실패 → 요청 JSON은 editor로 파일 작성이 안전.
 - `npm test` 스크립트 `node --test test/`는 환경에 따라 모듈 해석 오류 — `node --test`(자동 탐색)로 확정(이전 기록 참조).
 
+
+**후속(2026-08-03)**: 원격 푸시 완료(5df0d4f..7e34c58). dist-cli 빌드 산출물은 git 추적 제외 정책 확정 → 배포는 GitHub Release(v2.0.0, zip 첨부)로 전환. git 이력 전 구간에 검증 프로젝트명·원본 경로 잔재 없음(git grep 스캔 CLEAN).
+- git push 원격 거부(GH001, pre-receive hook): `dist-cli/` 빌드 산출물 73개가 커밋에 포함(150MB exe > GitHub 100MB 제한, 93.6MB zip > 50MB 권장). 원인은 .gitignore에 `dist/`만 있고 `dist-cli/`가 누락된 것. `git reset --soft HEAD~2` → `git rm -r --cached dist-cli` → .gitignore 보강 → 단일 커밋(7e34c58)으로 재작성 후 push 성공. 부수 효과: 미푸시 상태에서 재작성되어, 이전 커밋 task_plan.md에 남아 있던 검증 프로젝트명이 **전체 이력에서 완전 제거**됨(git grep 패턴 파일 스캔 CLEAN 확인).
+
 ## Status
 **전 Phase 완료(1~9, 11) + Phase 10 부분 완료(2026-08-03)** — 실제 프로젝트 검증: standard extract 118txt/29,671 entries/6.0MB/4.4s, verify·patch(2건)·apply(118파일/3.3s) 통과, Completed 한글 반영·Backup 원본 보존·I:\ 원본 무손상 확인. full 프로파일: 123파일/32,248 entries(ext_plugins·ext_scripts·ext_javascript·ext_note 생성, verify ok). **Phase 11 완료**: headless exe(zip, 93.6MB) 빌드·실측(verify ok, stdout JSON·exit code 정상), THIRD-PARTY-NOTICES 26개 패키지. **잔여 선택 작업**: 스모크의 node:test 정식 전환, 번역 완료 후 실제 삽입(apply) 테스트(사용자 진행 예정), pkg/SEA 등 더 가벼운 단일 exe 대안 검토(nsis portable은 stdio 유실로 부적합 판정).
