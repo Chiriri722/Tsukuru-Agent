@@ -1,0 +1,14 @@
+{
+  "gameTitle": "스모크 테스트",
+  "currencyUnit": "골드",
+  "elements": ["", "물리", "화염"],
+  "armorTypes": ["", "일반 방어구"],
+  "equipTypes": ["", "무기", "방어구"],
+  "skillTypes": ["", "마법"],
+  "terms": {
+    "basic": ["레벨", "HP"],
+    "commands": ["싸운다", "도망친다"],
+    "params": ["최대 HP", "최대 MP"]
+  },
+  "encryptionKey": ""
+}

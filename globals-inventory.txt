@@ -1,0 +1,395 @@
+﻿src\utils.ts:6: if(globalThis.WolfMetadata.ver === 2){
+src\core\context.ts:2: * 작업 Context: 기존 globalThis 전역 상태(mwindow 제외)를 대체한다.
+src\core\context.ts:18: /** RPG MV/MZ 추출·적용 중 변경되는 작업 상태(기존 globalThis.gb/externMsg 대체). */
+src\core\context.ts:21: /** 파일명 → 추출 데이터/출력 텍스트 버퍼(기존 globalThis.gb). */
+src\core\context.ts:47: /** Wolf 추출·적용 작업 상태(기존 globalThis.Wolf* / sourceDir 대체). */
+src\core\context.ts:53: /** wolf 복호화 키(기존 globalThis.keyvalue). */
+src\html\config\script.ts:25: globalThis.loadEn()
+src\html\main\renderer.ts:67: globalThis.loadEn()
+src\html\main\renderer.ts:223: globalThis.version = arg
+src\html\simple\rend.ts:11: globalThis.loadEn()
+src\html\wolf\rend.ts:21: globalThis.loadEn()
+src\js\libs\extentions.ts:47: if(globalThis.settings.language === 'ko'){
+src\js\libs\extentions.ts:48: mwindow.webContents.send('alertExten', [`${parKo[param]}에는 확장 설치가 필요합니다. 설치하시겠습니까?`,param])
+src\js\libs\extentions.ts:51: mwindow.webContents.send('alertExten', [`${parEn[param]} requires an extension installation. Do you 
+src\js\libs\projectTools.ts:14: send: globalThis.mwindow.webContents.send,
+src\js\libs\projectTools.ts:16: globalThis.mwindow.webContents.send('alert', {icon: 'error',  message: txt});
+src\js\libs\projectTools.ts:19: globalThis.mwindow.webContents.send('alert', txt);
+src\js\libs\projectTools.ts:22: globalThis.mwindow.webContents.send('worked', 0);
+src\js\libs\projectTools.ts:23: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\apply.ts:18: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: 'Extract 폴더가 존재하지 않습니다'});
+src\js\rpgmv\apply.ts:19: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\apply.ts:23: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: '.extracteddata 파일이 존재하지 않습니다'
+src\js\rpgmv\apply.ts:24: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\apply.ts:126: globalThis.mwindow.webContents.send('loading', worked_files/max_files*100);
+src\js\rpgmv\apply.ts:153: const dataJson = arg.useYaml ? yaml.dump(data) : JSON.stringify(data, null, 4*globalThis.settings.Js
+src\js\rpgmv\apply.ts:167: globalThis.mwindow.webContents.send('alert2');
+src\js\rpgmv\apply.ts:168: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\apply.ts:170: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.get
+src\js\rpgmv\apply.ts:172: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\extract.ts:36: if(val !== undefined && val !== null && typeof(val) === 'string' && (val.length > 0 || globalThis.se
+src\js\rpgmv\extract.ts:113: globalThis.gb[fileName] = {data: {}}
+src\js\rpgmv\extract.ts:114: globalThis.gb[fileName].outputText = ''
+src\js\rpgmv\extract.ts:115: globalThis.gb[fileName].isbom = false
+src\js\rpgmv\extract.ts:117: if(globalThis.settings.onefile_src && arg.ext_src){
+src\js\rpgmv\extract.ts:120: if(globalThis.settings.onefile_src && arg.ext_javascript){
+src\js\rpgmv\extract.ts:123: if(globalThis.settings.onefile_note && arg.ext_note){
+src\js\rpgmv\extract.ts:127: if(globalThis.settings.oneMapFile){
+src\js\rpgmv\extract.ts:194: globalThis.gb[fileName] = {data: {}}
+src\js\rpgmv\extract.ts:197: globalThis.gb[fileName].isbom = true
+src\js\rpgmv\extract.ts:200: globalThis.gb[fileName].isbom = false
+src\js\rpgmv\extract.ts:218: if(globalThis.settings.oneMapFile){
+src\js\rpgmv\extract.ts:226: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:240: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:386: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:410: const ess = globalThis.settings.extractSomeScript2
+src\js\rpgmv\extract.ts:433: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:457: if([356,355,108,408,357].includes(d.list[i].code) && globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:460: acceptable.concat(globalThis.settings.extractPlus)
+src\js\rpgmv\extract.ts:521: globalThis.gb[fileName].outputText = ''
+src\js\rpgmv\extract.ts:524: if(datobj[d].qpath === 'script' && globalThis.settings.onefile_src){
+src\js\rpgmv\extract.ts:527: else if(datobj[d].qpath === 'note' && globalThis.settings.onefile_note){
+src\js\rpgmv\extract.ts:530: else if(datobj[d].qpath === 'note2' && globalThis.settings.onefile_note){
+src\js\rpgmv\extract.ts:533: else if(datobj[d].qpath === 'javascript' && globalThis.settings.onefile_src){
+src\js\rpgmv\extract.ts:536: else if(globalThis.settings.oneMapFile && jpathIsMap(jpath)){
+src\js\rpgmv\extract.ts:539: if(globalThis.useExternMsg){
+src\js\rpgmv\extract.ts:540: if(globalThis.externMsgKeys.includes(datobj[d].var)){
+src\js\rpgmv\extract.ts:541: datobj[d].var = globalThis.externMsg[datobj[d].var]
+src\js\rpgmv\extract.ts:546: LenMemory[jpath] = (globalThis.gb[jpath].outputText.split('\n').length - 1)
+src\js\rpgmv\extract.ts:549: if(globalThis.settings.formatNice && obNullSafe(datobj[d].conf)){
+src\js\rpgmv\extract.ts:552: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:559: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:566: globalThis.gb[jpath].data[cid] = {}
+src\js\rpgmv\extract.ts:567: globalThis.gb[jpath].data[cid].origin = fileName
+src\js\rpgmv\extract.ts:568: globalThis.gb[jpath].data[cid].type = 'None'
+src\js\rpgmv\extract.ts:569: globalThis.gb[jpath].data[cid].val = d
+src\js\rpgmv\extract.ts:570: globalThis.gb[jpath].data[cid].conf = datobj[d].conf
+src\js\rpgmv\extract.ts:571: globalThis.gb[jpath].data[cid].originText = datobj[d].var
+src\js\rpgmv\extract.ts:576: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:579: globalThis.gb[jpath].data[cid].m = LenMemory[jpath]
+src\js\rpgmv\fileCrypto.ts:45: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fileCrypto.ts:46: globalThis.mwindow.webContents.send('loadingTag', `${type} 복호화 중`);
+src\js\rpgmv\fileCrypto.ts:59: globalThis.mwindow.webContents.send('loadingTag', `${type} 복호화 중 : `);
+src\js\rpgmv\fileCrypto.ts:60: globalThis.mwindow.webContents.send('loading', ((i/files.length)*100))
+src\js\rpgmv\fileCrypto.ts:75: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fileCrypto.ts:103: globalThis.mwindow.webContents.send('loadingTag', `${type} 암호화 중 : `);
+src\js\rpgmv\fileCrypto.ts:104: globalThis.mwindow.webContents.send('loading', ((i/files.length)*100))
+src\js\rpgmv\fileCrypto.ts:118: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fonts.ts:7: globalThis.mwindow.webContents.send('alert', txt);
+src\js\rpgmv\fonts.ts:11: globalThis.mwindow.webContents.send('alert', {icon: 'error',  message: txt});
+src\js\rpgmv\fonts.ts:15: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\fonts.ts:16: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\projectConvert.ts:10: globalThis.mwindow.webContents.send('loading', (now/max) * 100);
+src\js\rpgmv\projectConvert.ts:49: const fd = await dialog.showOpenDialog(globalThis.mwindow, {
+src\js\rpgmv\projectConvert.ts:162: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.get
+src\js\rpgmv\translator.ts:20: return globalThis.oPath
+src\js\rpgmv\translator.ts:24: const Udict = globalThis.settings.userdict
+src\js\rpgmv\translator.ts:110: if(globalThis.settings.DoNotTransHangul){
+src\js\rpgmv\translator.ts:282: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:286: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:296: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\rpgmv\translator.ts:310: globalThis.settings.safeTrans = true
+src\js\rpgmv\translator.ts:311: globalThis.settings.smartTrans = true;
+src\js\rpgmv\translator.ts:312: globalThis.settings.fastEztrans = true;
+src\js\rpgmv\translator.ts:319: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:324: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:329: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:335: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:341: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:350: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:362: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:366: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:391: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:395: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:405: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:412: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:423: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:427: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:451: globalThis.mwindow.webContents.send('eztransError');
+src\js\rpgmv\translator.ts:456: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:475: if (globalThis.settings.safeTrans || globalThis.settings.smartTrans) {
+src\js\rpgmv\translator.ts:489: if(!globalThis.settings.smartTrans ||compatibilityMode){
+src\js\rpgmv\translator.ts:494: if(!globalThis.settings.smartTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:500: if(!globalThis.settings.smartTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:516: if(globalThis.settings.safeTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:578: const hangule = (translated === chunkJoin) && ((!globalThis.settings.DoNotTransHangul) || (!hanguls.
+src\js\rpgmv\translator.ts:701: if(typeOfFile == '' && globalThis.settings.fastEztrans){
+src\js\rpgmv\translator.ts:746: const hangule = (temps == chunks[v]) && ((!globalThis.settings.DoNotTransHangul) || (!hanguls.test(t
+src\js\rpgmv\translator.ts:920: // globalThis.mwindow.webContents.send('loading', worked_files / max_files * 100);
+src\js\rpgmv\translator.ts:927: globalThis.mwindow.webContents.send('alert', '완료되었습니다');
+src\js\rpgmv\translator.ts:928: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\translator.ts:931: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:936: globalThis.mwindow.webContents.send('worked', 0);
+src\js\wolf\main.ts:14: globalThis.WolfMetadata = {
+src\js\wolf\main.ts:27: mwindow.webContents.send('alert', {icon: 'error', message: '지정된 디렉토리가 없습니다'});
+src\js\wolf\main.ts:32: mwindow.webContents.send('alert', {icon: 'error', message: 'data 폴더가 아닙니다'});
+src\js\wolf\main.ts:37: globalThis.sourceDir  = arg.folder
+src\js\wolf\main.ts:38: globalThis.WolfExtData = []
+src\js\wolf\main.ts:56: mwindow.webContents.send('alert2');
+src\js\wolf\main.ts:60: mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.getOwnProperty
+src\js\wolf\main.ts:66: mwindow.webContents.send('alert', {icon: 'error', message: '지정된 디렉토리가 없습니다'});
+src\js\wolf\main.ts:71: mwindow.webContents.send('alert', {icon: 'error', message: 'data 폴더가 아닙니다'});
+src\js\wolf\main.ts:75: globalThis.sourceDir  = arg.folder
+src\js\wolf\main.ts:76: globalThis.WolfExtData = []
+src\js\wolf\main.ts:78: mwindow.webContents.send('alert2');
+src\js\wolf\apply\applyWolf.ts:7: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\apply\applyWolf.ts:13: const extTextDir = path.join(globalThis.sourceDir, '_Extract')
+src\js\wolf\apply\applyWolf.ts:15: for(let i=0;i<globalThis.WolfExtData.length;i++){
+src\js\wolf\apply\applyWolf.ts:16: setProgressBar(i, globalThis.WolfExtData.length)
+src\js\wolf\apply\applyWolf.ts:17: const dat = (globalThis.WolfExtData[i])
+src\js\wolf\apply\applyWolf.ts:23: sourceDic[dat.sourceFile] = globalThis.WolfCache[dat.sourceFile]
+src\js\wolf\extract\decrypter.ts:9: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\extract\decrypter.ts:25: globalThis.mwindow.webContents.send('loadingTag', `복호화 중`);
+src\js\wolf\extract\decrypter.ts:33: globalThis.mwindow.webContents.send('loadingTag', ``);
+src\js\wolf\extract\extractor.ts:11: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\extract\extractor.ts:18: globalThis.WolfCache = {}
+src\js\wolf\extract\ext_events.ts:14: globalThis.WolfExtData.push({
+src\js\wolf\extract\makeText.ts:9: globalThis.mwindow.webContents.send('loading', 50 + ((now/max) * multipl));
+src\js\wolf\extract\makeText.ts:13: const ext = globalThis.WolfExtData
+src\js\wolf\extract\makeText.ts:22: globalThis.WolfExtData[i].endsWithNull = true
+src\js\wolf\extract\makeText.ts:28: globalThis.WolfExtData[i].textLineNumber = []
+src\js\wolf\extract\makeText.ts:40: globalThis.WolfExtData[i].textLineNumber.push(texts[ext[i].extractFile].length-1)
+src\js\wolf\extract\makeText.ts:47: const extTextDir = path.join(globalThis.sourceDir, '_Extract')
+src\js\wolf\extract\makeText.ts:58: globalThis.mwindow.webContents.send('loading', 0);
+src\js\wolf\extract\wolfExtData.ts:8: ext: globalThis.WolfExtData,
+src\js\wolf\extract\wolfExtData.ts:9: cache: globalThis.WolfCache,
+src\js\wolf\extract\wolfExtData.ts:10: meta: globalThis.WolfMetadata
+src\js\wolf\extract\wolfExtData.ts:15: globalThis.WolfExtData = ca.ext
+src\js\wolf\extract\wolfExtData.ts:16: globalThis.WolfMetadata = ca.meta
+src\js\wolf\extract\wolfExtData.ts:17: globalThis.WolfCache = ca.cache
+src\js\wolf\parser\Map.ts:8: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\Map.ts:16: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\Map.ts:20: if(globalThis.WolfMetadata.ver === 2){
+src\js\wolf\parser\Map.ts:69: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\Map.ts:73: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\patternBased.ts:9: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\patternBased.ts:17: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\patternBased.ts:21: if(globalThis.WolfMetadata.ver === 2){
+globals.d.ts:4: var mwindow:BrowserWindow
+main.ts:40: return globalThis.settings
+main.ts:50: globalThis.settings = dataBaseO.settings
+main.ts:53: globalThis.settings = {...globalThis.settings, ...givensettings}
+main.ts:54: globalThis.settings.version = app.getVersion()
+main.ts:55: storage.set('settings', JSON.stringify(globalThis.settings))
+main.ts:61: globalThis.settings.language = arg
+main.ts:62: storage.set('settings', JSON.stringify(globalThis.settings))
+main.ts:63: globalThis.mwindow.reload()
+main.ts:116: globalThis.settings.themeData = Themes[globalThis.settings.theme]
+main.ts:117: getMainWindow().webContents.send('getGlobalSettings', globalThis.settings);
+main.ts:126: globalThis.mwindow = mainWindow
+main.ts:179: globalThis.mwindow.loadFile(arg)
+main.ts:185: globalThis.settingsWindow = new BrowserWindow({
+main.ts:197: globalThis.settingsWindow.setMenu(null)
+main.ts:198: globalThis.settingsWindow.loadFile('src/html/config/settings.html')
+main.ts:199: globalThis.settingsWindow.webContents.on('did-finish-load', function () {
+main.ts:200: globalThis.settingsWindow.show();
+main.ts:201: globalThis.settingsWindow.webContents.send('settings', getSettings());
+main.ts:203: globalThis.settingsWindow.on('close', function() { //   <---- Catch close event
+main.ts:206: globalThis.settingsWindow.show()
+main.ts:215: globalThis.settingsWindow = new BrowserWindow({
+main.ts:227: globalThis.settingsWindow.setMenu(null)
+main.ts:228: globalThis.settingsWindow.loadFile('src/html/patcher/index.html')
+main.ts:229: globalThis.settingsWindow.webContents.on('did-finish-load', function () {
+main.ts:230: globalThis.settingsWindow.show();
+main.ts:231: globalThis.settingsWindow.webContents.send('settings', getSettings());
+main.ts:233: globalThis.settingsWindow.on('close', function() { //   <---- Catch close event
+main.ts:236: globalThis.settingsWindow.show()
+main.ts:251: globalThis.settings = {...globalThis.settings, ...arg}
+main.ts:252: storage.set('settings', JSON.stringify(globalThis.settings))
+main.ts:253: globalThis.settingsWindow.close()
+main.ts:254: globalThis.settings.themeData = Themes[globalThis.settings.theme]
+main.ts:255: console.log(globalThis.settings)
+main.ts:256: getMainWindow().webContents.send('getGlobalSettings', globalThis.settings);
+main.ts:261: globalThis.settingsWindow.close()
+main.ts:301: globalThis.gb = {}
+main.ts:353: globalThis.externMsg = {}
+main.ts:354: globalThis.useExternMsg = false
+main.ts:355: if(fs.existsSync(dir + '/ExternMessage.csv') && arg.exJson && globalThis.settings.ExternMsgJson){
+main.ts:357: const Emsg = await ExtTool.parse_externMsg(dir + '/ExternMessage.csv', !globalThis.settings.ExternMs
+main.ts:358: globalThis.externMsg = Emsg
+main.ts:359: if(globalThis.settings.ExternMsgJson){
+main.ts:363: globalThis.useExternMsg = true
+main.ts:364: globalThis.externMsgKeys = Object.keys(Emsg)
+main.ts:439: const gbKeys = {...Object.keys(globalThis.gb)}
+main.ts:442: if(globalThis.gb[fileName].outputText === ''){
+main.ts:443: delete globalThis.gb[fileName]
+main.ts:446: fs.writeFileSync(dir + `/Extract/${path.parse(fileName).name}.js`, globalThis.gb[fileName].outputTex
+main.ts:447: delete globalThis.gb[fileName].outputText
+main.ts:450: fs.writeFileSync(dir + `/Extract/${path.parse(fileName).name}.txt`, globalThis.gb[fileName].outputTe
+main.ts:451: delete globalThis.gb[fileName].outputText
+main.ts:455: main: globalThis.gb
+main.ts:497: globalThis.oPath = process.resourcesPath
+main.ts:500: globalThis.oPath = __dirname
+main.ts:638: globalThis.mwindow.setResizable(true);
+main.ts:639: globalThis.mwindow.setSize(800, arg, false)
+main.ts:640: globalThis.mwindow.setResizable(false)
+main_update.ts:12: if(globalThis.settings.language === 'ko'){
+main_update.ts:17: const inner = (globalThis.settings.language === 'ko') ? da.inner.ko : da.inner.en
+main_update.ts:67: globalThis.mwindow.webContents.send('alert_free', {html: txt, width:"90vw"});
+src\utils.ts:6: if(globalThis.WolfMetadata.ver === 2){
+src\core\context.ts:2: * 작업 Context: 기존 globalThis 전역 상태(mwindow 제외)를 대체한다.
+src\core\context.ts:18: /** RPG MV/MZ 추출·적용 중 변경되는 작업 상태(기존 globalThis.gb/externMsg 대체). */
+src\core\context.ts:21: /** 파일명 → 추출 데이터/출력 텍스트 버퍼(기존 globalThis.gb). */
+src\core\context.ts:47: /** Wolf 추출·적용 작업 상태(기존 globalThis.Wolf* / sourceDir 대체). */
+src\core\context.ts:53: /** wolf 복호화 키(기존 globalThis.keyvalue). */
+src\html\config\script.ts:25: globalThis.loadEn()
+src\html\main\renderer.ts:67: globalThis.loadEn()
+src\html\main\renderer.ts:223: globalThis.version = arg
+src\html\simple\rend.ts:11: globalThis.loadEn()
+src\html\wolf\rend.ts:21: globalThis.loadEn()
+src\js\libs\extentions.ts:47: if(globalThis.settings.language === 'ko'){
+src\js\libs\extentions.ts:48: mwindow.webContents.send('alertExten', [`${parKo[param]}에는 확장 설치가 필요합니다. 설치하시겠습니까?`,param])
+src\js\libs\extentions.ts:51: mwindow.webContents.send('alertExten', [`${parEn[param]} requires an extension installation. Do you 
+src\js\libs\projectTools.ts:14: send: globalThis.mwindow.webContents.send,
+src\js\libs\projectTools.ts:16: globalThis.mwindow.webContents.send('alert', {icon: 'error',  message: txt});
+src\js\libs\projectTools.ts:19: globalThis.mwindow.webContents.send('alert', txt);
+src\js\libs\projectTools.ts:22: globalThis.mwindow.webContents.send('worked', 0);
+src\js\libs\projectTools.ts:23: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\apply.ts:18: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: 'Extract 폴더가 존재하지 않습니다'});
+src\js\rpgmv\apply.ts:19: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\apply.ts:23: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: '.extracteddata 파일이 존재하지 않습니다'
+src\js\rpgmv\apply.ts:24: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\apply.ts:126: globalThis.mwindow.webContents.send('loading', worked_files/max_files*100);
+src\js\rpgmv\apply.ts:153: const dataJson = arg.useYaml ? yaml.dump(data) : JSON.stringify(data, null, 4*globalThis.settings.Js
+src\js\rpgmv\apply.ts:167: globalThis.mwindow.webContents.send('alert2');
+src\js\rpgmv\apply.ts:168: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\apply.ts:170: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.get
+src\js\rpgmv\apply.ts:172: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\extract.ts:36: if(val !== undefined && val !== null && typeof(val) === 'string' && (val.length > 0 || globalThis.se
+src\js\rpgmv\extract.ts:113: globalThis.gb[fileName] = {data: {}}
+src\js\rpgmv\extract.ts:114: globalThis.gb[fileName].outputText = ''
+src\js\rpgmv\extract.ts:115: globalThis.gb[fileName].isbom = false
+src\js\rpgmv\extract.ts:117: if(globalThis.settings.onefile_src && arg.ext_src){
+src\js\rpgmv\extract.ts:120: if(globalThis.settings.onefile_src && arg.ext_javascript){
+src\js\rpgmv\extract.ts:123: if(globalThis.settings.onefile_note && arg.ext_note){
+src\js\rpgmv\extract.ts:127: if(globalThis.settings.oneMapFile){
+src\js\rpgmv\extract.ts:194: globalThis.gb[fileName] = {data: {}}
+src\js\rpgmv\extract.ts:197: globalThis.gb[fileName].isbom = true
+src\js\rpgmv\extract.ts:200: globalThis.gb[fileName].isbom = false
+src\js\rpgmv\extract.ts:218: if(globalThis.settings.oneMapFile){
+src\js\rpgmv\extract.ts:226: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:240: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:386: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:410: const ess = globalThis.settings.extractSomeScript2
+src\js\rpgmv\extract.ts:433: if(globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:457: if([356,355,108,408,357].includes(d.list[i].code) && globalThis.settings.extractSomeScript){
+src\js\rpgmv\extract.ts:460: acceptable.concat(globalThis.settings.extractPlus)
+src\js\rpgmv\extract.ts:521: globalThis.gb[fileName].outputText = ''
+src\js\rpgmv\extract.ts:524: if(datobj[d].qpath === 'script' && globalThis.settings.onefile_src){
+src\js\rpgmv\extract.ts:527: else if(datobj[d].qpath === 'note' && globalThis.settings.onefile_note){
+src\js\rpgmv\extract.ts:530: else if(datobj[d].qpath === 'note2' && globalThis.settings.onefile_note){
+src\js\rpgmv\extract.ts:533: else if(datobj[d].qpath === 'javascript' && globalThis.settings.onefile_src){
+src\js\rpgmv\extract.ts:536: else if(globalThis.settings.oneMapFile && jpathIsMap(jpath)){
+src\js\rpgmv\extract.ts:539: if(globalThis.useExternMsg){
+src\js\rpgmv\extract.ts:540: if(globalThis.externMsgKeys.includes(datobj[d].var)){
+src\js\rpgmv\extract.ts:541: datobj[d].var = globalThis.externMsg[datobj[d].var]
+src\js\rpgmv\extract.ts:546: LenMemory[jpath] = (globalThis.gb[jpath].outputText.split('\n').length - 1)
+src\js\rpgmv\extract.ts:549: if(globalThis.settings.formatNice && obNullSafe(datobj[d].conf)){
+src\js\rpgmv\extract.ts:552: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:559: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:566: globalThis.gb[jpath].data[cid] = {}
+src\js\rpgmv\extract.ts:567: globalThis.gb[jpath].data[cid].origin = fileName
+src\js\rpgmv\extract.ts:568: globalThis.gb[jpath].data[cid].type = 'None'
+src\js\rpgmv\extract.ts:569: globalThis.gb[jpath].data[cid].val = d
+src\js\rpgmv\extract.ts:570: globalThis.gb[jpath].data[cid].conf = datobj[d].conf
+src\js\rpgmv\extract.ts:571: globalThis.gb[jpath].data[cid].originText = datobj[d].var
+src\js\rpgmv\extract.ts:576: globalThis.gb[jpath].outputText += toadd
+src\js\rpgmv\extract.ts:579: globalThis.gb[jpath].data[cid].m = LenMemory[jpath]
+src\js\rpgmv\fileCrypto.ts:45: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fileCrypto.ts:46: globalThis.mwindow.webContents.send('loadingTag', `${type} 복호화 중`);
+src\js\rpgmv\fileCrypto.ts:59: globalThis.mwindow.webContents.send('loadingTag', `${type} 복호화 중 : `);
+src\js\rpgmv\fileCrypto.ts:60: globalThis.mwindow.webContents.send('loading', ((i/files.length)*100))
+src\js\rpgmv\fileCrypto.ts:75: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fileCrypto.ts:103: globalThis.mwindow.webContents.send('loadingTag', `${type} 암호화 중 : `);
+src\js\rpgmv\fileCrypto.ts:104: globalThis.mwindow.webContents.send('loading', ((i/files.length)*100))
+src\js\rpgmv\fileCrypto.ts:118: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\fonts.ts:7: globalThis.mwindow.webContents.send('alert', txt);
+src\js\rpgmv\fonts.ts:11: globalThis.mwindow.webContents.send('alert', {icon: 'error',  message: txt});
+src\js\rpgmv\fonts.ts:15: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\fonts.ts:16: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\projectConvert.ts:10: globalThis.mwindow.webContents.send('loading', (now/max) * 100);
+src\js\rpgmv\projectConvert.ts:49: const fd = await dialog.showOpenDialog(globalThis.mwindow, {
+src\js\rpgmv\projectConvert.ts:162: globalThis.mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.get
+src\js\rpgmv\translator.ts:20: return globalThis.oPath
+src\js\rpgmv\translator.ts:24: const Udict = globalThis.settings.userdict
+src\js\rpgmv\translator.ts:110: if(globalThis.settings.DoNotTransHangul){
+src\js\rpgmv\translator.ts:282: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:286: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:296: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\rpgmv\translator.ts:310: globalThis.settings.safeTrans = true
+src\js\rpgmv\translator.ts:311: globalThis.settings.smartTrans = true;
+src\js\rpgmv\translator.ts:312: globalThis.settings.fastEztrans = true;
+src\js\rpgmv\translator.ts:319: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:324: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:329: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:335: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:341: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:350: globalThis.settings.smartTrans = false;
+src\js\rpgmv\translator.ts:362: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:366: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:391: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:395: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:405: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:412: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:423: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:427: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:451: globalThis.mwindow.webContents.send('eztransError');
+src\js\rpgmv\translator.ts:456: globalThis.mwindow.webContents.send('worked', 0);
+src\js\rpgmv\translator.ts:475: if (globalThis.settings.safeTrans || globalThis.settings.smartTrans) {
+src\js\rpgmv\translator.ts:489: if(!globalThis.settings.smartTrans ||compatibilityMode){
+src\js\rpgmv\translator.ts:494: if(!globalThis.settings.smartTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:500: if(!globalThis.settings.smartTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:516: if(globalThis.settings.safeTrans || compatibilityMode){
+src\js\rpgmv\translator.ts:578: const hangule = (translated === chunkJoin) && ((!globalThis.settings.DoNotTransHangul) || (!hanguls.
+src\js\rpgmv\translator.ts:701: if(typeOfFile == '' && globalThis.settings.fastEztrans){
+src\js\rpgmv\translator.ts:746: const hangule = (temps == chunks[v]) && ((!globalThis.settings.DoNotTransHangul) || (!hanguls.test(t
+src\js\rpgmv\translator.ts:920: // globalThis.mwindow.webContents.send('loading', worked_files / max_files * 100);
+src\js\rpgmv\translator.ts:927: globalThis.mwindow.webContents.send('alert', '완료되었습니다');
+src\js\rpgmv\translator.ts:928: globalThis.mwindow.webContents.send('loading', 0);
+src\js\rpgmv\translator.ts:931: globalThis.mwindow.webContents.send('alert', {
+src\js\rpgmv\translator.ts:936: globalThis.mwindow.webContents.send('worked', 0);
+src\js\wolf\main.ts:14: globalThis.WolfMetadata = {
+src\js\wolf\main.ts:27: mwindow.webContents.send('alert', {icon: 'error', message: '지정된 디렉토리가 없습니다'});
+src\js\wolf\main.ts:32: mwindow.webContents.send('alert', {icon: 'error', message: 'data 폴더가 아닙니다'});
+src\js\wolf\main.ts:37: globalThis.sourceDir  = arg.folder
+src\js\wolf\main.ts:38: globalThis.WolfExtData = []
+src\js\wolf\main.ts:56: mwindow.webContents.send('alert2');
+src\js\wolf\main.ts:60: mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.getOwnProperty
+src\js\wolf\main.ts:66: mwindow.webContents.send('alert', {icon: 'error', message: '지정된 디렉토리가 없습니다'});
+src\js\wolf\main.ts:71: mwindow.webContents.send('alert', {icon: 'error', message: 'data 폴더가 아닙니다'});
+src\js\wolf\main.ts:75: globalThis.sourceDir  = arg.folder
+src\js\wolf\main.ts:76: globalThis.WolfExtData = []
+src\js\wolf\main.ts:78: mwindow.webContents.send('alert2');
+src\js\wolf\apply\applyWolf.ts:7: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\apply\applyWolf.ts:13: const extTextDir = path.join(globalThis.sourceDir, '_Extract')
+src\js\wolf\apply\applyWolf.ts:15: for(let i=0;i<globalThis.WolfExtData.length;i++){
+src\js\wolf\apply\applyWolf.ts:16: setProgressBar(i, globalThis.WolfExtData.length)
+src\js\wolf\apply\applyWolf.ts:17: const dat = (globalThis.WolfExtData[i])
+src\js\wolf\apply\applyWolf.ts:23: sourceDic[dat.sourceFile] = globalThis.WolfCache[dat.sourceFile]
+src\js\wolf\extract\decrypter.ts:9: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\extract\decrypter.ts:25: globalThis.mwindow.webContents.send('loadingTag', `복호화 중`);
+src\js\wolf\extract\decrypter.ts:33: globalThis.mwindow.webContents.send('loadingTag', ``);
+src\js\wolf\extract\extractor.ts:11: globalThis.mwindow.webContents.send('loading', (now/max) * multipl);
+src\js\wolf\extract\extractor.ts:18: globalThis.WolfCache = {}
+src\js\wolf\extract\ext_events.ts:14: globalThis.WolfExtData.push({
+src\js\wolf\extract\makeText.ts:9: globalThis.mwindow.webContents.send('loading', 50 + ((now/max) * multipl));
+src\js\wolf\extract\makeText.ts:13: const ext = globalThis.WolfExtData
+src\js\wolf\extract\makeText.ts:22: globalThis.WolfExtData[i].endsWithNull = true
+src\js\wolf\extract\makeText.ts:28: globalThis.WolfExtData[i].textLineNumber = []
+src\js\wolf\extract\makeText.ts:40: globalThis.WolfExtData[i].textLineNumber.push(texts[ext[i].extractFile].length-1)
+src\js\wolf\extract\makeText.ts:47: const extTextDir = path.join(globalThis.sourceDir, '_Extract')
+src\js\wolf\extract\makeText.ts:58: globalThis.mwindow.webContents.send('loading', 0);
+src\js\wolf\extract\wolfExtData.ts:8: ext: globalThis.WolfExtData,
+src\js\wolf\extract\wolfExtData.ts:9: cache: globalThis.WolfCache,
+src\js\wolf\extract\wolfExtData.ts:10: meta: globalThis.WolfMetadata
+src\js\wolf\extract\wolfExtData.ts:15: globalThis.WolfExtData = ca.ext
+src\js\wolf\extract\wolfExtData.ts:16: globalThis.WolfMetadata = ca.meta
+src\js\wolf\extract\wolfExtData.ts:17: globalThis.WolfCache = ca.cache
+src\js\wolf\parser\Map.ts:8: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\Map.ts:16: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\Map.ts:20: if(globalThis.WolfMetadata.ver === 2){
+src\js\wolf\parser\Map.ts:69: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\Map.ts:73: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\patternBased.ts:9: globalThis.WolfMetadata.ver = 2
+src\js\wolf\parser\patternBased.ts:17: globalThis.WolfMetadata.ver = 3
+src\js\wolf\parser\patternBased.ts:21: if(globalThis.WolfMetadata.ver === 2){

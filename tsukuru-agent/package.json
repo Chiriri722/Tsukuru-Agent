@@ -1,0 +1,112 @@
+{
+  "name": "mv-extractor-pp",
+  "version": "2.0.0",
+  "description": "Tsukuru Extractor",
+  "main": "main.js",
+  "scripts": {
+    "codepage": "chcp 65001",
+    "start2": "electron . start",
+    "start": "npm-run-all --parallel codepage start2",
+    "build": "electron-builder --windows portable nsis:x64",
+    "build2": "electron-builder --windows portable",
+    "compile": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "agent": "node src/cli/main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gramedcart/mvextractor.git"
+  },
+  "author": "Sziya",
+  "license": "GPL-3.0-only",
+  "bin": {
+    "tsukuru-agent": "src/cli/main.js"
+  },
+  "devDependencies": {
+    "@types/aes-js": "^3.1.1",
+    "@types/js-yaml": "^4.0.5",
+    "@types/lodash": "^4.14.190",
+    "@types/tcp-port-used": "^1.0.1",
+    "electron": "^22.0.0",
+    "electron-builder": "^22.10.3",
+    "electron-packager": "^17.1.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "5.5"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^2.8.0",
+    "@types/adm-zip": "^0.5.0",
+    "@types/fs-extra": "^9.0.13",
+    "@types/glob": "^8.0.0",
+    "@types/jsdom": "^16.2.14",
+    "@vitalets/google-translate-api": "^9.0.0",
+    "aes-js": "^3.1.2",
+    "axios": "^0.24.0",
+    "bson": "^4.6.1",
+    "electron-log": "^4.4.4",
+    "electron-store": "^8.0.1",
+    "encoding-japanese": "^1.0.30",
+    "fast-csv": "^4.3.6",
+    "fast-glob": "^3.2.11",
+    "fs-extra": "^10.0.1",
+    "glob": "^8.0.3",
+    "iconv-lite": "^0.6.3",
+    "js-yaml": "^4.1.0",
+    "jsdom": "^19.0.0",
+    "lodash": "^4.17.21",
+    "lz-string": "^1.4.4",
+    "open": "^8.4.0",
+    "os-locale": "^6.0.2",
+    "request": "^2.88.2",
+    "sha3": "^2.1.4",
+    "tcp-port-used": "^1.0.2"
+  },
+  "build": {
+    "productName": "Tsukuru Extractor",
+    "appId": "net.electron.MVExtractor",
+    "asar": true,
+    "files": [
+      "**/*",
+      "!test/*",
+      "!dist/*",
+      "!addon/*",
+      "!**/*.ts",
+      "!**/*.d.ts"
+    ],
+    "extraResources": [
+      "./exfiles/**"
+    ],
+    "protocols": {
+      "name": "MVExtractor",
+      "schemes": [
+        "MVExtractor"
+      ]
+    },
+    "win": {
+      "target": [
+        "zip",
+        "nsis"
+      ],
+      "icon": "./res/icon.ico",
+      "files": [
+        "!gruntfile.js",
+        "!README.md",
+        "!notarize.js",
+        "!.env",
+        "!minify.js",
+        "!.git/*",
+        "!resources/mac/*"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "buildResources": "./resources/installer/",
+      "output": "./dist/",
+      "app": "./"
+    }
+  }
+}

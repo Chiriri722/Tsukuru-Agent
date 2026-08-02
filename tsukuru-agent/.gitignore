@@ -1,0 +1,15 @@
+node_modules
+data/
+test/
+out/
+/electron-builder.yml
+dist/
+*.txt
+package-lock.json
+*.js.map
+*.css.map
+/main.js
+/main_update.js
+/src/js/**/*.js
+/src/html/**/*.js
+/src/utils.js
