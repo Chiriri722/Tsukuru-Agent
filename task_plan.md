@@ -71,6 +71,7 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 
 ## Decisions Made
 - 계획 문서 위치: 프로젝트 루트(`C:\Users\White\Documents\GitHub\Tsukuru_agent\`)에 생성 — 실제 작업 대상이 이 디렉터리이며 CWD(`_tmp\Output-game`)는 무관한 프로젝트이므로.
+- 저장소 이전(2026-08-03): 작업 결과물이 GitHub 저장소 [`Chiriri722/Tsukuru-Agent`](https://github.com/Chiriri722/Tsukuru-Agent)(로컬 `C:\Users\White\Documents\GitHub\Tsukuru Agent\Tsukuru Agent\`)로 이전·공개됨. 이 문서 내 기존 절대 경로(`...\Tsukuru_agent\work\...`)는 이전 당시 기록이며, 현재 앱 경로는 `<repo>\tsukuru-agent\`, 계획·분석 문서는 저장소 루트에 있음.
 - 분석 기준 커밋/버전: tsukuru_extractor 2.3.0 소스(압축 해제본)를 기준으로 함.
 - 작업 위치(2026-08-02 사용자 결정): **작업용 복사본** `C:\Users\White\Documents\GitHub\Tsukuru_agent\work\tsukuru-agent\`에서 진행. 원본 2.3.0 소스 트리는 참조용으로 보존(수정 금지).
 - CLI 런타임: 계획서 지정대로 electron-builder headless exe를 최종 산출물로 하되, 개발·테스트는 순수 Node(컴파일된 JS) 진입점으로 수행.

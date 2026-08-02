@@ -1,1 +1,0 @@
-{"displayName":"시작 마을","note":"","events":[null,{"id":1,"name":"EV001","note":"","x":5,"y":6,"pages":[{"conditions":{},"image":{},"list":[{"code":101,"parameters":["알렉스",0,0,0],"indent":0},{"code":401,"parameters":["안녕하세요, 모험가님!"],"indent":0},{"code":401,"parameters":["이 마을에 온 것을 환영합니다."],"indent":0},{"code":0,"parameters":[],"indent":0}]}]}],"comment_1":"--- 101 ---"}

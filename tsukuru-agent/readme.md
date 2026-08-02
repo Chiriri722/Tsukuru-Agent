@@ -1,3 +1,10 @@
+# tsukuru-agent (애플리케이션)
+
+> 이 디렉터리는 **Tsukuru Agent**의 애플리케이션 소스입니다. 전체 소개·CLI 사용법·CLI 계약은 저장소 루트의 [README.md](../README.md)를 참조하세요.
+> 아래는 원본 Tsukuru Extractor의 readme입니다.
+
+---
+
 # 쯔꾸르 Extractor
 > AKA. (구) MVExtractor++
 
