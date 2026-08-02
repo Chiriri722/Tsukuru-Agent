@@ -101,4 +101,4 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - task_plan.md Phase 7 체크박스 편집 2회 실패: old_text의 '묵'(U+BB34)을 '물'(U+BB3C)로 반복 오타 — 파일 읽기 결과에서 정확한 문자를 복사하지 않고 기억에 의존한 것이 원인. 문제 단어를 포함하지 않는 앵커로 분할하여 해결.
 
 ## Status
-**Phase 1~9 완료, Phase 10·11 부분 완료** — 서비스 분리·CLI 4작업·GUI adapter 회귀·프로파일·테스트 명령 체계(npm test 4/4)·GPLv3 메타데이터까지 완료. **남은 작업**: (1) 실제 MV/MZ·Wolf fixture 확보 시 round-trip 확장(Key Question 3 사용자 답변 필요), (2) 스모크의 node:test 정식 전환, (3) electron-builder headless Windows exe 빌드 + THIRD-PARTY-NOTICES(Phase 11 잔여, 다음 세션).
+**Phase 1~9 완료, Phase 10·11 부분 완료 + 저장소 공개·정리(2026-08-03)** — 서비스 분리·CLI 4작업·GUI adapter 회귀·프로파일·테스트 명령 체계(npm test 4/4)·GPLv3 메타데이터 완료. GitHub 저장소 정리: README.md 재작성(소개·빠른 시작·CLI 계약·구성·테스트·로드맵·라이선스), About 설정(description 한글 정상, topics 10개), .gitignore 추가 및 tmp/·로그·분석 산출물 추적 해제(77개 파일 정리 커밋·푸시 완료). **남은 작업**: (1) 실제 MV/MZ·Wolf fixture 확보 시 round-trip 확장(사용자가 새 게임 작업 시 사용 예정 — 그때 검증), (2) 스모크의 node:test 정식 전환, (3) electron-builder headless Windows exe 빌드 + THIRD-PARTY-NOTICES(Phase 11 잔여).
