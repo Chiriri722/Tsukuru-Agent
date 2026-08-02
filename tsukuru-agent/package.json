@@ -10,6 +10,7 @@
     "build": "electron-builder --windows portable nsis:x64",
     "build2": "electron-builder --windows portable",
     "compile": "tsc",
+    "build:cli": "electron-builder --config electron-builder.cli.yml",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
     "agent": "node src/cli/main.js"

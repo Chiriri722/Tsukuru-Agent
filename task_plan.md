@@ -58,9 +58,10 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
   - 포맷별 extract→patch→apply→verify round-trip: 스모크 4종으로 검증 완료
   - 오류 케이스: 경로 오류(E_PATH_NOT_FOUND), 기존 산출물(E_EXTRACT_EXISTS), 손상 manifest(E_MANIFEST_CORRUPT·파싱), stale hash(E_PATCH_HASH_MISMATCH+묵변경), 줄 수 변경(1→2줄 매핑 재생성), Wolf 바이트 불일치(skipped 수집), 출력 충돌(E_OUTPUT_CONFLICT) — 모두 smoke-cli에서 검증
   - 명시적 TypeScript 컴파일·Node 테스트 명령 추가: `npm run compile`/`typecheck`/`test`(node --test 자동 탐색 4/4 통과)/`agent`. 잔여: 스모크의 node:test 형식 정식 전환(단언을 test() 블록으로 구조화)
-- [~] Phase 11: 빌드·배포 (부분 완료)
-  - electron-builder로 GUI 없는 headless Windows 실행 파일 별도 빌드 — **미착수**: electron 바이너 다운로드(ELECTRON_SKIP_BINARY_DOWNLOAD 해제) + headless용 별도 builder 구성(CLI 엔트리, 창 없음, asar) 필요. 다음 세션에서 진행
-  - GPLv3 LICENSE 기준 package metadata·의존성 고지 정리: package.json license MIT→**GPL-3.0-only** 정정, `bin.tsukuru-agent` 추가, `NOTICE.md` 작성(원저작물·변경일 2026-08-02·수정 사실 7개 항목·소스 제공 구조 명시). 잔여: THIRD-PARTY-NOTICES 생성(배포 구성 시)
+- [x] Phase 11: 빌드·배포
+  - electron-builder로 GUI 없는 headless Windows 실행 파일 별도 빌드: `electron-builder.cli.yml`(별도 구성: extraMetadata.main=src/cli/electronMain.js, asar, files에 CLI·core·js·LICENSE·NOTICE·THIRD-PARTY-NOTICES), `npm run build:cli`. CLI 실행기를 `src/cli/run.ts`(runAgent)로 분리하고 Node용 `main.ts`·Electron용 `electronMain.ts` thin 엔트리 구성
+  - 배포 형태 결정: **zip**(dist-cli/tsukuru-agent-2.0.0-win.zip, 93.6MB) — nsis portable 래퍼는 래퍼 체인에서 stdout/stderr 유실로 CLI 파이프 사용 불가임을 실측(포터블 exe 빌드 후 폐기). 압축 해제형 exe는 실측으로 stdout JSON·exit code 정상(실제 프로젝트 verify ok, 32,248 entries)
+  - GPLv3 LICENSE 기준 package metadata·의존성 고지 정리: license MIT→GPL-3.0-only 정정, bin.tsukuru-agent 추가, NOTICE.md 작성, `scripts/generate-notices.js`로 THIRD-PARTY-NOTICES 생성(26개 패키지)
 
 ## Key Questions
 1. 작업 위치: 원본 소스 트리를 직접 개조할 것인가, 작업용 복사본/새 폴터에서 진행할 것인가?
@@ -99,6 +100,9 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - opVerify의 .extracteddata 경로 오류: RPG는 data 폼더, Wolf는 _Extract 날� — 포맷별 분기로 수정.
 - `node --test test/` 실패(MODULE_NOT_FOUND, 빈 requireStack): Node 24가 `test/` 인수를 모듈로 해석 — `node --test`(자동 탐색)로 변경하니 4/4 통과.
 - task_plan.md Phase 7 체크박스 편집 2회 실패: old_text의 '묵'(U+BB34)을 '물'(U+BB3C)로 반복 오타 — 파일 읽기 결과에서 정확한 문자를 복사하지 않고 기억에 의존한 것이 원인. 문제 단어를 포함하지 않는 앵커로 분할하여 해결.
+- nsis portable exe(stdout/stderr 유실, exit=1 무출력): 포터블 래퍼가 자식 프로세스 체인에서 stdio를 전달하지 않음. win-unpacked exe로 동일 요청 시 정상 출력 확인 후 **zip 타겟으로 전환**(결정 기록).
+- Start-Process -ArgumentList에 공백 포함 경로 전달 시 분할 오류(ENOENT 'C:\\...\\Tsukuru'): 배열 인수는 quoting 없이 결합됨 — 인수 문자열을 변수로 만들고 경로를 큰따옴표로 감싸 전달. 이후 node -e 인라인 요청 생성 2회도 PS 이중 인용 문제(TerminatorExpectedAtEndOfString)로 실패 → 요청 JSON은 editor로 파일 작성이 안전.
+- `npm test` 스크립트 `node --test test/`는 환경에 따라 모듈 해석 오류 — `node --test`(자동 탐색)로 확정(이전 기록 참조).
 
 ## Status
-**Phase 1~9 완료, Phase 10·11 부분 완료 + 저장소 공개·정리(2026-08-03)** — 서비스 분리·CLI 4작업·GUI adapter 회귀·프로파일·테스트 명령 체계(npm test 4/4)·GPLv3 메타데이터 완료. GitHub 저장소 정리: README.md 재작성(소개·빠른 시작·CLI 계약·구성·테스트·로드맵·라이선스), About 설정(description 한글 정상, topics 10개), .gitignore 추가 및 tmp/·로그·분석 산출물 추적 해제(77개 파일 정리 커밋·푸시 완료). **남은 작업**: (1) 실제 MV/MZ·Wolf fixture 확보 시 round-trip 확장(사용자가 새 게임 작업 시 사용 예정 — 그때 검증), (2) 스모크의 node:test 정식 전환, (3) electron-builder headless Windows exe 빌드 + THIRD-PARTY-NOTICES(Phase 11 잔여).
+**전 Phase 완료(1~9, 11) + Phase 10 부분 완료(2026-08-03)** — 실제 프로젝트 검증: standard extract 118txt/29,671 entries/6.0MB/4.4s, verify·patch(2건)·apply(118파일/3.3s) 통과, Completed 한글 반영·Backup 원본 보존·I:\ 원본 무손상 확인. full 프로파일: 123파일/32,248 entries(ext_plugins·ext_scripts·ext_javascript·ext_note 생성, verify ok). **Phase 11 완료**: headless exe(zip, 93.6MB) 빌드·실측(verify ok, stdout JSON·exit code 정상), THIRD-PARTY-NOTICES 26개 패키지. **잔여 선택 작업**: 스모크의 node:test 정식 전환, 번역 완료 후 실제 삽입(apply) 테스트(사용자 진행 예정), pkg/SEA 등 더 가벼운 단일 exe 대안 검토(nsis portable은 stdio 유실로 부적합 판정).

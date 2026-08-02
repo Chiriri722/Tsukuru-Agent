@@ -1,0 +1,28 @@
+# tsukuru-agent headless CLI 전용 빌드 구성 (Phase 11)
+# 기존 GUI 빌드(package.json의 build 필드)와 별도로, 창 없는 CLI 실행 파일을 만든다.
+appId: net.electron.TsukuruAgent
+productName: tsukuru-agent
+copyright: Copyright © 2026 Tsukuru agent contributors (GPLv3)
+asar: true
+directories:
+  output: dist-cli
+  app: ./
+extraMetadata:
+  main: src/cli/electronMain.js
+  productName: tsukuru-agent
+  description: Headless CLI for RPG Maker MV/MZ & Wolf RPG translation workflows
+files:
+  - "src/cli/**"
+  - "src/core/**"
+  - "src/js/**"
+  - "src/utils.js"
+  - "LICENSE"
+  - "NOTICE.md"
+  - "THIRD-PARTY-NOTICES"
+  - "!**/*.ts"
+  - "!**/*.d.ts"
+win:
+  # zip으로 배포: 압축 해제 후 사용하는 tsukuru-agent.exe는 파이프 stdio가 정상 동작한다.
+  # (nsis portable 래퍼는 래퍼 체인에서 stdout/stderr가 유실되어 CLI 파이프 사용에 부적합)
+  target: zip
+  icon: ./res/icon.ico
