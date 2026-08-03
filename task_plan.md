@@ -106,6 +106,8 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 
 
 **후속(2026-08-03)**: 원격 푸시 완료(5df0d4f..7e34c58). dist-cli 빌드 산출물은 git 추적 제외 정책 확정 → 배포는 GitHub Release(v2.0.0, zip 첨부)로 전환. git 이력 전 구간에 검증 프로젝트명·원본 경로 잔재 없음(git grep 스캔 CLEAN).
+
+**삽입 테스트 완료(2026-08-03, 두 번째 실제 MV 프로젝트)**: 번역 에이전트 산출물(완성 JSON 57개, 자체 보고 번역률 92.1%)을 게임 `www/data/`에 직접 덮어쓰기 방식으로 적용(CLI patch/apply 경로 아님). 절차: ① 독립 사전 검증 — 57/57 파싱·구조 동등성(루트 배열 길이·키 집합·타입) 일치(tmp/validate-insert.js) ② 원본 백업 — `_work/backup/pre-insert-20260803/data` 64/64 SHA-256 일치 ③ 삽입 — 57/57 해시 일치 ④ 사후 검증 — 게임 data/ 64/64 파싱 OK, 미대상 7파일(Animations·Tilesets·빈 맵 4·ContainerProperties) 원본 동일, `._*` 부산물 0, 한국어 텍스트 대량 확인(MapInfos 한글 220/가나 1, CommonEvents 한글 38,138/가나 140 — 잔여 가나는 보고된 의도적 코드성 보존분). 남은 것: 실제 게임 실행 플레이테스트(사용자 수동, Game.exe). 저장소에는 프로젝트명 미기재(비공개 원칙 유지).
 - git push 원격 거부(GH001, pre-receive hook): `dist-cli/` 빌드 산출물 73개가 커밋에 포함(150MB exe > GitHub 100MB 제한, 93.6MB zip > 50MB 권장). 원인은 .gitignore에 `dist/`만 있고 `dist-cli/`가 누락된 것. `git reset --soft HEAD~2` → `git rm -r --cached dist-cli` → .gitignore 보강 → 단일 커밋(7e34c58)으로 재작성 후 push 성공. 부수 효과: 미푸시 상태에서 재작성되어, 이전 커밋 task_plan.md에 남아 있던 검증 프로젝트명이 **전체 이력에서 완전 제거**됨(git grep 패턴 파일 스캔 CLEAN 확인).
 
 ## Status
