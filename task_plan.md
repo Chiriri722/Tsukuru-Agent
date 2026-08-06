@@ -112,3 +112,20 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 
 ## Status
 **전 Phase 완료(1~9, 11) + Phase 10 부분 완료(2026-08-03)** — 실제 프로젝트 검증: standard extract 118txt/29,671 entries/6.0MB/4.4s, verify·patch(2건)·apply(118파일/3.3s) 통과, Completed 한글 반영·Backup 원본 보존·I:\ 원본 무손상 확인. full 프로파일: 123파일/32,248 entries(ext_plugins·ext_scripts·ext_javascript·ext_note 생성, verify ok). **Phase 11 완료**: headless exe(zip, 93.6MB) 빌드·실측(verify ok, stdout JSON·exit code 정상), THIRD-PARTY-NOTICES 26개 패키지. **잔여 선택 작업**: 스모크의 node:test 정식 전환, 번역 완료 후 실제 삽입(apply) 테스트(사용자 진행 예정), pkg/SEA 등 더 가벼운 단일 exe 대안 검토(nsis portable은 stdio 유실로 부적합 판정).
+
+
+## v2.5 Research & Plan (2026-08-06)
+
+- [x] 사용자 제공 ASAR 포스트와 Electron 공식 문서 대조
+- [x] 외부 Electron/MZ 샘플을 읽기 전용으로 검사하고 nested project 구조 확인
+- [x] GDevelop, ElectronForMZ, TyranoScript, NW.js 변형의 공식 포장·파일 구조 조사
+- [x] 정량 검증기·컨테이너 어댑터·엔진 프로파일 계획 작성
+- [ ] Phase 12: schema v2 및 ContainerAdapter/AsarContainer
+- [ ] Phase 13: deep verify, round-trip dry-run, 점수·변형량·스크립트 피해도
+- [ ] Phase 14: nested MZ/ElectronForMZ, GDevelop, Tyrano, NW.js 프로파일
+- [ ] Phase 15: synthetic archive fixture와 외부 fixture 회귀
+- [ ] Phase 16: 문서·빌드·v2.5 배포 검증
+
+상세 계획: v2.5-validation-compatibility-plan.md
+조사 메모: notes.md의 v2.5 조사 기록
+현재 판단: 댓글의 GDevelop 추정은 확정하지 않고, 실제 샘플은 Electron ASAR + nested RPG Maker MZ + ElectronForMZ 계열로 분류한다.
