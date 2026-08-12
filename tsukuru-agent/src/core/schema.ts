@@ -1,15 +1,18 @@
 /**
- * tsukuru-agent CLI 요청/결과 스키마 (schemaVersion 1).
+ * tsukuru-agent CLI 요청/결과 스키마 (schemaVersion 2, v1 호환).
  * 계획서 §CLI 계약 구현.
  */
 import { OperationError, ErrorCodes } from './types';
+import type { ElectronRuntimeInspection } from './runtimeDiagnostics';
+import type { StructuralValidationReport } from './validator';
 
-export const REQUEST_SCHEMA_VERSION = 1;
+export const REQUEST_SCHEMA_VERSION = 2;
+export const SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2] as const;
 
 export type Operation = 'verify' | 'extract' | 'patch' | 'apply';
-export type RequestFormat = 'auto' | 'rpgmv' | 'wolf';
+export type RequestFormat = 'auto' | 'rpgmv' | 'rpgmz' | 'rpgmz-electron' | 'wolf' | 'gdevelop-electron' | 'tyrano' | 'nwjs-webgame';
 export type Profile = 'standard' | 'full' | 'advanced';
-export type DetectedFormat = 'rpgmv' | 'wolf';
+export type DetectedFormat = 'rpgmv' | 'rpgmz' | 'wolf' | 'gdevelop' | 'tyrano' | 'nwjs' | 'unknown';
 
 export interface PatchEntry {
     id: string;
@@ -34,6 +37,40 @@ export interface ResultError {
     details?: unknown;
 }
 
+export interface ResultContainer {
+    type: string;
+    path: string | null;
+    root: string;
+    confidence: number;
+    integrity?: string;
+    invalidEntryCount: number;
+}
+
+export interface ResultEngine {
+    type: string;
+    wrapper: string | null;
+    features: string[];
+    confidence: number;
+}
+
+export interface ResultScores {
+    total: number;
+    extractionCoverage: number;
+    mappingIntegrity: number;
+    reinsertionValidity: number;
+    protectedScriptIntegrity: number;
+    containerIntegrity: number;
+    risk: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface ResultChange {
+    filesChanged: number;
+    bytesChanged: number;
+    textBytesChanged: number;
+    protectedFilesChanged: number;
+    protectedScriptDamage: number;
+}
+
 /** stdout에 출력되는 최종 결과 JSON 계약. */
 export interface AgentResult {
     ok: boolean;
@@ -42,6 +79,12 @@ export interface AgentResult {
     stats: { [key: string]: number };
     warnings: string[];
     error: ResultError | null;
+    container?: ResultContainer;
+    engine?: ResultEngine;
+    scores?: ResultScores;
+    change?: ResultChange;
+    runtime?: ElectronRuntimeInspection;
+    validation?: StructuralValidationReport;
 }
 
 export function emptyResult(): AgentResult {
@@ -49,7 +92,7 @@ export function emptyResult(): AgentResult {
 }
 
 const OPERATIONS: Operation[] = ['verify', 'extract', 'patch', 'apply'];
-const FORMATS: RequestFormat[] = ['auto', 'rpgmv', 'wolf'];
+const FORMATS: RequestFormat[] = ['auto', 'rpgmv', 'rpgmz', 'rpgmz-electron', 'wolf', 'gdevelop-electron', 'tyrano', 'nwjs-webgame'];
 const PROFILES: Profile[] = ['standard', 'full', 'advanced'];
 
 function invalid(message: string, details?: unknown): OperationError {
@@ -63,8 +106,8 @@ export function validateRequest(raw: unknown): AgentRequest {
     }
     const r = raw as { [key: string]: unknown };
 
-    if (r.schemaVersion !== REQUEST_SCHEMA_VERSION) {
-        throw invalid(`지원하지 않는 schemaVersion입니다: ${String(r.schemaVersion)}`, { expected: REQUEST_SCHEMA_VERSION });
+    if (typeof r.schemaVersion !== 'number' || !SUPPORTED_REQUEST_SCHEMA_VERSIONS.includes(r.schemaVersion as 1 | 2)) {
+        throw invalid(`지원하지 않는 schemaVersion입니다: ${String(r.schemaVersion)}`, { expected: SUPPORTED_REQUEST_SCHEMA_VERSIONS });
     }
     if (typeof r.operation !== 'string' || !OPERATIONS.includes(r.operation as Operation)) {
         throw invalid(`operation은 ${OPERATIONS.join('|')} 중 하나여야 합니다`, { got: r.operation });
@@ -83,6 +126,20 @@ export function validateRequest(raw: unknown): AgentRequest {
     }
     if (r.options !== undefined && (typeof r.options !== 'object' || r.options === null || Array.isArray(r.options))) {
         throw invalid('options는 객체여야 합니다');
+    }
+    const options = (r.options as { [key: string]: unknown } | undefined) ?? {};
+    if (options.launchProbe !== undefined && typeof options.launchProbe !== 'boolean') {
+        throw invalid('options.launchProbe는 boolean이어야 합니다');
+    }
+    if (options.launchProbe === true && r.operation !== 'apply') {
+        throw invalid('options.launchProbe는 apply 작업에서만 사용할 수 있습니다');
+    }
+    if (options.launchTimeoutMs !== undefined
+        && (typeof options.launchTimeoutMs !== 'number'
+            || !Number.isInteger(options.launchTimeoutMs)
+            || options.launchTimeoutMs < 250
+            || options.launchTimeoutMs > 15_000)) {
+        throw invalid('options.launchTimeoutMs는 250~15000 범위의 정수여야 합니다');
     }
 
     const patches: PatchEntry[] = [];
@@ -112,13 +169,13 @@ export function validateRequest(raw: unknown): AgentRequest {
     }
 
     return {
-        schemaVersion: REQUEST_SCHEMA_VERSION,
+        schemaVersion: r.schemaVersion as number,
         operation: r.operation as Operation,
         format: (r.format as RequestFormat) ?? 'auto',
         projectPath: r.projectPath,
         outputPath: r.outputPath as string | undefined,
         profile: (r.profile as Profile) ?? 'standard',
-        options: (r.options as { [key: string]: unknown }) ?? {},
+        options,
         patches,
     };
 }

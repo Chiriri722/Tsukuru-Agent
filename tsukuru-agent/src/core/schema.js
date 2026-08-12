@@ -1,19 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUEST_SCHEMA_VERSION = void 0;
+exports.SUPPORTED_REQUEST_SCHEMA_VERSIONS = exports.REQUEST_SCHEMA_VERSION = void 0;
 exports.emptyResult = emptyResult;
 exports.validateRequest = validateRequest;
 /**
- * tsukuru-agent CLI 요청/결과 스키마 (schemaVersion 1).
+ * tsukuru-agent CLI 요청/결과 스키마 (schemaVersion 2, v1 호환).
  * 계획서 §CLI 계약 구현.
  */
 const types_1 = require("./types");
-exports.REQUEST_SCHEMA_VERSION = 1;
+exports.REQUEST_SCHEMA_VERSION = 2;
+exports.SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2];
 function emptyResult() {
     return { ok: false, format: null, artifacts: [], stats: {}, warnings: [], error: null };
 }
 const OPERATIONS = ['verify', 'extract', 'patch', 'apply'];
-const FORMATS = ['auto', 'rpgmv', 'wolf'];
+const FORMATS = ['auto', 'rpgmv', 'rpgmz', 'rpgmz-electron', 'wolf', 'gdevelop-electron', 'tyrano', 'nwjs-webgame'];
 const PROFILES = ['standard', 'full', 'advanced'];
 function invalid(message, details) {
     return new types_1.OperationError(types_1.ErrorCodes.REQUEST_INVALID, message, details);
@@ -25,8 +26,8 @@ function validateRequest(raw) {
         throw invalid('요청은 JSON 객체여야 합니다');
     }
     const r = raw;
-    if (r.schemaVersion !== exports.REQUEST_SCHEMA_VERSION) {
-        throw invalid(`지원하지 않는 schemaVersion입니다: ${String(r.schemaVersion)}`, { expected: exports.REQUEST_SCHEMA_VERSION });
+    if (typeof r.schemaVersion !== 'number' || !exports.SUPPORTED_REQUEST_SCHEMA_VERSIONS.includes(r.schemaVersion)) {
+        throw invalid(`지원하지 않는 schemaVersion입니다: ${String(r.schemaVersion)}`, { expected: exports.SUPPORTED_REQUEST_SCHEMA_VERSIONS });
     }
     if (typeof r.operation !== 'string' || !OPERATIONS.includes(r.operation)) {
         throw invalid(`operation은 ${OPERATIONS.join('|')} 중 하나여야 합니다`, { got: r.operation });
@@ -45,6 +46,20 @@ function validateRequest(raw) {
     }
     if (r.options !== undefined && (typeof r.options !== 'object' || r.options === null || Array.isArray(r.options))) {
         throw invalid('options는 객체여야 합니다');
+    }
+    const options = (_a = r.options) !== null && _a !== void 0 ? _a : {};
+    if (options.launchProbe !== undefined && typeof options.launchProbe !== 'boolean') {
+        throw invalid('options.launchProbe는 boolean이어야 합니다');
+    }
+    if (options.launchProbe === true && r.operation !== 'apply') {
+        throw invalid('options.launchProbe는 apply 작업에서만 사용할 수 있습니다');
+    }
+    if (options.launchTimeoutMs !== undefined
+        && (typeof options.launchTimeoutMs !== 'number'
+            || !Number.isInteger(options.launchTimeoutMs)
+            || options.launchTimeoutMs < 250
+            || options.launchTimeoutMs > 15000)) {
+        throw invalid('options.launchTimeoutMs는 250~15000 범위의 정수여야 합니다');
     }
     const patches = [];
     if (r.patches !== undefined) {
@@ -72,13 +87,13 @@ function validateRequest(raw) {
         throw new types_1.OperationError(types_1.ErrorCodes.PATCH_EMPTY, 'patch 작업에는 최소 1개의 patches 항목이 필요합니다');
     }
     return {
-        schemaVersion: exports.REQUEST_SCHEMA_VERSION,
+        schemaVersion: r.schemaVersion,
         operation: r.operation,
-        format: (_a = r.format) !== null && _a !== void 0 ? _a : 'auto',
+        format: (_b = r.format) !== null && _b !== void 0 ? _b : 'auto',
         projectPath: r.projectPath,
         outputPath: r.outputPath,
-        profile: (_b = r.profile) !== null && _b !== void 0 ? _b : 'standard',
-        options: (_c = r.options) !== null && _c !== void 0 ? _c : {},
+        profile: (_c = r.profile) !== null && _c !== void 0 ? _c : 'standard',
+        options,
         patches,
     };
 }

@@ -120,12 +120,59 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] 외부 Electron/MZ 샘플을 읽기 전용으로 검사하고 nested project 구조 확인
 - [x] GDevelop, ElectronForMZ, TyranoScript, NW.js 변형의 공식 포장·파일 구조 조사
 - [x] 정량 검증기·컨테이너 어댑터·엔진 프로파일 계획 작성
-- [ ] Phase 12: schema v2 및 ContainerAdapter/AsarContainer
-- [ ] Phase 13: deep verify, round-trip dry-run, 점수·변형량·스크립트 피해도
-- [ ] Phase 14: nested MZ/ElectronForMZ, GDevelop, Tyrano, NW.js 프로파일
-- [ ] Phase 15: synthetic archive fixture와 외부 fixture 회귀
-- [ ] Phase 16: 문서·빌드·v2.5 배포 검증
+- [x] Phase 12: schema v2 및 ContainerAdapter/AsarContainer — 진단·선별 추출·provenance·CLI apply/repack 완료
+- [x] Phase 13: deep verify, round-trip dry-run, 점수·변형량·스크립트 피해도 — MV/MZ JSON·참조·manifest, Wolf 바이너리, Tyrano KS/TJS·인코딩 구조 검증과 CLI 점수 연동 완료
+- [x] Phase 14: nested MZ/ElectronForMZ, Tyrano, loose GDevelop 및 NW.js package.nw 실동작 파이프라인
+- [~] Phase 15: synthetic archive fixture와 외부 fixture 회귀 — synthetic 및 사용자 샘플 읽기 전용 회귀 완료, 실제 샘플 자동 주입/apply는 명시적 요청 전까지 보류
+- [x] Phase 16: 문서·빌드·v2.5 배포 검증 — README·release note·라이선스 고지와 headless 배포 재빌드 검증 완료
 
 상세 계획: v2.5-validation-compatibility-plan.md
 조사 메모: notes.md의 v2.5 조사 기록
 현재 판단: 댓글의 GDevelop 추정은 확정하지 않고, 실제 샘플은 Electron ASAR + nested RPG Maker MZ + ElectronForMZ 계열로 분류한다.
+## v2.5 implementation progress (2026-08-11)
+
+- [x] v2 request compatibility: schemaVersion 1/2 수용, 새 format 후보와 diagnostics result 필드 추가.
+- [x] Container core: loose directory, Electron app.asar, nested root 및 rpgmz/ElectronForMZ/GDevelop/Tyrano/Wolf marker 진단.
+- [x] AsarAdapter 기본 흐름: staging extract → 별도 archive pack → required entry 재목록 검증. 원본 archive hash 보존 테스트 포함.
+- [x] 정량 검증 코어: 가중 점수, risk, protected script damage, text/file byte diff, source/output directory snapshot.
+- [x] CLI verify 연결: container/engine 진단, quick/deep 점수, outputPath 비교, humanSummary stderr와 stdout JSON 분리.
+- [x] v2.5 synthetic tests와 기존 RPG/Wolf/GUI/CLI smoke를 node:test 회귀로 유지.
+- [x] 코드 리뷰 보강: raw ASAR apply/patch 차단, 원본 트리 내부 pack 거부, manifest 경로 이탈 차단, symlink/junction 거부, 정확한 파일 수 제한.
+- [x] 사용자 샘플에서 정상 2,519파일과 비정상 메타데이터 18개를 분리하고 `rpgmz + ElectronForMZ + Live2D/Effekseer`를 읽기 전용으로 실측 탐지.
+- [x] `@electron/asar@3.4.1` 직접 의존성과 MIT 라이선스를 THIRD-PARTY-NOTICES에 반영(이후 fuse/resedit 포함 29 packages로 재생성).
+- [x] ASAR 작업본 apply/repack: `.tsukuru-container.json` provenance, 명시적 `containerSourcePath`, source hash/engine/file-list 교차 검증, staging RPG apply, 번역 산출물 제거, 보호 스크립트 검증, 전체 게임 복사본 원자적 출력.
+- [x] ASAR 보존 회귀: 원래 unpacked 엔트리 metadata를 정확히 재생성하고 `app.asar.unpacked`·외부 resources·실행 파일을 보존하며 malformed 원본의 유효 파일만 clean repack.
+- [x] ASAR 안전 회귀: 변경된 원본, 보호 스크립트 변형, provenance traversal, 원본/작업본과 겹치는 출력, 기존 출력 충돌을 모두 출력 생성 전에 차단.
+- [x] Electron runtime 진단: 실행 파일 선택, fuse wire, PE `INTEGRITY/ELECTRONASAR` SHA-256, Authenticode 상태, 비ASCII 경로 회귀 구현.
+- [x] apply runtime gate: 무결성 fuse가 강제하는 ASAR 해시 불일치를 `E_RUNTIME_INTEGRITY`로 차단하고, opt-in launch probe는 별도 임시 게임 복사본에서만 실행.
+- [x] 실제 사용자 샘플 읽기 전용 실측: fuse integrity disabled, embedded resource absent, Authenticode NotSigned, runtime apply blocker 없음, 원본 크기·수정시각 무변경.
+- [x] Phase 13 구조 심화: Wolf offset·length prefix·null termination·UTF-8/Shift_JIS·원문 hash와 Tyrano KS 제어 태그·TJS delimiter·encoding을 issue code/위치와 함께 검증.
+- [x] CLI verify 구조 연동: `validation` JSON 보고서, 실제 유효 매핑 비율 점수, stderr `validation=...` human summary 추가.
+- [x] MV/MZ 심화 무결성: JSON parse/root type, DB id/index, Actor/Class/Skill/Enemy/Troop/CommonEvent/Map 핵심 참조, manifest line/hash/dataPath 검증.
+- [x] Tyrano 전용 파이프라인: KS 대사 span extract, manifest patch, source snapshot dry-run verify, scenario-only copy apply, KS/TJS 재검증.
+- [x] Tyrano 안전 경계: system/plugin manifest 위장 차단, 원본 변경 감지, Shift_JIS 손실을 `E_ENCODING_UNREPRESENTABLE`로 차단.
+- [x] NW.js `package.nw` 컨테이너: ZIP 내부 목록/크기/링크/경로 검증, zip-slip 차단, staging extract, 별도 archive pack, required entry 및 원본 SHA-256 검증.
+- [x] GDevelop 전용 파이프라인: `data.js`의 `gdjs.projectData`를 실행 없이 JSON 파싱하고 정적 Text/BBText 필드만 JSON Pointer manifest로 extract→patch→verify→copy-only apply.
+- [x] NW.js + GDevelop E2E: `.tsukuru-container.json` provenance, 명시적 `containerSourcePath`, wrapper 복사, 보호 runtime 및 archive file-list 대조 후 새 `package.nw` 재포장.
+- [x] 휴대용 RPG 작업 팩: `Backup` + `Extract/manifest.json`만 있는 외부 폴더 자동 탐지, Backup JSON 구조 검증, 미디어 추출물 없는 apply의 루트 System.json 오탐 제거.
+- [~] Phase 15: 실제 번역 팩 4개와 과거본 1개 읽기 전용 검증 및 번역본 1개 임시 복사 apply dry-run 완료. 서로 다른 번역 산출물 폴더의 자동 선택·조립은 잔여.
+- [x] Phase 16: README·release note·third-party notices 갱신 및 headless zip 재빌드 검증 완료. 패키징된 app.asar에서 GDevelopService, adm-zip, THIRD-PARTY-NOTICES 포함 확인.
+
+### Errors Encountered
+
+- npm install --save @electron/asar는 현재 npm cache-only 네트워크 환경에서 ENOTCACHED로 실패. 기존 설치된 transitive @electron/asar 3.4.1을 직접 runtime dependency로 package.json에 고정하고 package-lock 해당 노드를 dev 플래그 없이 갱신.
+- npm test/node --test는 기본 sandbox에서 child-process spawn EPERM이 발생한다. 승인된 비샌드박스 실행으로 현재 전체 72/72 통과를 확인했다.
+- PowerShell ProcessStartInfo의 기본 stdin 인코딩으로 비ASCII 장경로가 손상될 수 있어 실전 배치에서는 UTF-8을 명시했다. CLI 자체의 UTF-8 JSON 입력 계약과 직접 경로 인수는 정상이다.
+- ASAR statFile은 listPackage가 반환하는 선행 backslash를 그대로 넘기면 실패하는 Windows API 특성이 있어, 선행 구분자를 제거한 archive-relative path로 정규화.
+- 실제 사용자 ASAR에는 물리 archive보다 큰 가짜 size/offset을 가진 18개 헤더 엔트리가 있어 기존 총 크기 제한이 오탐했다. 유효 offset 범위 검사와 selective extraction으로 정상 파일과 분리.
+- Windows PowerShell 5.1은 비ASCII 실행 파일 경로의 Authenticode 상태를 빈 값으로 반환할 수 있어 PowerShell 7을 우선 사용하고 공식 SignatureStatus enum 회귀를 추가.
+
+### Current verification commands
+
+- `npm run compile` 통과
+- `npm run typecheck -- --pretty false` 통과
+- `npm test` 통과: 72 tests, 72 pass, 0 fail (비샌드박스 실행)
+- `npm run build:cli` 통과: win-unpacked + `tsukuru-agent-2.5.0-win.zip` 재생성(98,350,009 bytes), 내부 package version 2.5.0·휴대용 RPG 팩 탐지·미디어 암호화 guard 및 runtimeDiagnostics/GDevelopService/adm-zip/@electron/fuses/resedit/THIRD-PARTY-NOTICES 포함 확인
+- 빌드된 `tsukuru-agent.exe` smoke: stdout JSON parse 성공, verify 실패 exit code 1과 `E_VERIFY_FAILED` 계약 일치
+- `node -e "require('./test/v25-core.test.js')"`, `v25-cli`, `v25-schema-detect` 개별 실행도 통과
+- `node -e "require('./test/smoke-rpg.js')"`, `smoke-wolf`, `smoke-gui-adapter` 개별 실행도 통과

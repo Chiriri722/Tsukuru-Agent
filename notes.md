@@ -125,3 +125,18 @@
 - 우선순위는 `loose directory → Electron app.asar → app.asar.unpacked/external resources → NW.js package.nw → unknown archive`이며, 엔진 판정은 각 컨테이너를 열어 본 뒤 수행한다.
 - 추출 대상은 엔진 프로파일이 허용한 텍스트만 선택한다. `rmmz_*.js`, Electron main/preload, 플러그인 코드는 기본적으로 보호하고, 플러그인 문자열 추출은 `full/advanced`에서만 별도 표시한다.
 - 적용은 항상 `copy → edit → repack → structural verify → optional launch probe` 순서다. 원본 해시 불변은 필수이며, `app.asar.unpacked`·외부 리소스·서명/무결성 정보는 별도 결과로 남긴다.
+
+### v2.5 implementation update (2026-08-11)
+
+- `src/core/container.ts`는 ASAR list/stat/hash/engine-root 탐지와 `AsarContainer`/`DirectoryContainer` staging adapter를 제공한다. `@electron/asar`의 listPackage 경로가 Windows에서 `\`로 시작하므로 statFile 입력 전에 선행 구분자를 제거해야 한다.
+- `src/core/validator.ts`는 20/20/30/20/10 가중 점수, critical 승격, directory snapshot, text/file/protected diff를 제공한다. 보호 파일 변경은 점수와 `protectedScriptDamage`를 즉시 낮춘다.
+- `src/cli/run.ts`는 schema v2 요청, nested MZ 진단, `verifyDepth`, `outputPath` 비교, `humanSummary` stderr 출력을 연결했다. 기존 rpgmv/wolf extract/apply/patch 경로는 유지하고, 아직 구현되지 않은 엔진의 write operation은 E_NOT_IMPLEMENTED로 안전하게 차단한다.
+- synthetic tests는 nested MZ ASAR, archive round-trip, v1/v2 schema, human summary, output change magnitude, protected runtime change를 검증한다. 사용자 게임 파일은 fixture로 복사하지 않았다.
+- 현재 ASAR `integrity: present` 표시는 archive header의 파일별 integrity 메타데이터 탐지 결과다. Electron runtime integrity fuse/서명 검증과 동일하다고 단정하지 않으며, 후속 단계에서 별도 상태로 분리해야 한다.
+- ASAR staging 안에서 기존 RPG service를 실행해 sibling working directory에 추출하고 `.tsukuru-container.json` provenance를 기록한다. raw ASAR apply/patch는 계속 차단하지만, provenance 작업본은 요청자가 `containerSourcePath`를 명시한 경우에만 source hash/engine/file-list를 교차 검증한 뒤 별도 게임 복사본으로 apply/repack한다.
+- 재포장은 원본 archive의 유효 파일만 staging에 복사하고 `Extract`/`Backup`/`Completed`/`.extracteddata`를 제거한다. 원본의 정확한 unpacked 엔트리 목록으로 `app.asar.unpacked` metadata를 재생성하고, 외부 resources·실행 파일은 원본 게임 트리에서 복사한다.
+- apply 전에는 작업본 보호 스크립트를 원본 archive bytes와 비교하고, apply 후에도 snapshot diff로 재검사한다. 원본/작업본과 겹치는 출력, 기존 출력, provenance path traversal, source hash 불일치는 부분 출력 없이 실패한다.
+- 코드 리뷰에서 manifest `extractFile` 경로 이탈, staging/output 원본 내부 배치, symlink/junction, 파일 수 제한 off-by-one을 재현한 뒤 차단했다. 출력 비교가 없으면 보호 스크립트 상태를 100점으로 단정하지 않고 `unassessed`/50점으로 보고한다.
+- 사용자 샘플 ASAR 실측: 전체 listing 2,631개 중 유효 파일 2,519개, 디렉터리 94개, 비정상 메타데이터 18개. 비정상 항목은 1GiB 가짜 파일과 비유한대 size/offset을 가진 decoy이며, 정상 package/project 파일은 실제 archive 범위 안에 있다.
+- 위 샘플은 `Electron ASAR + project/ nested RPG Maker MZ + ElectronForMZ`로 0.99 confidence 탐지했고 `plugins`, `live2d`, `effekseer`, `asar-invalid-metadata` feature를 보고했다. 비정상 항목이 있으면 전체 extractAll 대신 유효 엔트리만 선별 추출한다.
+- 남은 핵심은 Electron runtime integrity fuse/코드서명/선택적 launch probe 판정과 KS/TJS/NW.js/GDevelop 전용 텍스트 규칙이다.

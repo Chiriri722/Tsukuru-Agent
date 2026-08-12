@@ -1,6 +1,6 @@
 {
   "name": "mv-extractor-pp",
-  "version": "2.0.0",
+  "version": "2.5.0",
   "description": "Tsukuru Extractor",
   "main": "main.js",
   "scripts": {
@@ -36,12 +36,15 @@
     "typescript": "5.5"
   },
   "dependencies": {
+    "@electron/asar": "^3.4.1",
+    "@electron/fuses": "^1.8.0",
     "@msgpack/msgpack": "^2.8.0",
     "@types/adm-zip": "^0.5.0",
     "@types/fs-extra": "^9.0.13",
     "@types/glob": "^8.0.0",
     "@types/jsdom": "^16.2.14",
     "@vitalets/google-translate-api": "^9.0.0",
+    "adm-zip": "^0.5.18",
     "aes-js": "^3.1.2",
     "axios": "^0.24.0",
     "bson": "^4.6.1",
@@ -60,6 +63,7 @@
     "open": "^8.4.0",
     "os-locale": "^6.0.2",
     "request": "^2.88.2",
+    "resedit": "^1.7.0",
     "sha3": "^2.1.4",
     "tcp-port-used": "^1.0.2"
   },

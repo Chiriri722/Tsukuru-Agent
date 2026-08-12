@@ -21,6 +21,19 @@ export interface PatchOutcome {
     files: number;
 }
 
+export function resolveExtractArtifactPath(extractDir: string, relativePath: unknown): string {
+    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path.isAbsolute(relativePath)) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 추출 파일 경로입니다: ${String(relativePath)}`);
+    }
+    const root = path.resolve(extractDir);
+    const target = path.resolve(root, relativePath);
+    const relative = path.relative(root, target);
+    if (!relative || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `추출 폴더 밖을 가리키는 경로입니다: ${relativePath}`);
+    }
+    return target;
+}
+
 /** extractDir(Extract/ 또는 _Extract/) 안의 작업본에 patches를 적용한다. */
 export function applyPatches(extractDir: string, format: DetectedFormat, patches: PatchEntry[]): PatchOutcome {
     // 1. manifest 로드
@@ -68,7 +81,7 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
     const fileLines = new Map<string, string[]>();
     const readLines = (rel: string): string[] => {
         if (!fileLines.has(rel)) {
-            const fp = path.join(extractDir, rel);
+            const fp = resolveExtractArtifactPath(extractDir, rel);
             if (!fs.existsSync(fp)) {
                 throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `추출 텍스트 파일이 없습니다: ${rel}`);
             }
@@ -135,7 +148,7 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
     regenerateExtractedData(extractDir, format, manifest, byFile);
     for (const [file, lines] of fileLines) {
         if (byFile.has(file)) {
-            atomicWriteFileSync(path.join(extractDir, file), lines.join('\n'));
+            atomicWriteFileSync(resolveExtractArtifactPath(extractDir, file), lines.join('\n'));
         }
     }
     atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -149,6 +162,10 @@ function regenerateExtractedData(
     manifest: ExtractManifest,
     byFile: Map<string, { p: PatchEntry; e: ManifestEntry }[]>,
 ): void {
+    if (format === 'tyrano' || format === 'gdevelop') {
+        // Tyrano/GDevelop manifest 자체가 원본 위치 매핑을 보유하므로 별도 legacy mapping 파일이 없다.
+        return;
+    }
     if (format === 'rpgmv') {
         // RPG: data 폼더의 .extracteddata(gb) — data 키(cid)와 m을 새 줄 번호로 재구성
         const dataDir = path.dirname(extractDir);

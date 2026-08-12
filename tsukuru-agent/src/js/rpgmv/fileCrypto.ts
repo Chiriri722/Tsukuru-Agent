@@ -78,8 +78,6 @@ export async function DecryptDir (DataDir:string, type:string):Promise<void> {
 
 
 export async function EncryptDir (DataDir:string, type:string, instantapply:boolean) {
-    const SysFile = reader(path.join(DataDir, "System.json"))
-    const Key = SysFile.encryptionKey
     const ExtractImgDirReal = path.join(DataDir, `Extract_${type}`)
     const ExtractImgDir = ExtractImgDirReal
     const CompleteDir = (()=>{
@@ -92,6 +90,8 @@ export async function EncryptDir (DataDir:string, type:string, instantapply:bool
         console.log('encrypt')
         return
     }
+    const SysFile = reader(path.join(DataDir, "System.json"))
+    const Key = SysFile.encryptionKey
     if(!fs.existsSync(CompleteDir)){
         fs.mkdirSync(CompleteDir)
     }

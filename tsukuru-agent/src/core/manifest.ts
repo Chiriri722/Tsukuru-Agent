@@ -28,6 +28,30 @@ export interface WolfBinaryMeta {
     len: number;
 }
 
+export interface TyranoApplyMeta {
+    /** 원본 KS의 0-base 행과 UTF-16 column 범위(end 미포함). */
+    line: number;
+    start: number;
+    end: number;
+    /** 추출 시 원본 segment 해시. patch 후에도 바뀌지 않는다. */
+    sourceHash: string;
+}
+
+export interface GDevelopApplyMeta {
+    /** gdjs.projectData 안의 RFC 6901 JSON Pointer. */
+    jsonPointer: string;
+    /** 허용된 정적 텍스트 객체 타입과 필드. */
+    objectType: string;
+    field: string;
+    /** 추출 당시 data.js 안 원문 해시. */
+    sourceHash: string;
+}
+
+export interface SourceSnapshot {
+    hash: string;
+    encoding: 'utf8' | 'shift_jis';
+}
+
 export interface ManifestEntry {
     /** 안정적인 항목 ID. MV: `<extractFile>#<jsonPath>`, Wolf: `<extractFile>#<index>`. */
     id: string;
@@ -48,16 +72,19 @@ export interface ManifestEntry {
     nullTerminated: boolean;
     mv?: MvApplyMeta;
     wolf?: WolfBinaryMeta;
+    tyrano?: TyranoApplyMeta;
+    gdevelop?: GDevelopApplyMeta;
 }
 
 export interface ExtractManifest {
     schemaVersion: number;
-    format: 'rpgmv' | 'wolf';
+    format: 'rpgmv' | 'wolf' | 'tyrano' | 'gdevelop';
     createdAt: string;
     entries: ManifestEntry[];
+    sourceSnapshots?: Record<string, SourceSnapshot>;
 }
 
-export function createManifest(format: 'rpgmv' | 'wolf'): ExtractManifest {
+export function createManifest(format: 'rpgmv' | 'wolf' | 'tyrano' | 'gdevelop'): ExtractManifest {
     return {
         schemaVersion: MANIFEST_SCHEMA_VERSION,
         format,

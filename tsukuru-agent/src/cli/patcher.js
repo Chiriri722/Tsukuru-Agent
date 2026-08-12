@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveExtractArtifactPath = resolveExtractArtifactPath;
 exports.applyPatches = applyPatches;
 /**
  * patch 작업 구현 (계획서 §CLI 계약 및 §Manifest와 안전성).
@@ -19,6 +20,18 @@ const msgpack_1 = require("@msgpack/msgpack");
 const types_1 = require("../core/types");
 const manifest_1 = require("../core/manifest");
 const atomic_1 = require("../core/atomic");
+function resolveExtractArtifactPath(extractDir, relativePath) {
+    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path_1.default.isAbsolute(relativePath)) {
+        throw new types_1.OperationError(types_1.ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 추출 파일 경로입니다: ${String(relativePath)}`);
+    }
+    const root = path_1.default.resolve(extractDir);
+    const target = path_1.default.resolve(root, relativePath);
+    const relative = path_1.default.relative(root, target);
+    if (!relative || relative.startsWith('..' + path_1.default.sep) || path_1.default.isAbsolute(relative)) {
+        throw new types_1.OperationError(types_1.ErrorCodes.MAPPING_CORRUPT, `추출 폴더 밖을 가리키는 경로입니다: ${relativePath}`);
+    }
+    return target;
+}
 /** extractDir(Extract/ 또는 _Extract/) 안의 작업본에 patches를 적용한다. */
 function applyPatches(extractDir, format, patches) {
     var _a, _b;
@@ -66,7 +79,7 @@ function applyPatches(extractDir, format, patches) {
     const fileLines = new Map();
     const readLines = (rel) => {
         if (!fileLines.has(rel)) {
-            const fp = path_1.default.join(extractDir, rel);
+            const fp = resolveExtractArtifactPath(extractDir, rel);
             if (!fs_1.default.existsSync(fp)) {
                 throw new types_1.OperationError(types_1.ErrorCodes.MAPPING_CORRUPT, `추출 텍스트 파일이 없습니다: ${rel}`);
             }
@@ -131,7 +144,7 @@ function applyPatches(extractDir, format, patches) {
     regenerateExtractedData(extractDir, format, manifest, byFile);
     for (const [file, lines] of fileLines) {
         if (byFile.has(file)) {
-            (0, atomic_1.atomicWriteFileSync)(path_1.default.join(extractDir, file), lines.join('\n'));
+            (0, atomic_1.atomicWriteFileSync)(resolveExtractArtifactPath(extractDir, file), lines.join('\n'));
         }
     }
     (0, atomic_1.atomicWriteFileSync)(manifestPath, JSON.stringify(manifest, null, 2));
@@ -140,6 +153,10 @@ function applyPatches(extractDir, format, patches) {
 /** .extracteddata의 줄 매핑을 갱신된 manifest 기준으로 재생성한다. */
 function regenerateExtractedData(extractDir, format, manifest, byFile) {
     var _a;
+    if (format === 'tyrano' || format === 'gdevelop') {
+        // Tyrano/GDevelop manifest 자체가 원본 위치 매핑을 보유하므로 별도 legacy mapping 파일이 없다.
+        return;
+    }
     if (format === 'rpgmv') {
         // RPG: data 폼더의 .extracteddata(gb) — data 키(cid)와 m을 새 줄 번호로 재구성
         const dataDir = path_1.default.dirname(extractDir);
