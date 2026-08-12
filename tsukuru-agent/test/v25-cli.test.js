@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const asar = require('@electron/asar');
 const { runAgent } = require('../src/cli/run.js');
 
@@ -194,6 +195,211 @@ test('apply completes a portable RPG extraction pack without root System.json wh
     const completed = JSON.parse(fs.readFileSync(path.join(pack, 'Completed', 'data', 'Actors.json'), 'utf8'));
     assert.equal(completed[1].name, '앨리스');
     assert.equal(fs.existsSync(path.join(pack, 'System.json')), false);
+});
+
+test('patch imports safe RPG translation dictionaries and reports skipped entries', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-rpg-dictionary-'));
+    const pack = path.join(root, 'translated-pack');
+    const translations = path.join(pack, 'translations');
+    fs.mkdirSync(path.join(pack, 'Backup'), { recursive: true });
+    fs.mkdirSync(path.join(pack, 'Extract'), { recursive: true });
+    fs.mkdirSync(translations, { recursive: true });
+    const actors = [
+        null,
+        { id: 1, name: 'Alice', classId: 0 },
+        { id: 2, name: 'Bob', classId: 0 },
+        { id: 3, name: 'Carol', classId: 0 },
+    ];
+    fs.writeFileSync(path.join(pack, 'Backup', 'Actors.json'), JSON.stringify(actors));
+    fs.writeFileSync(path.join(pack, 'Extract', 'Actors.txt'), 'Alice\nBob\nCarol\n');
+    fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify({
+        schemaVersion: 1, format: 'rpgmv', entries: [
+            {
+                id: 'Actors.json#1.name', sourceFile: 'Backup/Actors.json', dataPath: '1.name', extractFile: 'Actors.txt',
+                lineStart: 0, lineEnd: 1, hash: crypto.createHash('sha256').update('Alice').digest('hex'),
+                encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+            },
+            {
+                id: 'Actors.json#2.name', sourceFile: 'Backup/Actors.json', dataPath: '2.name', extractFile: 'Actors.txt',
+                lineStart: 1, lineEnd: 2, hash: crypto.createHash('sha256').update('Bob').digest('hex'),
+                encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+            },
+            {
+                id: 'Actors.json#3.name', sourceFile: 'Backup/Actors.json', dataPath: '3.name', extractFile: 'Actors.txt',
+                lineStart: 2, lineEnd: 3, hash: crypto.createHash('sha256').update('Carol').digest('hex'),
+                encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+            },
+        ],
+    }));
+    require('../src/js/rpgmv/edtool.js').write(pack, { main: {
+        'Actors.json': { data: {
+            '0': { origin: 'Actors.json', originText: 'Alice', val: '1.name', m: 1 },
+            '1': { origin: 'Actors.json', originText: 'Bob', val: '2.name', m: 2 },
+            '2': { origin: 'Actors.json', originText: 'Carol', val: '3.name', m: 3 },
+        } },
+    } });
+    fs.writeFileSync(path.join(translations, 'Actors_trans.json'), JSON.stringify({
+        'Actors.json#1.name': '앨리스',
+        'Actors.json#2.name': '',
+        'Actors.json#3.name': 'Carol',
+        'Actors.json#99.name': 'manifest에 없음',
+    }));
+    const requestPath = path.join(root, 'patch.json');
+    fs.writeFileSync(requestPath, JSON.stringify({
+        schemaVersion: 2, operation: 'patch', format: 'auto', projectPath: pack,
+        profile: 'standard', options: { translationDirectory: translations }, patches: [],
+    }));
+    const cli = require('node:child_process').spawnSync(process.execPath, [
+        path.join(__dirname, '..', 'src', 'cli', 'main.js'), 'run', '--request', requestPath,
+    ], { encoding: 'utf8' });
+    const result = JSON.parse(cli.stdout);
+    assert.equal(cli.status, 0, JSON.stringify(result));
+    assert.equal(result.ok, true, JSON.stringify(result));
+    assert.equal(fs.readFileSync(path.join(pack, 'Extract', 'Actors.txt'), 'utf8'), '앨리스\nBob\nCarol\n');
+    assert.deepEqual(result.stats.dictionary, {
+        files: 1,
+        entries: 4,
+        selected: 1,
+        skippedUnknown: 1,
+        skippedBlank: 1,
+        skippedUnchanged: 1,
+        skippedComment: 0,
+    });
+    assert.equal(result.stats.patched, 1);
+    assert.equal(result.warnings.length, 2);
+});
+
+test('translation dictionary import rejects manifest paths outside Extract before reading them', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-rpg-dictionary-path-'));
+    const extract = path.join(root, 'Extract');
+    const translations = path.join(root, 'translations');
+    fs.mkdirSync(extract);
+    fs.mkdirSync(translations);
+    fs.writeFileSync(path.join(root, 'outside.txt'), 'Alice\n');
+    fs.writeFileSync(path.join(extract, 'manifest.json'), JSON.stringify({
+        schemaVersion: 1, format: 'rpgmv', entries: [{
+            id: 'Actors.json#1.name', sourceFile: 'Backup/Actors.json', dataPath: '1.name', extractFile: '../outside.txt',
+            lineStart: 0, lineEnd: 1, hash: crypto.createHash('sha256').update('Alice').digest('hex'),
+            encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+        }],
+    }));
+    fs.writeFileSync(path.join(translations, 'Actors_trans.json'), JSON.stringify({
+        'Actors.json#1.name': '앨리스',
+    }));
+    assert.throws(
+        () => require('../src/core/translationDictionary.js').loadRpgTranslationDictionary(extract, translations),
+        (error) => error.code === 'E_MAPPING_CORRUPT' && /밖/.test(error.message),
+    );
+});
+
+test('apply imports an RPG translation dictionary before building Completed', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-rpg-dictionary-apply-'));
+    const pack = path.join(root, 'translated-pack');
+    const translations = path.join(pack, 'translations');
+    fs.mkdirSync(path.join(pack, 'Backup'), { recursive: true });
+    fs.mkdirSync(path.join(pack, 'Extract'), { recursive: true });
+    fs.mkdirSync(translations, { recursive: true });
+    const actors = [null, { id: 1, name: 'Alice', classId: 0 }];
+    fs.writeFileSync(path.join(pack, 'Backup', 'Actors.json'), JSON.stringify(actors));
+    fs.writeFileSync(path.join(pack, 'Extract', 'Actors.txt'), 'Alice\n');
+    fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify({
+        schemaVersion: 1, format: 'rpgmv', entries: [{
+            id: 'Actors.json#1.name', sourceFile: 'Backup/Actors.json', dataPath: '1.name', extractFile: 'Actors.txt',
+            lineStart: 0, lineEnd: 1, hash: crypto.createHash('sha256').update('Alice').digest('hex'),
+            encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+        }],
+    }));
+    require('../src/js/rpgmv/edtool.js').write(pack, { main: {
+        'Actors.json': { data: { '0': { origin: 'Actors.json', originText: 'Alice', val: '1.name', m: 1 } } },
+    } });
+    fs.writeFileSync(path.join(translations, 'Actors_trans.json'), JSON.stringify({
+        'Actors.json#1.name': '앨리스',
+    }));
+    const requestPath = path.join(root, 'apply.json');
+    fs.writeFileSync(requestPath, JSON.stringify({
+        schemaVersion: 2, operation: 'apply', format: 'auto', projectPath: pack,
+        profile: 'standard', options: { translationDirectory: translations }, patches: [],
+    }));
+    const cli = spawnSync(process.execPath, [
+        path.join(__dirname, '..', 'src', 'cli', 'main.js'), 'run', '--request', requestPath,
+    ], { encoding: 'utf8' });
+    const result = JSON.parse(cli.stdout);
+    assert.equal(cli.status, 0, cli.stdout || cli.stderr);
+    const completed = JSON.parse(fs.readFileSync(path.join(pack, 'Completed', 'data', 'Actors.json'), 'utf8'));
+    assert.equal(completed[1].name, '앨리스');
+    assert.equal(result.stats.patched, 1);
+    assert.equal(result.stats.dictionary.selected, 1);
+});
+
+test('recover rebuilds an RPG manifest from extracted mappings and current text', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-rpg-manifest-recover-'));
+    const pack = path.join(root, 'translated-pack');
+    fs.mkdirSync(path.join(pack, 'Backup'), { recursive: true });
+    fs.mkdirSync(path.join(pack, 'Extract'), { recursive: true });
+    const actors = [null, { id: 1, name: 'Alice', classId: 0 }];
+    fs.writeFileSync(path.join(pack, 'Backup', 'Actors.json'), JSON.stringify(actors));
+    fs.writeFileSync(path.join(pack, 'Extract', 'Actors.txt'), '앨리스\n');
+    const originalManifest = {
+        schemaVersion: 1, format: 'rpgmv', entries: [{
+            id: 'Actors.json#1.name', sourceFile: 'Backup/Actors.json', dataPath: '1.name', extractFile: 'Actors.txt',
+            lineStart: 0, lineEnd: 1, hash: crypto.createHash('sha256').update('Alice').digest('hex'),
+            encoding: 'utf8', nullTerminated: false, mv: { originFile: 'Actors.json' },
+        }],
+    };
+    fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify(originalManifest));
+    require('../src/js/rpgmv/edtool.js').write(pack, { main: {
+        'Actors.json': { data: { '0': { origin: 'Actors.json', originText: 'Alice', val: '1.name', m: 1 } } },
+    } });
+    const requestPath = path.join(root, 'recover.json');
+    fs.writeFileSync(requestPath, JSON.stringify({
+        schemaVersion: 2, operation: 'recover', format: 'auto', projectPath: pack,
+        profile: 'standard', options: {}, patches: [],
+    }));
+    const cli = spawnSync(process.execPath, [
+        path.join(__dirname, '..', 'src', 'cli', 'main.js'), 'run', '--request', requestPath,
+    ], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stdout || cli.stderr);
+    const result = JSON.parse(cli.stdout);
+    const recovered = JSON.parse(fs.readFileSync(path.join(pack, 'Extract', 'manifest.json'), 'utf8'));
+    const preserved = JSON.parse(fs.readFileSync(path.join(pack, 'Extract', 'manifest.pre-recovery.json'), 'utf8'));
+    assert.equal(recovered.entries[0].hash, crypto.createHash('sha256').update('앨리스').digest('hex'));
+    assert.deepEqual(preserved, originalManifest);
+    assert.equal(result.stats.entries, 1);
+    assert.equal(result.stats.hashesUpdated, 1);
+});
+
+test('apply does not write extraction-only comment markers into RPG JSON', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-rpg-comment-apply-'));
+    const pack = path.join(root, 'translated-pack');
+    fs.mkdirSync(path.join(pack, 'Backup'), { recursive: true });
+    fs.mkdirSync(path.join(pack, 'Extract'), { recursive: true });
+    fs.writeFileSync(path.join(pack, 'Backup', 'System.json'), JSON.stringify({ gameTitle: 'Alice' }));
+    fs.writeFileSync(path.join(pack, 'Extract', 'System.txt'), 'Alice\n---\n');
+    fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify({
+        schemaVersion: 1, format: 'rpgmv', entries: [{
+            id: 'System.json#gameTitle', sourceFile: 'Backup/System.json', dataPath: 'gameTitle', extractFile: 'System.txt',
+            lineStart: 0, lineEnd: 1, hash: crypto.createHash('sha256').update('Alice').digest('hex'),
+            encoding: 'utf8', nullTerminated: false, mv: { originFile: 'System.json' },
+        }],
+    }));
+    require('../src/js/rpgmv/edtool.js').write(pack, { main: {
+        'System.json': { data: {
+            '0': { origin: 'System.json', originText: 'Alice', val: 'gameTitle', m: 1 },
+            '1': { origin: 'System.json', originText: '---', val: 'comment_1', m: 2, conf: { isComment: true } },
+        } },
+    } });
+    const requestPath = path.join(root, 'apply.json');
+    fs.writeFileSync(requestPath, JSON.stringify({
+        schemaVersion: 2, operation: 'apply', format: 'auto', projectPath: pack,
+        profile: 'standard', options: {}, patches: [],
+    }));
+    const cli = spawnSync(process.execPath, [
+        path.join(__dirname, '..', 'src', 'cli', 'main.js'), 'run', '--request', requestPath,
+    ], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stdout || cli.stderr);
+    const completed = JSON.parse(fs.readFileSync(path.join(pack, 'Completed', 'data', 'System.json'), 'utf8'));
+    assert.equal(completed.gameTitle, 'Alice');
+    assert.equal(Object.hasOwn(completed, 'comment_1'), false);
 });
 
 test('verify exposes Wolf binary mapping failures in JSON scores and the human summary', async () => {

@@ -13,7 +13,7 @@ exports.SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2];
 function emptyResult() {
     return { ok: false, format: null, artifacts: [], stats: {}, warnings: [], error: null };
 }
-const OPERATIONS = ['verify', 'extract', 'patch', 'apply'];
+const OPERATIONS = ['verify', 'extract', 'patch', 'apply', 'recover'];
 const FORMATS = ['auto', 'rpgmv', 'rpgmz', 'rpgmz-electron', 'wolf', 'gdevelop-electron', 'tyrano', 'nwjs-webgame'];
 const PROFILES = ['standard', 'full', 'advanced'];
 function invalid(message, details) {
@@ -48,6 +48,10 @@ function validateRequest(raw) {
         throw invalid('options는 객체여야 합니다');
     }
     const options = (_a = r.options) !== null && _a !== void 0 ? _a : {};
+    if (options.translationDirectory !== undefined
+        && (typeof options.translationDirectory !== 'string' || options.translationDirectory.trim() === '')) {
+        throw invalid('options.translationDirectory는 비어있지 않은 문자열이어야 합니다');
+    }
     if (options.launchProbe !== undefined && typeof options.launchProbe !== 'boolean') {
         throw invalid('options.launchProbe는 boolean이어야 합니다');
     }
@@ -83,7 +87,10 @@ function validateRequest(raw) {
             patches.push({ id: p.id, expectedHash: p.expectedHash.toLowerCase(), text: p.text });
         }
     }
-    if (r.operation === 'patch' && patches.length === 0) {
+    if (patches.length > 0 && options.translationDirectory !== undefined) {
+        throw invalid('patches와 options.translationDirectory는 동시에 사용할 수 없습니다');
+    }
+    if (r.operation === 'patch' && patches.length === 0 && options.translationDirectory === undefined) {
         throw new types_1.OperationError(types_1.ErrorCodes.PATCH_EMPTY, 'patch 작업에는 최소 1개의 patches 항목이 필요합니다');
     }
     return {

@@ -50,7 +50,10 @@ const WolfService_1 = require("../js/wolf/WolfService");
 const TyranoService_1 = require("../js/tyrano/TyranoService");
 const GDevelopService_1 = require("../js/gdevelop/GDevelopService");
 const dataBaseO = __importStar(require("../js/rpgmv/datas.js"));
+const edTool = __importStar(require("../js/rpgmv/edtool"));
 const manifest_1 = require("../core/manifest");
+const translationDictionary_1 = require("../core/translationDictionary");
+const manifestRecovery_1 = require("./manifestRecovery");
 const validator_1 = require("../core/validator");
 const container_1 = require("../core/container");
 const runtimeDiagnostics_1 = require("../core/runtimeDiagnostics");
@@ -1040,8 +1043,14 @@ async function opApplyAsarWorking(req, detected, result, provenance) {
 }
 async function opApply(req, detected, result) {
     var _a, _b, _c, _d;
+    const translationDirectory = typeof req.options.translationDirectory === 'string'
+        ? req.options.translationDirectory
+        : undefined;
     const provenance = (0, containerProvenance_1.readContainerProvenance)(req.projectPath);
     if (provenance) {
+        if (translationDirectory) {
+            throw new types_1.OperationError(types_1.ErrorCodes.NOT_IMPLEMENTED, '컨테이너 작업본의 translationDirectory 자동 조립은 아직 지원하지 않습니다');
+        }
         if (provenance.containerType === 'nwjs-package')
             await opApplyNwWorking(req, detected, result, provenance);
         else
@@ -1051,8 +1060,21 @@ async function opApply(req, detected, result) {
     if (((_a = detected.container) === null || _a === void 0 ? void 0 : _a.type) === 'electron-asar') {
         throw new types_1.OperationError(types_1.ErrorCodes.NOT_IMPLEMENTED, '원본 ASAR 직접 적용은 아직 지원하지 않습니다. 먼저 별도 작업 디렉터리로 추출하세요', { format: detected.format });
     }
+    if (translationDirectory && detected.format !== 'rpgmv' && detected.format !== 'rpgmz') {
+        throw new types_1.OperationError(types_1.ErrorCodes.NOT_IMPLEMENTED, 'translationDirectory 자동 조립은 RPG MV/MZ만 지원합니다');
+    }
     const context = buildContext();
     if (detected.format === 'rpgmv' || detected.format === 'rpgmz') {
+        let dictionary;
+        let dictionaryPatch;
+        if (translationDirectory) {
+            dictionary = (0, translationDictionary_1.loadRpgTranslationDictionary)(extractDirOf(detected), translationDirectory);
+            result.warnings.push(...dictionary.warnings);
+            if (dictionary.patches.length === 0) {
+                throw new types_1.OperationError(types_1.ErrorCodes.PATCH_EMPTY, '적용 가능한 번역 사전 항목이 없습니다');
+            }
+            dictionaryPatch = (0, patcher_1.applyPatches)(extractDirOf(detected), 'rpgmv', dictionary.patches);
+        }
         const svc = new RpgMakerService_1.RpgMakerService(context);
         const rep = await svc.apply({
             dir: detected.dataDir,
@@ -1075,7 +1097,13 @@ async function opApply(req, detected, result) {
             completed = req.outputPath;
         }
         result.artifacts = [completed];
-        result.stats = { files: rep.appliedFiles.length, elapsedMs: Math.round(rep.elapsedMs) };
+        result.stats = {
+            files: rep.appliedFiles.length,
+            elapsedMs: Math.round(rep.elapsedMs),
+            ...(dictionary && dictionaryPatch
+                ? { patched: dictionaryPatch.patched, dictionary: dictionary.stats }
+                : {}),
+        };
     }
     else if (detected.format === 'wolf') {
         // Wolf: 게임 복사본에만 적용(계획서 §CLI 계약). 기본 출력: <게임 루트>/Completed
@@ -1137,10 +1165,47 @@ async function opPatch(req, detected, result) {
         : detected.format === 'gdevelop'
             ? path_1.default.join(gdevelopProjectRoot(detected), '_Extract')
             : extractDir;
-    const outcome = (0, patcher_1.applyPatches)(patchExtractDir, patchFormat, req.patches);
+    let patches = req.patches;
+    let dictionary;
+    if (typeof req.options.translationDirectory === 'string') {
+        if (patchFormat !== 'rpgmv') {
+            throw new types_1.OperationError(types_1.ErrorCodes.NOT_IMPLEMENTED, 'translationDirectory 자동 조립은 RPG MV/MZ만 지원합니다');
+        }
+        dictionary = (0, translationDictionary_1.loadRpgTranslationDictionary)(patchExtractDir, req.options.translationDirectory);
+        patches = dictionary.patches;
+        result.warnings.push(...dictionary.warnings);
+    }
+    if (patches.length === 0) {
+        throw new types_1.OperationError(types_1.ErrorCodes.PATCH_EMPTY, '적용 가능한 번역 사전 항목이 없습니다');
+    }
+    const outcome = (0, patcher_1.applyPatches)(patchExtractDir, patchFormat, patches);
     result.ok = true;
     result.artifacts = [path_1.default.join(patchExtractDir, manifest_1.MANIFEST_FILE)];
-    result.stats = { patched: outcome.patched, files: outcome.files };
+    result.stats = { patched: outcome.patched, files: outcome.files, ...(dictionary ? { dictionary: dictionary.stats } : {}) };
+}
+/** recover: .extracteddata와 현재 Extract 텍스트를 기준으로 RPG manifest를 재구축한다. */
+async function opRecover(req, detected, result) {
+    if ((detected.container && detected.container.type !== 'directory')
+        || (detected.format !== 'rpgmv' && detected.format !== 'rpgmz')) {
+        throw new types_1.OperationError(types_1.ErrorCodes.NOT_IMPLEMENTED, 'manifest 복구는 느슨한 RPG MV/MZ 추출 팩만 지원합니다', { format: detected.format });
+    }
+    let extracted;
+    try {
+        extracted = edTool.read(detected.dataDir);
+    }
+    catch (error) {
+        throw new types_1.OperationError(types_1.ErrorCodes.MAPPING_CORRUPT, '.extracteddata를 읽을 수 없습니다', {
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+    const outcome = (0, manifestRecovery_1.recoverRpgManifest)(detected.dataDir, extracted.main);
+    result.ok = true;
+    result.artifacts = [outcome.manifestPath, ...(outcome.backupPath ? [outcome.backupPath] : [])];
+    result.stats = {
+        entries: outcome.entries,
+        files: outcome.files,
+        hashesUpdated: outcome.hashesUpdated,
+    };
 }
 /** Node/Electron 공용 실행기. argv는 'run' 서브커맨드부터 시작한다. */
 async function runAgent(argv) {
@@ -1162,6 +1227,9 @@ async function runAgent(argv) {
                 break;
             case 'patch':
                 await opPatch(req, detected, result);
+                break;
+            case 'recover':
+                await opRecover(req, detected, result);
                 break;
         }
     }

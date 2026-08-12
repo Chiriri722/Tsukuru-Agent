@@ -15,13 +15,16 @@ import { OperationError, ErrorCodes, toOperationError } from '../core/types';
 import { createOperationContext, createRpgState, createWolfState, OperationContext } from '../core/context';
 import { StderrLogger, StderrProgressSink } from '../core/sinks';
 import { detectProject, DetectedProject } from './formatDetect';
-import { applyPatches, resolveExtractArtifactPath } from './patcher';
+import { applyPatches, PatchOutcome, resolveExtractArtifactPath } from './patcher';
 import { RpgMakerService, RpgExtractOptions } from '../js/rpgmv/RpgMakerService';
 import { WolfService } from '../js/wolf/WolfService';
 import { TyranoService } from '../js/tyrano/TyranoService';
 import { GDevelopService } from '../js/gdevelop/GDevelopService';
 import * as dataBaseO from '../js/rpgmv/datas.js';
+import * as edTool from '../js/rpgmv/edtool';
 import { MANIFEST_FILE } from '../core/manifest';
+import { loadRpgTranslationDictionary, TranslationDictionaryOutcome } from '../core/translationDictionary';
+import { recoverRpgManifest } from './manifestRecovery';
 import {
     diffFileMaps,
     inspectRpgProject,
@@ -1024,8 +1027,14 @@ async function opApplyAsarWorking(req: AgentRequest, detected: DetectedProject, 
 }
 
 async function opApply(req: AgentRequest, detected: DetectedProject, result: AgentResult): Promise<void> {
+    const translationDirectory = typeof req.options.translationDirectory === 'string'
+        ? req.options.translationDirectory
+        : undefined;
     const provenance = readContainerProvenance(req.projectPath);
     if (provenance) {
+        if (translationDirectory) {
+            throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, '컨테이너 작업본의 translationDirectory 자동 조립은 아직 지원하지 않습니다');
+        }
         if (provenance.containerType === 'nwjs-package') await opApplyNwWorking(req, detected, result, provenance);
         else await opApplyAsarWorking(req, detected, result, provenance);
         return;
@@ -1033,8 +1042,21 @@ async function opApply(req: AgentRequest, detected: DetectedProject, result: Age
     if (detected.container?.type === 'electron-asar') {
         throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, '원본 ASAR 직접 적용은 아직 지원하지 않습니다. 먼저 별도 작업 디렉터리로 추출하세요', { format: detected.format });
     }
+    if (translationDirectory && detected.format !== 'rpgmv' && detected.format !== 'rpgmz') {
+        throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, 'translationDirectory 자동 조립은 RPG MV/MZ만 지원합니다');
+    }
     const context = buildContext();
     if (detected.format === 'rpgmv' || detected.format === 'rpgmz') {
+        let dictionary: TranslationDictionaryOutcome | undefined;
+        let dictionaryPatch: PatchOutcome | undefined;
+        if (translationDirectory) {
+            dictionary = loadRpgTranslationDictionary(extractDirOf(detected), translationDirectory);
+            result.warnings.push(...dictionary.warnings);
+            if (dictionary.patches.length === 0) {
+                throw new OperationError(ErrorCodes.PATCH_EMPTY, '적용 가능한 번역 사전 항목이 없습니다');
+            }
+            dictionaryPatch = applyPatches(extractDirOf(detected), 'rpgmv', dictionary.patches);
+        }
         const svc = new RpgMakerService(context);
         const rep = await svc.apply({
             dir: detected.dataDir,
@@ -1056,7 +1078,13 @@ async function opApply(req: AgentRequest, detected: DetectedProject, result: Age
             completed = req.outputPath;
         }
         result.artifacts = [completed];
-        result.stats = { files: rep.appliedFiles.length, elapsedMs: Math.round(rep.elapsedMs) };
+        result.stats = {
+            files: rep.appliedFiles.length,
+            elapsedMs: Math.round(rep.elapsedMs),
+            ...(dictionary && dictionaryPatch
+                ? { patched: dictionaryPatch.patched, dictionary: dictionary.stats }
+                : {}),
+        };
     } else if (detected.format === 'wolf') {
         // Wolf: 게임 복사본에만 적용(계획서 §CLI 계약). 기본 출력: <게임 루트>/Completed
         const targetDir = req.outputPath ?? path.join(path.dirname(detected.dataDir), 'Completed');
@@ -1113,14 +1141,47 @@ async function opPatch(req: AgentRequest, detected: DetectedProject, result: Age
         : detected.format === 'gdevelop'
             ? path.join(gdevelopProjectRoot(detected), '_Extract')
             : extractDir;
-    const outcome = applyPatches(
-        patchExtractDir,
-        patchFormat,
-        req.patches,
-    );
+    let patches = req.patches;
+    let dictionary: TranslationDictionaryOutcome | undefined;
+    if (typeof req.options.translationDirectory === 'string') {
+        if (patchFormat !== 'rpgmv') {
+            throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, 'translationDirectory 자동 조립은 RPG MV/MZ만 지원합니다');
+        }
+        dictionary = loadRpgTranslationDictionary(patchExtractDir, req.options.translationDirectory);
+        patches = dictionary.patches;
+        result.warnings.push(...dictionary.warnings);
+    }
+    if (patches.length === 0) {
+        throw new OperationError(ErrorCodes.PATCH_EMPTY, '적용 가능한 번역 사전 항목이 없습니다');
+    }
+    const outcome = applyPatches(patchExtractDir, patchFormat, patches);
     result.ok = true;
     result.artifacts = [path.join(patchExtractDir, MANIFEST_FILE)];
-    result.stats = { patched: outcome.patched, files: outcome.files };
+    result.stats = { patched: outcome.patched, files: outcome.files, ...(dictionary ? { dictionary: dictionary.stats } : {}) };
+}
+
+/** recover: .extracteddata와 현재 Extract 텍스트를 기준으로 RPG manifest를 재구축한다. */
+async function opRecover(req: AgentRequest, detected: DetectedProject, result: AgentResult): Promise<void> {
+    if ((detected.container && detected.container.type !== 'directory')
+        || (detected.format !== 'rpgmv' && detected.format !== 'rpgmz')) {
+        throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, 'manifest 복구는 느슨한 RPG MV/MZ 추출 팩만 지원합니다', { format: detected.format });
+    }
+    let extracted;
+    try {
+        extracted = edTool.read(detected.dataDir);
+    } catch (error) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, '.extracteddata를 읽을 수 없습니다', {
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+    const outcome = recoverRpgManifest(detected.dataDir, extracted.main);
+    result.ok = true;
+    result.artifacts = [outcome.manifestPath, ...(outcome.backupPath ? [outcome.backupPath] : [])];
+    result.stats = {
+        entries: outcome.entries,
+        files: outcome.files,
+        hashesUpdated: outcome.hashesUpdated,
+    };
 }
 
 /** Node/Electron 공용 실행기. argv는 'run' 서브커맨드부터 시작한다. */
@@ -1143,6 +1204,9 @@ export async function runAgent(argv: string[]): Promise<number> {
                 break;
             case 'patch':
                 await opPatch(req, detected, result);
+                break;
+            case 'recover':
+                await opRecover(req, detected, result);
                 break;
         }
     } catch (err) {

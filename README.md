@@ -94,7 +94,9 @@ Get-Content request.json -Raw | node src/cli/main.js run --request -
 
 게임의 `data` 폴더에서 추출 후 `Backup`, `Extract`, `.extracteddata`만 외부로 옮긴 폴더를 `projectPath`로 직접 지정할 수 있습니다. `verify`는 `Backup/*.json`을 엔진 데이터 기준선으로 사용하고 `Extract/manifest.json`의 줄·해시·dataPath를 교차 검증합니다. `apply`는 미디어 추출물이 없을 때 루트 `System.json`을 요구하지 않으며 결과는 작업 팩 아래 `Completed/data`에 생성합니다.
 
-번역 TXT를 manifest patch 절차 없이 직접 교체하면 원문 해시 불일치로 보고됩니다. 이 경우 원본 작업 팩을 수정하지 말고 별도 복사본에서 patch로 manifest와 `.extracteddata` 매핑을 갱신하거나, 이미 생성된 `Completed/data`를 원본 `Backup`과 구조 비교해 검증해야 합니다.
+RPG MV/MZ 번역 사전 폴더의 최상위 `*_trans.json`이 manifest ID를 키로 사용한다면 `patch` 또는 `apply` 요청의 `options.translationDirectory`에 그 폴더를 지정할 수 있습니다. CLI는 manifest에 존재하고 현재 해시가 맞는 문자열만 선택하며, 미등록 ID·빈 값·현재 텍스트와 같은 값·추출용 주석은 건너뛴 수를 `stats.dictionary`와 warnings로 보고합니다. 명시적 `patches`와 이 옵션은 동시에 사용할 수 없습니다.
+
+이미 번역 TXT가 직접 교체되어 manifest 해시만 오래된 작업 팩은 별도 복사본에서 `recover`를 실행할 수 있습니다. `.extracteddata`의 ID·원본 경로·라인 매핑과 현재 Extract 텍스트를 모두 검증한 뒤 기존 manifest를 `manifest.pre-recovery*.json`으로 보존하고 새 해시를 원자적으로 기록합니다. 매핑 자체가 손상됐거나 Backup/Extract 파일이 없으면 복구하지 않습니다.
 
 ### TyranoScript 파이프라인
 
@@ -131,7 +133,7 @@ ASAR 게임을 `extract`하면 작업본 루트에 `.tsukuru-container.json`이 
 
 `containerSourcePath`는 provenance에 절대 원본 경로를 저장하지 않기 위한 명시적 권한입니다. CLI는 원본 archive 경로·SHA-256·엔진 루트·파일 목록을 교차 검증하고, staging에서 apply한 뒤 번역용 `Extract`/`Backup`/`Completed`/`.extracteddata`를 제외해 pack합니다. 필수 entry, 전체 파일 목록, unpacked 표식, 보호 스크립트, 런타임 무결성과 원본 해시가 모두 맞아야 최종 출력 디렉터리로 전환됩니다. 기존 출력이 있으면 기본적으로 거부하며 의도적인 교체에만 `options.force: true`를 사용합니다.
 
-정적 fuse·ASAR 해시·코드 서명 검사는 항상 실행됩니다. `launchProbe`는 apply에서만 사용할 수 있는 명시적 선택 기능이며 기본값은 `false`, 제한 시간은 250~15000ms입니다. 활성화하면 완성본과 분리된 임시 복사본에서 실행 파일을 관찰하고 `running` 또는 조기 정상 종료만 통과시킵니다. 네트워크·입력 자동화는 하지 않으며 실제 플레이테스트를 대체하지 않습니다.
+정적 fuse·ASAR 해시·코드 서명 검사는 항상 실행됩니다. `launchProbe`는 apply에서만 사용할 수 있는 명시적 선택 기능이며 기본값은 `false`, 제한 시간은 250~15000ms입니다. 활성화하면 완성본과 분리된 임시 복사본에서 실행 파일을 관찰하고 `running` 또는 조기 정상 종료만 통과시킵니다. Windows에서는 관찰 종료 시 NW.js/Electron 자식 프로세스 트리까지 정리합니다. 네트워크·입력 자동화는 하지 않으며 실제 플레이테스트를 대체하지 않습니다.
 
 ## 작업 설명 (CLI 계약)
 
@@ -141,6 +143,7 @@ ASAR 게임을 `extract`하면 작업본 루트에 `.tsukuru-container.json`이 
 | `extract` | 원본 보존 추출 — 엔진별 텍스트 작업본과 `manifest.json` 생성 | MV/MZ `data/Extract`, Wolf/Tyrano `data/_Extract`, GDevelop `_Extract`, 컨테이너는 `outputPath` 작업본 |
 | `patch` | manifest ID·원문 해시 검증 후 **추출 작업본만** 수정, 줄 매핑 재생성 | `manifest.json` 갱신 |
 | `apply` | loose MV/MZ: `Completed` / Wolf·Tyrano·GDevelop: 게임 복사본 / provenance가 있는 ASAR·NW.js 작업본: 검증된 전체 게임 복사본 | `Completed` 또는 `outputPath` |
+| `recover` | loose MV/MZ 작업 팩의 `.extracteddata`와 현재 Extract를 검증해 오래된 manifest 재구축 | 새 `manifest.json` + 기존 manifest 백업 |
 
 **프로파일**: `standard`(기존 GUI 기본 추출 수준) · `full`(플러그인·스크립트·노트·추가 JSON 확장 추출) · `advanced`(버전 관리되는 의미 기반 옵션 직접 지정)
 
@@ -173,14 +176,14 @@ npm run agent -- run --request request.json
 
 ## 테스트
 
-`npm test`는 10개 테스트 파일에서 현재 70개 검사를 실행합니다:
+`npm test`는 10개 테스트 파일에서 현재 78개 검사를 실행합니다:
 
 - `test/smoke-rpg.js` — MV/MZ extract→번역→apply round-trip (합성 fixture)
 - `test/smoke-wolf.js` — 합성 .mps 바이너리 extract→apply round-trip (오프셋·널 종료 검증)
 - `test/smoke-cli.js` — CLI 계약(4개 작업·오류 코드·stdout JSON·exit code)
 - `test/smoke-gui-adapter.js` — GUI IPC 회귀(mock mwindow)
 - `test/v25-core.test.js` — ASAR staging/round-trip·unpacked 표식 보존, limits/symlink/path traversal, RPG JSON·참조·manifest, Wolf 바이너리 매핑, Tyrano KS/TJS·인코딩 구조 검증
-- `test/v25-cli.test.js` — v2 verify 구조 보고서·점수·human summary, nested ASAR extract→patch→apply→repack, 원본/provenance/출력 안전 가드
+- `test/v25-cli.test.js` — v2 verify 구조 보고서·점수·human summary, RPG 번역 사전 patch/apply·manifest recover, nested ASAR extract→patch→apply→repack, 원본/provenance/출력 안전 가드
 - `test/v25-tyrano.test.js` — Tyrano KS span extract→patch→verify→copy-only apply, source snapshot, 보호 스크립트 경계와 Shift_JIS 손실 차단
 - `test/v25-compat.test.js` — package.nw ZIP 왕복·zip-slip 차단, GDevelop 정적 텍스트/JSON Pointer, loose 및 NW.js provenance CLI E2E
 - `test/v25-schema-detect.test.js` — v1/v2 schema 및 nested engine detection

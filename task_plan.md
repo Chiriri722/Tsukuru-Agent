@@ -1,7 +1,7 @@
 # Task Plan: Tsukuru Extractor Headless CLI 개조 (a.k.a Tsukuru agent)
 
 ## Goal
-Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을 UI 없는 서비스 계층(`RpgMakerService`/`WolfService`)으로 분리하고, `tsukuru-agent run --request <file|->` 형식의 Headless CLI(verify/extract/patch/apply)를 manifest 기반 안전성과 함께 제공한다. 기존 GUI는 동일 서비스를 호출하는 adapter로 유지한다.
+Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을 UI 없는 서비스 계층(`RpgMakerService`/`WolfService`)으로 분리하고, `tsukuru-agent run --request <file|->` 형식의 Headless CLI(verify/extract/patch/apply/recover)를 manifest 기반 안전성과 함께 제공한다. 기존 GUI는 동일 서비스를 호출하는 adapter로 유지한다.
 
 ## 원본 계획서
 `C:\Users\White\Documents\GitHub\Tsukuru_agent\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`
@@ -155,13 +155,17 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] GDevelop 전용 파이프라인: `data.js`의 `gdjs.projectData`를 실행 없이 JSON 파싱하고 정적 Text/BBText 필드만 JSON Pointer manifest로 extract→patch→verify→copy-only apply.
 - [x] NW.js + GDevelop E2E: `.tsukuru-container.json` provenance, 명시적 `containerSourcePath`, wrapper 복사, 보호 runtime 및 archive file-list 대조 후 새 `package.nw` 재포장.
 - [x] 휴대용 RPG 작업 팩: `Backup` + `Extract/manifest.json`만 있는 외부 폴더 자동 탐지, Backup JSON 구조 검증, 미디어 추출물 없는 apply의 루트 System.json 오탐 제거.
-- [~] Phase 15: 실제 번역 팩 4개와 과거본 1개 읽기 전용 검증 및 번역본 1개 임시 복사 apply dry-run 완료. 서로 다른 번역 산출물 폴더의 자동 선택·조립은 잔여.
+- [x] Phase 15: 실제 번역 팩 읽기 전용 검증, manifest 기반 번역 사전 자동 patch/apply, 오래된 manifest 복구, 두 전체 게임 복사본 실행 프로브까지 완료. 원본 세 팩 집계 SHA-256 불변.
 - [x] Phase 16: README·release note·third-party notices 갱신 및 headless zip 재빌드 검증 완료. 패키징된 app.asar에서 GDevelopService, adm-zip, THIRD-PARTY-NOTICES 포함 확인.
+- [x] Phase 17 P0~P2: 사전 21,021항목 중 20,476 안전 적용(미등록 466·빈 값 2·동일 값 77 제외), manifest 9,112항목 복구(8,940 hash 갱신), 실게임 복사본 두 개 5초 실행 및 잔류 프로세스 0 확인.
+- [ ] Phase 17 P3: 원본부터 존재하는 끊어진 RPG map reference와 번역으로 유입된 손상의 기준선 비교·severity 분리.
+- [ ] Phase 17 P4~P5: 컨테이너 사전 조립/트랜잭션 복구 강화 후 package lock·고지·결정적 ZIP 재현성 정리.
 
 ### Errors Encountered
 
 - npm install --save @electron/asar는 현재 npm cache-only 네트워크 환경에서 ENOTCACHED로 실패. 기존 설치된 transitive @electron/asar 3.4.1을 직접 runtime dependency로 package.json에 고정하고 package-lock 해당 노드를 dev 플래그 없이 갱신.
-- npm test/node --test는 기본 sandbox에서 child-process spawn EPERM이 발생한다. 승인된 비샌드박스 실행으로 현재 전체 72/72 통과를 확인했다.
+- npm test/node --test는 기본 sandbox에서 child-process spawn EPERM이 발생한다. 승인된 비샌드박스 실행으로 현재 전체 78/78 통과를 확인했다.
+- 실제 NW.js 실행 프로브에서 부모 종료 후 자식 Game.exe 5개가 남는 현상을 재현했다. Windows `taskkill /T /F`를 shell 없이 호출하도록 수정하고 분리 자식 회귀 및 실제 복사본 재검증에서 잔류 0을 확인했다.
 - PowerShell ProcessStartInfo의 기본 stdin 인코딩으로 비ASCII 장경로가 손상될 수 있어 실전 배치에서는 UTF-8을 명시했다. CLI 자체의 UTF-8 JSON 입력 계약과 직접 경로 인수는 정상이다.
 - ASAR statFile은 listPackage가 반환하는 선행 backslash를 그대로 넘기면 실패하는 Windows API 특성이 있어, 선행 구분자를 제거한 archive-relative path로 정규화.
 - 실제 사용자 ASAR에는 물리 archive보다 큰 가짜 size/offset을 가진 18개 헤더 엔트리가 있어 기존 총 크기 제한이 오탐했다. 유효 offset 범위 검사와 selective extraction으로 정상 파일과 분리.
@@ -171,8 +175,8 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 
 - `npm run compile` 통과
 - `npm run typecheck -- --pretty false` 통과
-- `npm test` 통과: 72 tests, 72 pass, 0 fail (비샌드박스 실행)
-- `npm run build:cli` 통과: win-unpacked + `tsukuru-agent-2.5.0-win.zip` 재생성(98,350,009 bytes), 내부 package version 2.5.0·휴대용 RPG 팩 탐지·미디어 암호화 guard 및 runtimeDiagnostics/GDevelopService/adm-zip/@electron/fuses/resedit/THIRD-PARTY-NOTICES 포함 확인
+- `npm test` 통과: 78 tests, 78 pass, 0 fail (비샌드박스 실행)
+- `npm run build:cli` 통과: win-unpacked + `tsukuru-agent-2.5.0-win.zip` 재생성(98,353,504 bytes), 내부 package version 2.5.0·manifestRecovery·translationDictionary·runtimeDiagnostics/GDevelopService/adm-zip/@electron/fuses/resedit/THIRD-PARTY-NOTICES 포함 확인
 - 빌드된 `tsukuru-agent.exe` smoke: stdout JSON parse 성공, verify 실패 exit code 1과 `E_VERIFY_FAILED` 계약 일치
 - `node -e "require('./test/v25-core.test.js')"`, `v25-cli`, `v25-schema-detect` 개별 실행도 통과
 - `node -e "require('./test/smoke-rpg.js')"`, `smoke-wolf`, `smoke-gui-adapter` 개별 실행도 통과

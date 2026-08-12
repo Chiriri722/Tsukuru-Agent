@@ -282,6 +282,9 @@ export class RpgMakerService {
                     const originFile = ext_dat[i].data[q].origin ?? i;
                     if (ext_dat[i].data[q].conf !== undefined) {
                         const econf = ext_dat[i].data[q].conf;
+                        if (econf.isComment === true) {
+                            continue;
+                        }
                         if (arg.autoline && econf.type == 'event' && econf.code == 401) {
                             autoline = true;
                             autolineSize = econf.face ? 80 : 60;

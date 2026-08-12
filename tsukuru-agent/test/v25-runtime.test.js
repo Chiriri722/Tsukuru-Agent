@@ -160,6 +160,30 @@ test('launch probe treats a process that stays alive through the observation win
     assert.equal(result.exitCode, null);
 });
 
+test('launch probe terminates descendant processes after the observation window', { skip: process.platform !== 'win32' }, async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-launch-tree-'));
+    const pidPath = path.join(root, 'child.pid');
+    const parentScript = [
+        "const { spawn } = require('node:child_process');",
+        `const child = spawn(${JSON.stringify(process.execPath)}, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore' });`,
+        `require('node:fs').writeFileSync(${JSON.stringify(pidPath)}, String(child.pid));`,
+        'setInterval(() => {}, 1000);',
+    ].join('');
+    let childPid;
+    const isRunning = (pid) => {
+        try { process.kill(pid, 0); return true; } catch { return false; }
+    };
+    try {
+        const result = await runLaunchProbe(process.execPath, ['-e', parentScript], { timeoutMs: 500 });
+        childPid = Number(fs.readFileSync(pidPath, 'utf8'));
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        assert.equal(result.status, 'running');
+        assert.equal(isRunning(childPid), false);
+    } finally {
+        if (Number.isInteger(childPid) && isRunning(childPid)) process.kill(childPid);
+    }
+});
+
 test('launch probe preserves an early non-zero exit as a failed boot signal', async () => {
     const result = await runLaunchProbe(process.execPath, ['-e', 'process.exit(7)'], { timeoutMs: 1000 });
 

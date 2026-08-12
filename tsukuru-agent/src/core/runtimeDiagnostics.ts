@@ -351,7 +351,14 @@ export function runLaunchProbe(
         const timer = setTimeout(() => {
             if (settled || child.exitCode !== null || child.signalCode !== null) return;
             timedOut = true;
-            terminatedByProbe = child.kill();
+            if (process.platform === 'win32' && child.pid) {
+                const treeKill = spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+                    windowsHide: true,
+                    stdio: 'ignore',
+                });
+                terminatedByProbe = treeKill.status === 0;
+            }
+            if (!terminatedByProbe) terminatedByProbe = child.kill();
             if (!terminatedByProbe) {
                 finish({
                     status: 'failed',

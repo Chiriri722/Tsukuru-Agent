@@ -9,7 +9,7 @@ import type { StructuralValidationReport } from './validator';
 export const REQUEST_SCHEMA_VERSION = 2;
 export const SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2] as const;
 
-export type Operation = 'verify' | 'extract' | 'patch' | 'apply';
+export type Operation = 'verify' | 'extract' | 'patch' | 'apply' | 'recover';
 export type RequestFormat = 'auto' | 'rpgmv' | 'rpgmz' | 'rpgmz-electron' | 'wolf' | 'gdevelop-electron' | 'tyrano' | 'nwjs-webgame';
 export type Profile = 'standard' | 'full' | 'advanced';
 export type DetectedFormat = 'rpgmv' | 'rpgmz' | 'wolf' | 'gdevelop' | 'tyrano' | 'nwjs' | 'unknown';
@@ -76,7 +76,7 @@ export interface AgentResult {
     ok: boolean;
     format: DetectedFormat | null;
     artifacts: string[];
-    stats: { [key: string]: number };
+    stats: { [key: string]: unknown };
     warnings: string[];
     error: ResultError | null;
     container?: ResultContainer;
@@ -91,7 +91,7 @@ export function emptyResult(): AgentResult {
     return { ok: false, format: null, artifacts: [], stats: {}, warnings: [], error: null };
 }
 
-const OPERATIONS: Operation[] = ['verify', 'extract', 'patch', 'apply'];
+const OPERATIONS: Operation[] = ['verify', 'extract', 'patch', 'apply', 'recover'];
 const FORMATS: RequestFormat[] = ['auto', 'rpgmv', 'rpgmz', 'rpgmz-electron', 'wolf', 'gdevelop-electron', 'tyrano', 'nwjs-webgame'];
 const PROFILES: Profile[] = ['standard', 'full', 'advanced'];
 
@@ -128,6 +128,10 @@ export function validateRequest(raw: unknown): AgentRequest {
         throw invalid('options는 객체여야 합니다');
     }
     const options = (r.options as { [key: string]: unknown } | undefined) ?? {};
+    if (options.translationDirectory !== undefined
+        && (typeof options.translationDirectory !== 'string' || options.translationDirectory.trim() === '')) {
+        throw invalid('options.translationDirectory는 비어있지 않은 문자열이어야 합니다');
+    }
     if (options.launchProbe !== undefined && typeof options.launchProbe !== 'boolean') {
         throw invalid('options.launchProbe는 boolean이어야 합니다');
     }
@@ -164,7 +168,10 @@ export function validateRequest(raw: unknown): AgentRequest {
             patches.push({ id: p.id, expectedHash: p.expectedHash.toLowerCase(), text: p.text });
         }
     }
-    if (r.operation === 'patch' && patches.length === 0) {
+    if (patches.length > 0 && options.translationDirectory !== undefined) {
+        throw invalid('patches와 options.translationDirectory는 동시에 사용할 수 없습니다');
+    }
+    if (r.operation === 'patch' && patches.length === 0 && options.translationDirectory === undefined) {
         throw new OperationError(ErrorCodes.PATCH_EMPTY, 'patch 작업에는 최소 1개의 patches 항목이 필요합니다');
     }
 
