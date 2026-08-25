@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "operation": "verify",
+  "format": "auto",
+  "projectPath": "<FIXTURE_ROOT>",
+  "options": {
+    "verifyDepth": "deep"
+  }
+}

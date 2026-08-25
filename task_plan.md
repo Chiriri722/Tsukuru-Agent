@@ -158,8 +158,9 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] Phase 15: 실제 번역 팩 읽기 전용 검증, manifest 기반 번역 사전 자동 patch/apply, 오래된 manifest 복구, 두 전체 게임 복사본 실행 프로브까지 완료. 원본 세 팩 집계 SHA-256 불변.
 - [x] Phase 16: README·release note·third-party notices 갱신 및 headless zip 재빌드 검증 완료. 패키징된 app.asar에서 GDevelopService, adm-zip, THIRD-PARTY-NOTICES 포함 확인.
 - [x] Phase 17 P0~P2: 사전 21,021항목 중 20,476 안전 적용(미등록 466·빈 값 2·동일 값 77 제외), manifest 9,112항목 복구(8,940 hash 갱신), 실게임 복사본 두 개 5초 실행 및 잔류 프로세스 0 확인.
-- [ ] Phase 17 P3: 원본부터 존재하는 끊어진 RPG map reference와 번역으로 유입된 손상의 기준선 비교·severity 분리.
-- [ ] Phase 17 P4~P5: 컨테이너 사전 조립/트랜잭션 복구 강화 후 package lock·고지·결정적 ZIP 재현성 정리.
+- [x] Phase 17 P3: 원본부터 존재하는 끊어진 RPG map reference와 번역으로 유입된 손상의 기준선 비교·severity 분리.
+- [x] Phase 17 P4: 컨테이너 사전 조립/단일 transaction과 recover dry-run·충돌 정책 구현.
+- [x] Phase 17 P5: package lock·고지 점검과 결정적 CLI/NW.js ZIP의 최종 clean-build 재현성 증거 확정.
 
 ### Errors Encountered
 
@@ -180,3 +181,80 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - 빌드된 `tsukuru-agent.exe` smoke: stdout JSON parse 성공, verify 실패 exit code 1과 `E_VERIFY_FAILED` 계약 일치
 - `node -e "require('./test/v25-core.test.js')"`, `v25-cli`, `v25-schema-detect` 개별 실행도 통과
 - `node -e "require('./test/smoke-rpg.js')"`, `smoke-wolf`, `smoke-gui-adapter` 개별 실행도 통과
+
+## Phase 18: Post-v2.5 hardening baseline (2026-08-19)
+
+제안 원본: `New-task-plan.md` (`tsukuru-agent-post-v2.5-hardening`)
+
+- [x] Phase 18.0: 기준선 재현과 증거 고정
+  - [x] 제안서 전체 검토 및 로컬 정적 사실 대조
+  - [x] 기존 구현 이력과 충돌하지 않도록 `task_plan.md`·`notes.md` 보존 결정
+  - [x] 커밋 `17fa6e7`의 독립 clean worktree에서 install/typecheck/test/build 전후 상태 기록
+  - [x] 추적 테스트와 ignored 테스트의 이력 및 실제 실행 개수 기록(61 tracked-only / 78 local-augmented)
+  - [x] CLI 요청/응답, manifest, diagnostics의 최소 계약 스냅샷 고정
+  - [x] `exfiles/` 외부 실행 파일의 이름·크기·SHA-256·라이선스 근거 기록(실행하지 않음)
+- [x] Phase 18.1: 재현 가능한 하드닝 변경을 독립 단위로 진행
+  - [x] lockfile-only: Node 24.14.0/npm 11.19.0 clean 생성본을 채택하고 `.gitignore` 한 줄과 `package-lock.json`만 별도 worktree에 구성.
+  - [x] lockfile-only Exit Gate: `npm ci`, typecheck, compile, tracked 61/61, CLI package 및 실패/성공 계약 통과.
+  - [x] build-chain: `.build/app` staging, 대상별 compile 선행, tracked source 무변경, 자기 output만 정리, `CLI→GUI→CLI` 오염 0건과 CLI byte 동일성 검증.
+  - [x] version/identity: `package.json@2.5.0` canonical source, sync/check scripts, 현재 저장소 metadata·GUI 링크, 버전 기반 CLI ZIP 이름, ADR와 67/67 회귀 검증.
+  - [x] 최소 CI: Ubuntu 검증·coverage·순서 교란과 Windows 검증·CLI 패키지 smoke·7일 artifact를 구성하고 workflow 계약을 고정.
+- [x] Phase 18.2: 테스트 진실성·계약·fixture·archive/fuzz·선택형 corpus 체계.
+  - [x] 23개 테스트 파일을 unit/contract/integration/e2e/helpers로 재구성하고 README inventory를 126개 검사와 자동 대조.
+  - [x] 5개 operation 성공·실패 CLI snapshot, 오류 catalog, manifest/사전 경계, INV-01~INV-06 연결을 고정.
+  - [x] 합성 fixture catalog, hostile archive/path, seeded Tyrano/Wolf fuzz, 실행 순서 교란과 단일 임시 루트 정리를 자동화.
+  - [x] Node 내장 coverage 기준선(line 76.91%, branch 64.67%, function 77.98%)을 기록하되 안정화 전 threshold는 보류.
+  - [x] private corpus 경로를 공개 결과에서 제거하는 수동 self-hosted compatibility workflow를 추가.
+- [x] Phase 18.3: Electron GUI 보안 경계와 실제 preload/IPC 계약을 TDD로 재구성.
+  - [x] 모든 창을 secure factory로 통합하고 `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, navigation/popup/webview 차단을 강제.
+  - [x] typed preload bridge와 send/invoke/on allowlist, sender·payload·route·path·HTTPS host 검증, 구조화 오류를 구현.
+  - [x] IPC 등록을 window/settings/project/operation handler 모듈로 나누고 `openFolder`를 handle/invoke로 전환.
+  - [x] `changeAllString`과 구버전 번역 이식을 전체 `Extract` staging/commit/rollback 트랜잭션으로 전환.
+  - [x] CSP·update timeout/offline·network 문서, 자식 프로세스/shortcut/Papago 종료 정리와 오류 경로 비노출 회귀를 추가.
+  - [x] 실제 Electron에서 home/RPG/settings/Wolf renderer의 Node 비노출, RPG/Wolf 추출·적용 IPC, 설정 저장·닫기, 화면 전환을 통과.
+  - [x] 안정화된 schema/path/transaction 파일에 line 70%·branch 50%·function 85%의 CI coverage gate를 활성화(실측 81.68%·64.26%·96.08%).
+- [x] Phase 18.4: application/validator/container/transaction 경계 분해.
+  - [x] `run.ts` 40개 함수와 의존성·파일/프로세스/ASAR side effect를 측정·기록하고 기존 5-operation CLI snapshot을 characterization 기준으로 고정.
+  - [x] request 인수·stdin/파일 로딩·stdout 단일 JSON 직렬화를 주입 가능한 `entrypoint.ts`/`presenter.ts`로 이동.
+  - [x] 5개 operation을 완전한 typed handler map으로 라우팅하는 독립 `dispatcher.ts`와 단위 계약 추가.
+  - [x] human summary의 score·damage/integrity·runtime·validation 조립을 presenter로 이동해 `run.ts`의 직접 stderr 접근 제거.
+  - [x] 엔진 capability/patch format/extract layout 불변 registry와 요청 포맷 compatibility matrix를 중앙 정책으로 분리.
+  - [x] operation handler 실제 이동: extract/patch/apply/recover/verify를 독립 모듈로 이동하고 extract/apply/verify의 engine-family handler registry를 고정.
+  - [x] `WorkspaceTransaction`의 conflict/force/backup/rollback과 성공 전 최종 경로 비노출 계약 구현; ASAR/NW.js extract·repack과 RPG/Wolf/Tyrano/GDevelop apply 출력에 적용.
+  - [x] validator를 RPG/Wolf/Tyrano·score·report·protected-path·file-map 정책으로, container를 ASAR/NW.js/directory adapter·공통 archive 정책·registry·provenance로 분해.
+  - [x] `docs/adr/0002-application-validation-container-boundaries.md`에 의존성 방향, provenance/transaction 순서, archive 불변 조건을 기록.
+- [x] Phase 18.5: 버전 관리 계약, 명시적 runtime, 취소·timeout.
+  - [x] request/result/manifest v1·v2, container provenance v1, engine options v2를 canonical JSON Schema 2020-12 문서와 static TypeScript type surface로 고정.
+  - [x] operation/format discriminated union, v2 unknown-option 거부, detect 후 재검증, option 타입·범위·의존성 계약 구현.
+  - [x] error/warning registry와 legacy `warnings` + v2 `warningDetails` 병행 호환 구현.
+  - [x] schema example 8종·README JSON 4종 자동검증, ADR 0003, v2 migration guide 추가.
+  - [x] module-level `activeContext` 제거, AsyncLocalStorage 호환 경계, explicit `OperationRuntime`과 logger/progress/fs/clock/temp/AbortSignal 주입.
+  - [x] CLI SIGINT/SIGTERM·GUI cancel·operation timeout을 transaction rollback과 연결하고 순차·중첩·병렬·예외·no-partial-output 회귀 추가.
+  - [x] `npm run verify`와 고정 seed `npm run test:order` 모두 39 files/198 checks 통과, generated/inventory drift 0.
+- [-] Phase 18.6+: 공급망·성능·호환성·문서는 `New-task-plan.md`의 Phase 6 이후 게이트를 따른다.
+  - [x] Phase 6 core: dependency/binary/asset inventory, bounded HTTP/process policy, notices, production audit 0, checksum·manifest·SPDX SBOM, 실제 CLI package smoke.
+  - [!] Electron 23.3.13/electron-builder 26.15.7: builder major ladder 완료, full audit는 Electron 계열 high 2건. public binary release는 Electron 24 이후 major별 검증 완료까지 차단.
+  - [x] Phase 7: 6개 엔진/container benchmark, progress·stage timing, diagnostics redaction/report, resource preflight, GUI worker·취소/종료 cleanup 완료.
+  - [x] Phase 8A: directory-form `package.nw`의 opt-in provenance·round-trip 계약과 합성/기존 ZIP 회귀 완료. 실제 directory-form corpus 샘플은 미확인.
+  - [x] Phase 8B: unsigned 단일 PE-appended ZIP opt-in round-trip과 signed/ambiguous 진단 전용 경계 완료.
+  - [x] Phase 8C: Electron/GDevelop JSON Pointer apply, protected runtime, ASAR unpacked/resources 보존, malformed-ASAR opt-in 경계 완료.
+  - [x] Phase 8D: Acorn AST 기반 `code*.js` opt-in profile, ambiguous report, source/span/callee 재검증, loose·ASAR·NW.js apply와 false-positive/rollback 회귀 완료.
+  - [x] Phase 9: README·architecture·compatibility·SECURITY·CONTRIBUTING·오류 reference·maintenance/release checklist·canonical changelog 동기화와 clean install/package evidence 완료.
+
+### Phase 18 Decisions
+
+- `New-task-plan.md`는 외부 제안서 원본으로 유지하고, 실제 진행 상태는 기존 단일 이력인 `task_plan.md`에 기록한다.
+- Phase 0과 Phase 1을 한 번에 구현하지 않는다. 깨끗한 체크아웃에서 재현된 증거를 먼저 고정한 뒤 첫 변경 단위를 결정한다.
+- ignored smoke 테스트가 포함된 현재 작업 트리의 78개 통과 기록과 clean checkout의 추적 테스트 결과를 별도 지표로 취급한다.
+- GUI build 입력에서 `dist-cli/**`가 제외되지 않아 CLI 산출물 77개가 GUI ASAR에 재포장되는 순서 오염을 Phase 18.1 build-chain의 필수 회귀로 추가한다.
+
+### Phase 18 Errors Encountered
+
+- `agbrowse web-ai send`가 0.2.0의 ChatGPT surface preflight에서 `capability.unsupported`로 안전 중단됨. 정확한 기존 대화 URL과 Pro 모델을 화면에서 재검증한 뒤 일반 브라우저 입력으로 폴백했다. 전역 CLI 0.2.1 업데이트는 사용자 승인 없이 수행하지 않았다.
+- 일반 브라우저 입력의 최초 element ref가 화면 갱신으로 만료되어 전송되지 않음. 새 snapshot으로 입력창을 다시 식별한 뒤 전송했다.
+- Phase 18.5 초기 manifest v1 schema가 과거 최소 RPG/Wolf 엔트리에 v2 필드를 요구해 Wolf 진단과 경로 탈출의 기존 오류 코드를 가렸다. v1만 최소 필드로 완화하고 v2 strict 계약은 유지했다.
+- Phase 18.5 테스트 추가로 README/CI inventory가 35/175에서 일시적으로 뒤처졌다. 실제 전체 결과 39/198로 동기화하고 drift 검사까지 통과했다.
+
+### Phase 18 Status
+
+**Phase 9 구현·검증 및 Electron/builder major ladder 완료, P3~P5 최종 clean matrix 진행 중** — 현재 계약은 47개 테스트 파일/242개 검사와 6개 benchmark다. Electron 43.4.1과 builder 26.15.7에서 production/full audit 0으로 dependency blocker를 해제했고, RPG 기준선 참조 severity, RPG 컨테이너 번역 사전 transaction, recover dry-run·충돌 정책, 결정적 CLI/NW.js ZIP을 구현했다. 최신 소스의 clean install·전체 회귀·GUI/CLI 재패키징·두 번의 byte-identical archive와 release evidence 확정이 남아 있다. 커밋·푸시는 계속 보류한다.

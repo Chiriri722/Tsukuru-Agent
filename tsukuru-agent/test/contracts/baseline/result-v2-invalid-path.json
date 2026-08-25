@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "format": null,
+  "artifacts": [],
+  "stats": {},
+  "warnings": [],
+  "error": {
+    "code": "E_PATH_NOT_FOUND",
+    "message": "프로젝트 경로가 존재하지 않습니다",
+    "details": {
+      "projectPath": "<MISSING_PROJECT>"
+    }
+  }
+}

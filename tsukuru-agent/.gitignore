@@ -21,3 +21,8 @@ test/*
 !test/v25-cli.test.js
 !test/v25-schema-detect.test.js
 !test/v25-runtime.test.js
+
+# Post-v2.5 tracked contract baselines. Keep legacy local smoke files ignored.
+!test/contracts/
+!test/contracts/baseline/
+!test/contracts/baseline/**
