@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "eztrans-server",
+      "version": "1.0.0",
+      "distribution": "gui-bundled",
+      "relativePath": "exfiles/eztrans/EztransServer.exe",
+      "size": 625083,
+      "sha256": "9e14106ec3486a711c58380706a167d39fad394da571c77c4254588d4c6dd40d",
+      "origin": "https://github.com/nanikit/eztrans-server",
+      "license": "MIT",
+      "licensePath": "exfiles/eztrans/LICENSE",
+      "callSites": ["src/js/rpgmv/translator.ts"],
+      "purpose": "Optional GUI EzTrans localhost bridge",
+      "cliIncluded": false
+    },
+    {
+      "id": "eztrans-server2",
+      "version": "1.0.0",
+      "distribution": "gui-bundled",
+      "relativePath": "exfiles/eztrans/EztransServer2.exe",
+      "size": 1441698,
+      "sha256": "39441da82f2a5548b206e47b8542606cb6cb0c90749fa58c945dcaa5d937dd2c",
+      "origin": "https://github.com/nanikit/eztrans-server",
+      "license": "MIT",
+      "licensePath": "exfiles/eztrans/LICENSE",
+      "callSites": ["src/js/rpgmv/translator.ts"],
+      "purpose": "Optional GUI EzTrans fast localhost bridge",
+      "cliIncluded": false
+    },
+    {
+      "id": "translate-engine",
+      "version": "upstream-2.3.0-bundle",
+      "distribution": "gui-bundled",
+      "relativePath": "exfiles/transEngine/translate_engine.exe",
+      "size": 6460480,
+      "sha256": "d7778652664952acae41b77f40e35e7b2fb950c1639ebb2d881c3b3dfa3a51ae",
+      "origin": "https://github.com/gramedcart/tsukuru_extractor/releases/tag/v2.3.0",
+      "license": "MIT",
+      "licensePath": "exfiles/transEngine/LICENSE",
+      "callSites": ["src/js/rpgmv/translator.ts"],
+      "purpose": "Optional GUI localhost bridge for Papago-compatible translation",
+      "cliIncluded": false
+    },
+    {
+      "id": "wolfdec-v0.3",
+      "version": "0.3",
+      "distribution": "on-demand-pinned",
+      "relativePath": "Ext/wolfdec.exe",
+      "size": 256000,
+      "sha256": "847e1812c1150a0cd168400ea3625487707aceb6e625a7324e4dc1a80da0619c",
+      "origin": "https://github.com/Sinflower/WolfDec/releases/tag/v0.3",
+      "downloadUrl": "https://github.com/Sinflower/WolfDec/releases/download/v0.3/WolfDec.exe",
+      "license": "NOASSERTION (upstream repository has no license file)",
+      "callSites": ["src/js/libs/extentions.ts", "src/js/wolf/extract/decrypter.ts"],
+      "purpose": "User-approved optional Wolf archive decryption",
+      "cliIncluded": false
+    }
+  ]
+}

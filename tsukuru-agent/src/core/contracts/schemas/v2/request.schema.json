@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v2/request.schema.json",
+  "title": "Tsukuru Agent request contract v2",
+  "type": "object",
+  "required": ["schemaVersion", "operation", "format", "projectPath", "profile", "options", "patches"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "operation": { "enum": ["verify", "extract", "patch", "apply", "recover"] },
+    "format": { "enum": ["auto", "rpgmv", "rpgmz", "rpgmz-electron", "wolf", "gdevelop-electron", "tyrano", "nwjs-webgame"] },
+    "projectPath": { "type": "string", "minLength": 1 },
+    "outputPath": { "type": "string", "minLength": 1 },
+    "profile": { "enum": ["standard", "full", "advanced"] },
+    "options": { "type": "object" },
+    "patches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/patch" }
+    }
+  },
+  "allOf": [
+    { "$ref": "https://tsukuru-agent.dev/schemas/v2/engine-options.schema.json" },
+    {
+      "if": { "properties": { "operation": { "const": "recover" } }, "required": ["operation"] },
+      "then": {
+        "properties": { "format": { "enum": ["auto", "rpgmv", "rpgmz", "rpgmz-electron"] } }
+      }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "patch" } }, "required": ["operation"] },
+      "then": {
+        "anyOf": [
+          { "properties": { "patches": { "minItems": 1 } }, "required": ["patches"] },
+          { "properties": { "options": { "required": ["translationDirectory"] } }, "required": ["options"] }
+        ]
+      }
+    },
+    {
+      "not": {
+        "properties": {
+          "patches": { "minItems": 1 },
+          "options": { "required": ["translationDirectory"] }
+        },
+        "required": ["patches", "options"]
+      }
+    }
+  ],
+  "$defs": {
+    "patch": {
+      "type": "object",
+      "required": ["id", "expectedHash", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "expectedHash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "text": { "type": "string" }
+      }
+    }
+  }
+}

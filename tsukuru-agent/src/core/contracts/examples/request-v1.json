@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "operation": "extract",
+  "format": "auto",
+  "projectPath": "C:\\Games\\MyGame",
+  "outputPath": "C:\\Output\\MyGame_working",
+  "profile": "standard",
+  "options": {
+    "legacyExtension": true
+  },
+  "patches": []
+}

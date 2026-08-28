@@ -1,9 +1,13 @@
-globalThis.loadEn = (async () => {
-    while(true){
-        const d = document.querySelectorAll('[enlang]')
-        for(const ele of d){
-            ele.innerHTML = ele.getAttribute('enlang').replace(/\r/g, '').replace(/\n/g, '<br>');
+(() => {
+    globalThis.loadEn = () => {
+        document.documentElement.lang = 'en'
+        let translated = 0
+        for (const element of document.querySelectorAll('[enlang]')) {
+            const value = element.getAttribute('enlang')
+            if (value === null) continue
+            element.textContent = value.replace(/\r/g, '')
+            translated += 1
         }
-        await new Promise(r => setTimeout(r, 5));    
+        return translated
     }
-})
+})()

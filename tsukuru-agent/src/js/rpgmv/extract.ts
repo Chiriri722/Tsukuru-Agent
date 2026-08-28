@@ -1,10 +1,10 @@
 import path from 'path';
 import { ctx } from '../../core/context';
-import csv from '@fast-csv/parse';
+import { parseFile, writeToPath } from 'fast-csv';
 import encoding from 'encoding-japanese';
-import { writeToPath } from '@fast-csv/format';
 import { DecryptDir as DecryptDirs, EncryptDir as EncryptDirs } from './fileCrypto';
 import { beautifyCodes, beautifyCodes2 } from "./datas";
+import { ErrorCodes, OperationError } from '../../core/types';
 let eventID = 0
 
 let hadComment = false
@@ -83,7 +83,6 @@ const returnVal = (key, temppp) => {
     let Keys = key.split('.');
     const fkey = Keys[0]
     if(temppp === undefined){
-        console.log(key)
         return ''
     }
     if(Keys.length==1){
@@ -151,8 +150,8 @@ function Extreturnit(dat_obj, Path='', nas=null){
 
 export const parse_externMsg = (dir, useI) => {
     return new Promise((resolve, reject) => {
-        let a = {}
-        csv.parseFile(dir, {encoding: "binary"})
+        const a = Object.create(null)
+        parseFile(dir, {encoding: "binary"})
         .on('data', (row) => {
             function Convert(txt){
                 if(txt === undefined || txt === null){
@@ -172,6 +171,7 @@ export const parse_externMsg = (dir, useI) => {
         .on('end', () => {
             resolve(a)
         })
+        .on('error', reject)
     })
 }
 
@@ -182,16 +182,130 @@ export const pack_externMsg = (dir:string, data) => {
             rows.push([i, data[i]])
         }
         writeToPath(dir, rows)
-        .on('error', err => console.error(err))
+        .on('error', reject)
         .on('finish', () => resolve());
     })
 }
 
+type ExtractionObject = { main: Record<string, unknown>; edited: any };
+
+function addConfiguredNote(datObj: ExtractionObject, dataPath: string, note: unknown, conf: any): ExtractionObject {
+    if (!conf.note) return datObj
+    if (ctx().rpg.settings.extractSomeScript && !isIncludeAble(note)) return datObj
+    return addtodic(dataPath, datObj, 'note')
+}
+
+function extractMapData(datObj: ExtractionObject, data: any, conf: any): ExtractionObject {
+    if (ctx().rpg.settings.oneMapFile) datObj = addComment(datObj, '------- MAP -------')
+    if (strNullSafe(data.displayName)) datObj = addtodic('displayName', datObj)
+    datObj = addConfiguredNote(datObj, 'note', data.note, conf)
+    if (!obNullSafe(data.events)) return datObj
+
+    for (let eventIndex = 0; eventIndex < data.events.length; eventIndex++) {
+        const event = data.events[eventIndex]
+        if (!obNullSafe(event) || !obNullSafe(event.pages)) continue
+        datObj = addConfiguredNote(datObj, `events.${eventIndex}.note`, event.note, conf)
+        for (let pageIndex = 0; pageIndex < event.pages.length; pageIndex++) {
+            const page = event.pages[pageIndex]
+            if (obNullSafe(page) && obNullSafe(page.list)) {
+                datObj = forEvent(page, datObj, conf, `events.${eventIndex}.pages.${pageIndex}`)
+            }
+        }
+    }
+    return datObj
+}
+
+function addIndexedSystemValues(datObj: ExtractionObject, data: any, key: string): ExtractionObject {
+    if (!obNullSafe(data[key])) return datObj
+    for (let index = 0; index < data[key].length; index++) {
+        datObj = addtodicSpliter(`${key}.${index}`, datObj)
+    }
+    return datObj
+}
+
+function extractSystemData(datObj: ExtractionObject, data: any): ExtractionObject {
+    datObj = addIndexedSystemValues(datObj, data, 'armorTypes')
+    datObj = addtodic('currencyUnit', datObj)
+    datObj = addIndexedSystemValues(datObj, data, 'elements')
+    datObj = addIndexedSystemValues(datObj, data, 'equipTypes')
+    datObj = addtodic('gameTitle', datObj)
+    datObj = addIndexedSystemValues(datObj, data, 'skillTypes')
+    if (obNullSafe(data.terms)) {
+        for (const key of ['basic', 'commands', 'params']) {
+            if (!obNullSafe(data.terms[key])) continue
+            for (let index = 0; index < data.terms[key].length; index++) {
+                datObj = addtodicSpliter(`terms.${key}.${index}`, datObj)
+            }
+        }
+        if (obNullSafe(data.terms.messages)) {
+            for (const key of Object.keys(data.terms.messages)) {
+                datObj = addtodicSpliter(`terms.messages.${key}`, datObj)
+            }
+        }
+    }
+    return addIndexedSystemValues(datObj, data, 'weaponTypes')
+}
+
+function extractTroopEvents(datObj: ExtractionObject, data: any[], conf: any): ExtractionObject {
+    for (let troopIndex = 0; troopIndex < data.length; troopIndex++) {
+        const troop = data[troopIndex]
+        if (!obNullSafe(troop) || !obNullSafe(troop.pages)) continue
+        for (let pageIndex = 0; pageIndex < troop.pages.length; pageIndex++) {
+            const page = troop.pages[pageIndex]
+            if (!obNullSafe(page) || !obNullSafe(page.list)) continue
+            datObj = forEvent(page, datObj, conf, `${troopIndex}.pages.${pageIndex}`)
+        }
+    }
+    return datObj
+}
+
+function extractPluginParameters(datObj: ExtractionObject, plugin: any, itemPath: string): ExtractionObject {
+    const parameterNames = Object.keys(plugin.parameters)
+    const ignoredValues = ['false', 'true', 'on', 'off', 'auto']
+    let shownName = false
+    for (const parameterName of parameterNames) {
+        const value = plugin.parameters[parameterName]
+        if (!isNaN(value) || ignoredValues.includes(value)) continue
+        if (!shownName) {
+            datObj = addComment(datObj, `//== ${plugin.name} ==//`, '', 'force')
+            shownName = true
+        }
+        datObj = addComment(datObj, `--- ${parameterName}`, '', 'force')
+        datObj = addtodic(`${itemPath}.parameters.${parameterName}`, datObj, plugin.name)
+        datObj = addComment(datObj, '')
+    }
+    return datObj
+}
+
+const DATABASE_FIELDS: Record<string, string[]> = {
+    actor: ['name', 'nickname', 'profile'],
+    class: ['name', 'learnings.name'],
+    skill: ['description', 'message1', 'message2', 'name'],
+    state: ['description', 'message1', 'message2', 'message3', 'message4', 'name'],
+    ene: ['name'],
+    item: ['name', 'description'],
+}
+
+function extractDatabaseData(datObj: ExtractionObject, data: any[], conf: any, ftype: string): ExtractionObject {
+    for (let index = 0; index < data.length; index++) {
+        const entry = data[index]
+        const itemPath = `${index}`
+        if (ftype === 'events') {
+            datObj = forEvent(entry, datObj, conf, itemPath)
+            continue
+        }
+        if (!obNullSafe(entry)) continue
+        for (const field of DATABASE_FIELDS[ftype] ?? []) {
+            datObj = addtodicSpliter(`${itemPath}.${field}`, datObj)
+        }
+        if (ftype === 'plugin') datObj = extractPluginParameters(datObj, entry, itemPath)
+        else datObj = addConfiguredNote(datObj, `${itemPath}.note`, entry.note, conf)
+    }
+    return datObj
+}
+
 export const extract = async (filedata, conf, ftype) => {
-    const extended = conf.extended
     const fileName = conf.fileName
-    const dir = conf.dir
-    const dirf = dir + fileName + '\\'
     ctx().rpg.gb[fileName] = {data: {}}
     if (filedata.charCodeAt(0) === 0xFEFF) {
         filedata = filedata.substr(1);
@@ -204,199 +318,21 @@ export const extract = async (filedata, conf, ftype) => {
     try{
         data = JSON.parse(filedata)
     }
-    catch{
-        return {
-            datobj: {},
-            edited: {},
-            conf: conf
-        }
+    catch(error){
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `RPG JSON 파싱에 실패했습니다: ${fileName}`, {
+            fileName,
+            cause: error instanceof Error ? error.message : String(error),
+        })
     }
     let dat_obj = {
         main: {},
         edited: data
     }
-    if(ftype == 'map'){
-        if(ctx().rpg.settings.oneMapFile){
-            dat_obj = addComment(dat_obj, '------- MAP -------')
-        }
-
-        if(strNullSafe(data.displayName)){
-            dat_obj = addtodic(`displayName`, dat_obj)
-        }
-        if(conf.note){
-            if(ctx().rpg.settings.extractSomeScript){
-                if(isIncludeAble(data.note)){
-                    dat_obj = addtodic('note', dat_obj, 'note')
-                }
-            }
-            else{
-                dat_obj = addtodic('note', dat_obj, 'note')
-            }
-        }
-        if(obNullSafe(data.events)){
-            for(let i =0;i<(data.events.length);i++){
-                if(obNullSafe(data.events[i]) && obNullSafe(data.events[i].pages)){
-                    if(conf.note){
-                        console.log(data.events[i].note)
-                        if(ctx().rpg.settings.extractSomeScript){
-                            if(isIncludeAble(data.events[i].note)){
-                                dat_obj = addtodic(`events.${i}.note`, dat_obj, 'note')
-                            }
-                        }
-                        else{
-                            dat_obj = addtodic(`events.${i}.note`, dat_obj, 'note')
-                        }
-                    }
-                    for(let a =0;a<(data.events[i].pages.length);a++){
-                        if(obNullSafe(data.events[i].pages[a]) && obNullSafe(data.events[i].pages[a].list)){
-                            dat_obj = forEvent(data.events[i].pages[a], dat_obj, conf, `events.${i}.pages.${a}`)
-                        }
-                    }
-                }
-            }
-        }
-    }
-    else if(ftype == 'sys'){
-        if(obNullSafe(data.armorTypes)){
-            for(let i =0; i<(data.armorTypes.length);i++){
-                dat_obj = addtodicSpliter(`armorTypes.${i}`, dat_obj)
-            }
-        }
-        addtodic(`currencyUnit`, dat_obj)
-        if(obNullSafe(data.elements)){
-            for(let i=0;i<(data.elements.length);i++){
-                dat_obj = addtodicSpliter(`elements.${i}`, dat_obj)
-            }
-        }
-        if(obNullSafe(data.equipTypes)){
-            for(let i=0;i<(data.equipTypes.length);i++){
-                dat_obj = addtodicSpliter(`equipTypes.${i}`, dat_obj)
-            }
-        }
-        addtodic(`gameTitle`, dat_obj)
-        if(obNullSafe(data.skillTypes)){
-            for(let i=0;i<(data.skillTypes.length);i++){
-                dat_obj = addtodicSpliter(`skillTypes.${i}`, dat_obj)
-            }
-        }
-        if(obNullSafe(data.terms)){
-            if(obNullSafe(data.terms.basic)){
-                for(let i=0;i<(data.terms.basic.length);i++){
-                    dat_obj = addtodicSpliter(`terms.basic.${i}`, dat_obj)
-                }
-            }
-            if(obNullSafe(data.terms.commands)){
-                for(let i=0;i<(data.terms.commands.length);i++){
-                    dat_obj = addtodicSpliter(`terms.commands.${i}`, dat_obj)
-                }
-            }
-            if(obNullSafe(data.terms.params)){
-                for(let i=0;i<(data.terms.params.length);i++){
-                    dat_obj = addtodicSpliter(`terms.params.${i}`, dat_obj)
-                }
-            }
-            if(obNullSafe(data.terms.messages)){
-                for(const i of Object.keys(data.terms.messages)){
-                    dat_obj = addtodicSpliter(`terms.messages.${i}`, dat_obj)
-                }
-            }
-        }
-        if(obNullSafe(data.weaponTypes)){
-            for(let i=0;i<(data.weaponTypes.length);i++){
-                dat_obj = addtodicSpliter(`weaponTypes.${i}`, dat_obj)
-            }
-        }
-    }
-    else if(ftype == 'ex'){
-        dat_obj = Extreturnit(dat_obj, '', dat_obj.edited)
-    }
-    else if(ftype == 'ene2'){
-        for(let i=0;i<data.length;i++){
-            const d = data[i]
-            if(!(obNullSafe(d) && obNullSafe(d.pages))){
-                continue
-            }
-            for(let i2=0;i2<d.pages.length;i2++){
-                if(!(obNullSafe(d.pages[i2]) && obNullSafe(d.pages[i2].list))){
-                    continue
-                }
-                dat_obj = forEvent(d.pages[i2], dat_obj, conf, `${i}.pages.${i2}`)
-            }
-        }
-    }
-    else{
-        for(let i=0;i<(data.length);i++){
-            const d = data[i]
-            const Path = `${i}`
-            if(ftype == 'events'){
-                dat_obj = forEvent(d, dat_obj, conf, Path)
-            }
-            else if(obNullSafe(d)){
-                if(ftype == 'actor'){
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.nickname', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.profile', dat_obj)
-                }
-                else if(ftype == 'class'){
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.learnings.name', dat_obj)
-                }
-                else if(ftype == 'skill'){
-                    dat_obj = addtodicSpliter(Path + '.description', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message1', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message2', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                }
-                else if(ftype == 'state'){
-                    dat_obj = addtodicSpliter(Path + '.description', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message1', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message2', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message3', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.message4', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                }
-                else if(ftype == 'ene'){
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                }
-                else if(ftype == 'item'){
-                    dat_obj = addtodicSpliter(Path + '.name', dat_obj)
-                    dat_obj = addtodicSpliter(Path + '.description', dat_obj)
-                }
-                if(ftype == 'plugin'){
-                    const v = Object.keys(d.parameters)
-                    let shownName = false
-                    const without = ['false', 'true','on','off','auto']
-                    for(let i2=0;i2<v.length;i2++){
-                        const targ = d.parameters[v[i2]]
-                        if(isNaN(targ) && (!without.includes(targ))){
-                            if(!shownName){
-                                dat_obj = addComment(dat_obj, `//== ${d.name} ==//`, '', 'force')
-                                shownName = true
-                            }
-                            if(obNullSafe(targ)){
-                                console.log('obj')
-                            }
-                            dat_obj = addComment(dat_obj, `--- ${v[i2]}`, '', 'force')
-                            dat_obj = addtodic(Path + '.parameters.' + v[i2], dat_obj, d.name)
-                            dat_obj = addComment(dat_obj, ``)
-                        }
-                    }
-                }
-                else{
-                    if(conf.note){
-                        if(ctx().rpg.settings.extractSomeScript){
-                            if(isIncludeAble(d.note)){
-                                dat_obj = addtodic(Path + '.note', dat_obj, 'note')
-                            }
-                        }
-                        else{
-                            dat_obj = addtodic(Path + '.note', dat_obj, 'note')
-                        }
-                    }
-                }
-            }
-        }
-    }
+    if (ftype === 'map') dat_obj = extractMapData(dat_obj, data, conf)
+    else if (ftype === 'sys') dat_obj = extractSystemData(dat_obj, data)
+    else if (ftype === 'ex') dat_obj = Extreturnit(dat_obj, '', dat_obj.edited)
+    else if (ftype === 'ene2') dat_obj = extractTroopEvents(dat_obj, data, conf)
+    else dat_obj = extractDatabaseData(dat_obj, data, conf, ftype)
     return {
         datobj: dat_obj.main,
         edited: dat_obj.edited,
@@ -405,9 +341,6 @@ export const extract = async (filedata, conf, ftype) => {
 }
 
 function isIncludeAble(sc){
-    console.log('includeable')
-    console.log(sc)
-
     const ess = ctx().rpg.settings.extractSomeScript2
     let able = false
     if(sc === null || sc === undefined){
@@ -543,7 +476,6 @@ export const format_extracted = async(dats, typ = 0) => {
                 }
             }
             if(!LenKeys.includes(jpath)){
-                console.log(jpath)
                 LenMemory[jpath] = (ctx().rpg.gb[jpath].outputText.split('\n').length - 1)
                 LenKeys.push(jpath)
             }

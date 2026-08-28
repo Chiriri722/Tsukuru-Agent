@@ -10,7 +10,6 @@ export function wolfExtractMapPattern(data:Buffer){
             ctx().wolf.metadata.ver = 2
         }
         else{
-            console.log(Uint8Array.from(magic))
             throw 'Unvalid 1'
         }
     }
@@ -21,13 +20,11 @@ export function wolfExtractMapPattern(data:Buffer){
     const check = io.readU1()
     if(ctx().wolf.metadata.ver === 2){
         if (!(check == 101)) {
-            console.log(check)
             throw 'Unvalid 2'
         }
     }
     else{
         if (!(check == 102)) {
-            console.log(check)
             throw 'Unvalid 2'
         }
     }
@@ -98,7 +95,7 @@ export function wolfExtractMapPattern(data:Buffer){
             }
         }
         if(currentPoint % 10000 === 0){
-            console.log(currentPoint)
+            ctx().logger.debug(`Wolf pattern scan offset: ${currentPoint}`)
         }
         currentPoint += 1
     }

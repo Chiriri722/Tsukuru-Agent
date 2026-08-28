@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "format": "rpgmv",
+  "artifacts": ["C:\\Games\\MyGame\\www\\data\\Extract"],
+  "stats": {
+    "files": 4,
+    "entries": 43,
+    "textBytes": 12345,
+    "elapsedMs": 210
+  },
+  "warnings": [],
+  "error": null
+}

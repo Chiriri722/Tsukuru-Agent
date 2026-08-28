@@ -3,6 +3,8 @@ import path from 'path';
 import { ExtractManifest, MANIFEST_FILE } from './manifest';
 import { PatchEntry } from './schema';
 import { ErrorCodes, OperationError } from './types';
+import { readExtractManifest } from './contracts/manifestContract';
+import { resolveContainedPathWithoutLinks } from './pathSafety';
 
 export interface TranslationDictionaryStats {
     files: number;
@@ -23,16 +25,20 @@ export interface TranslationDictionaryOutcome {
 const MAX_DICTIONARY_FILE_BYTES = 64 * 1024 * 1024;
 
 function resolveDictionaryExtractPath(extractDir: string, relativePath: unknown): string {
-    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path.isAbsolute(relativePath)) {
+    const resolution = resolveContainedPathWithoutLinks(extractDir, relativePath);
+    if (resolution.ok === false && resolution.reason === 'linked') {
+        throw new OperationError(
+            ErrorCodes.MAPPING_CORRUPT,
+            `추출 파일 경로에 심볼릭 링크/정션이 있습니다: ${String(relativePath)}`,
+        );
+    }
+    if (resolution.ok === false && resolution.reason === 'outside') {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `Extract 폴더 밖을 가리키는 경로입니다: ${String(relativePath)}`);
+    }
+    if (resolution.ok === false) {
         throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 추출 파일 경로입니다: ${String(relativePath)}`);
     }
-    const root = path.resolve(extractDir);
-    const target = path.resolve(root, relativePath);
-    const relative = path.relative(root, target);
-    if (!relative || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `Extract 폴더 밖을 가리키는 경로입니다: ${relativePath}`);
-    }
-    return target;
+    return resolution.path;
 }
 
 /** RPG manifest ID를 키로 사용하는 최상위 *_trans.json 사전을 안전한 patch 목록으로 변환한다. */
@@ -41,16 +47,11 @@ export function loadRpgTranslationDictionary(extractDir: string, translationDire
     if (!stat?.isDirectory() || stat.isSymbolicLink()) {
         throw new OperationError(ErrorCodes.PATH_NOT_FOUND, 'translationDirectory가 유효한 디렉터리가 아닙니다', { translationDirectory });
     }
-    const manifestPath = path.join(extractDir, MANIFEST_FILE);
+    const manifestPath = resolveDictionaryExtractPath(extractDir, MANIFEST_FILE);
     if (!fs.existsSync(manifestPath)) {
         throw new OperationError(ErrorCodes.MANIFEST_MISSING, 'manifest.json이 없습니다', { manifestPath });
     }
-    let manifest: ExtractManifest;
-    try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as ExtractManifest;
-    } catch {
-        throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'manifest.json 파싱에 실패했습니다', { manifestPath });
-    }
+    const manifest: ExtractManifest = readExtractManifest(manifestPath);
     if (manifest.format !== 'rpgmv' || !Array.isArray(manifest.entries)) {
         throw new OperationError(ErrorCodes.FORMAT_MISMATCH, 'RPG MV/MZ manifest만 번역 사전 자동 조립을 지원합니다');
     }

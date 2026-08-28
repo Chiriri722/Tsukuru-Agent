@@ -1,14 +1,25 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { atomicWriteFileSync, makeStagingDir, replaceDirSync } from '../../core/atomic';
+import { atomicWriteFileSync, makeStagingDir, removePathBestEffortSync, replaceDirSync } from '../../core/atomic';
 import { createManifest, ExtractManifest, MANIFEST_FILE, ManifestEntry, sha256Bytes, sha256Text } from '../../core/manifest';
 import { ErrorCodes, OperationError } from '../../core/types';
 import { diffFileMaps, snapshotDirectory, StructuralValidationReport } from '../../core/validator';
+import { readExtractManifest } from '../../core/contracts/manifestContract';
+import { resolveContainedPathWithoutLinks } from '../../core/pathSafety';
+import { WorkspaceTransaction } from '../../core/workspaceTransaction';
+import { assertNoSymbolicLinks } from '../../core/container/fileSystemPolicy';
+import {
+    analyzeGDevelopCodeProject,
+    analyzeGDevelopCodeSource,
+    GDevelopCodeCandidate,
+    rewriteGDevelopCodeSource,
+} from './GDevelopCodeProfile';
 
 export interface GDevelopExtractOptions {
     projectRoot: string;
     force?: boolean;
+    experimentalGdevelopCodeStrings?: boolean;
 }
 
 export interface GDevelopExtractReport {
@@ -16,12 +27,15 @@ export interface GDevelopExtractReport {
     manifestPath: string;
     extractedFiles: number;
     extractedEntries: number;
+    codeEntries: number;
+    ambiguousCodeStrings: number;
 }
 
 export interface GDevelopApplyOptions {
     projectRoot: string;
     outputRoot: string;
     force?: boolean;
+    experimentalGdevelopCodeStrings?: boolean;
 }
 
 export interface GDevelopApplyReport {
@@ -29,6 +43,7 @@ export interface GDevelopApplyReport {
     appliedFiles: number;
     appliedEntries: number;
     validation: StructuralValidationReport;
+    approvedCodeFiles: string[];
 }
 
 interface ProjectDataScript {
@@ -50,12 +65,24 @@ const STATIC_TEXT_FIELDS: Record<string, string[]> = {
 };
 
 function findDataFile(projectRoot: string): string {
-    const candidates = [path.join(projectRoot, 'data.js'), path.join(projectRoot, 'www', 'data.js')];
-    const found = candidates.find((candidate) => {
-        try { return fs.lstatSync(candidate).isFile(); } catch { return false; }
-    });
-    if (!found) throw new OperationError(ErrorCodes.PATH_NOT_FOUND, 'GDevelop data.js 파일이 없습니다', { projectRoot });
-    return found;
+    for (const relative of ['data.js', 'www/data.js']) {
+        const resolution = resolveContainedPathWithoutLinks(projectRoot, relative);
+        if (resolution.ok === false && resolution.reason === 'linked') {
+            throw new OperationError(
+                ErrorCodes.MAPPING_CORRUPT,
+                'GDevelop data.js 경로에 심볼릭 링크/정션이 있습니다',
+                { relative },
+            );
+        }
+        if (resolution.ok) {
+            try {
+                if (fs.lstatSync(resolution.path).isFile()) return resolution.path;
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+            }
+        }
+    }
+    throw new OperationError(ErrorCodes.PATH_NOT_FOUND, 'GDevelop data.js 파일이 없습니다', { projectRoot });
 }
 
 function findJsonObjectEnd(source: string, start: number): number {
@@ -126,21 +153,27 @@ function collectTextCandidates(value: unknown): TextCandidate[] {
 }
 
 function safeChild(root: string, relativePath: unknown, label: string): string {
-    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path.isAbsolute(relativePath)) {
-        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 GDevelop ${label} 경로입니다`, { relativePath });
+    const resolution = resolveContainedPathWithoutLinks(root, relativePath);
+    if (resolution.ok === false && resolution.reason === 'linked') {
+        throw new OperationError(
+            ErrorCodes.MAPPING_CORRUPT,
+            `GDevelop ${label} 경로에 심볼릭 링크/정션이 있습니다`,
+            { relativePath },
+        );
     }
-    const target = path.resolve(root, relativePath);
-    const relative = path.relative(path.resolve(root), target);
-    if (!relative || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
+    if (resolution.ok === false && resolution.reason === 'outside') {
         throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `GDevelop ${label} 경로가 작업 루트 밖을 가리킵니다`, { relativePath });
     }
-    return target;
+    if (resolution.ok === false) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 GDevelop ${label} 경로입니다`, { relativePath });
+    }
+    return resolution.path;
 }
 
 function pathsOverlap(left: string, right: string): boolean {
     const contains = (parent: string, child: string): boolean => {
         const relative = path.relative(path.resolve(parent), path.resolve(child));
-        return relative === '' || (!relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+        return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
     };
     return contains(left, right) || contains(right, left);
 }
@@ -181,6 +214,116 @@ function pointerTarget(root: unknown, pointer: unknown): { parent: Record<string
     return { parent: current as Record<string, unknown> | unknown[], key, value: (current as Record<string, unknown>)[key] };
 }
 
+function groupCodeEntries(entries: ManifestEntry[]): Map<string, ManifestEntry[]> {
+    const grouped = new Map<string, ManifestEntry[]>();
+    for (const entry of entries) {
+        const relative = entry.sourceFile.replace(/\\/g, '/');
+        const list = grouped.get(relative) ?? [];
+        list.push(entry);
+        grouped.set(relative, list);
+    }
+    return grouped;
+}
+
+type GDevelopCodeAnalysis = ReturnType<typeof analyzeGDevelopCodeSource>;
+
+function resolveCodeCandidate(
+    entry: ManifestEntry,
+    analyzed: GDevelopCodeAnalysis,
+    ids: Set<string>,
+): { candidate: GDevelopCodeCandidate; sourceHash: string } {
+    if (ids.has(entry.id)) {
+        throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, `GDevelop manifest에 중복 id가 있습니다: ${entry.id}`);
+    }
+    ids.add(entry.id);
+    const meta = entry.gdevelop;
+    const index = meta?.candidateIndex;
+    const candidate = Number.isInteger(index) ? analyzed.approvedContextCandidates[index as number] : undefined;
+    const sourceWasSafe = candidate
+        ? analyzed.safeCandidates.some((safe) => safe.candidateIndex === candidate.candidateIndex)
+        : false;
+    if (!meta || meta.kind !== 'code-literal' || !candidate || !sourceWasSafe
+        || candidate.start !== meta.sourceStart || candidate.end !== meta.sourceEnd
+        || candidate.quote !== meta.quote || candidate.callee !== meta.callee
+        || sha256Text(candidate.value) !== meta.sourceHash) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `GDevelop code AST 매핑이 올바르지 않습니다: ${entry.id}`);
+    }
+    return { candidate, sourceHash: meta.sourceHash };
+}
+
+function readCodeReplacement(
+    extractDir: string,
+    entry: ManifestEntry,
+    extractedLines: Map<string, string[]>,
+): string {
+    const extractPath = safeChild(extractDir, entry.extractFile, '추출 파일');
+    if (!fs.existsSync(extractPath)) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `GDevelop 추출 텍스트 파일이 없습니다: ${entry.extractFile}`);
+    }
+    if (!extractedLines.has(extractPath)) {
+        extractedLines.set(extractPath, fs.readFileSync(extractPath, 'utf8').split('\n'));
+    }
+    const lines = extractedLines.get(extractPath)!;
+    if (!Number.isInteger(entry.lineStart) || !Number.isInteger(entry.lineEnd)
+        || entry.lineStart < 0 || entry.lineStart >= entry.lineEnd || entry.lineEnd > lines.length) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `GDevelop code 추출 줄 매핑이 손상되었습니다: ${entry.id}`);
+    }
+    const replacement = lines.slice(entry.lineStart, entry.lineEnd).join('\n');
+    if (sha256Text(replacement) !== entry.hash) {
+        throw new OperationError(ErrorCodes.PATCH_HASH_MISMATCH, `GDevelop code 추출 텍스트 해시가 manifest와 다릅니다: ${entry.id}`);
+    }
+    return replacement;
+}
+
+function buildCodeOutputs(
+    projectRoot: string,
+    extractDir: string,
+    manifest: ExtractManifest,
+    codeEntries: ManifestEntry[],
+    extractedLines: Map<string, string[]>,
+    ids: Set<string>,
+): { codeOutputs: Map<string, string>; codeEntriesByFile: Map<string, ManifestEntry[]> } {
+    const codeOutputs = new Map<string, string>();
+    const codeEntriesByFile = groupCodeEntries(codeEntries);
+    for (const [relative, entries] of codeEntriesByFile) {
+        if (!/(^|\/)code\d*\.js$/i.test(relative)) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `허용되지 않은 GDevelop code 파일입니다: ${relative}`);
+        }
+        const sourceFile = safeChild(projectRoot, relative, 'code 원본');
+        const bytes = fs.readFileSync(sourceFile);
+        const snapshot = manifest.sourceSnapshots![relative];
+        if (!snapshot || snapshot.encoding !== 'utf8' || sha256Bytes(bytes) !== snapshot.hash) {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, `GDevelop code 파일이 extract 이후 변경되었습니다: ${relative}`);
+        }
+        let codeSource: string;
+        try {
+            codeSource = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, `GDevelop code 파일 인코딩이 변경되었습니다: ${relative}`);
+        }
+        const analyzed = analyzeGDevelopCodeSource(codeSource, relative);
+        const replacements: Array<GDevelopCodeCandidate & { replacement: string; sourceHash: string }> = [];
+        for (const entry of entries) {
+            const { candidate, sourceHash } = resolveCodeCandidate(entry, analyzed, ids);
+            replacements.push({
+                ...candidate,
+                replacement: readCodeReplacement(extractDir, entry, extractedLines),
+                sourceHash,
+            });
+        }
+        try {
+            codeOutputs.set(relative, rewriteGDevelopCodeSource(codeSource, replacements));
+        } catch (error) {
+            throw new OperationError(
+                ErrorCodes.MAPPING_CORRUPT,
+                `GDevelop code literal 재작성에 실패했습니다: ${relative}`,
+                { error: String(error) },
+            );
+        }
+    }
+    return { codeOutputs, codeEntriesByFile };
+}
+
 export class GDevelopService {
     extract(options: GDevelopExtractOptions): GDevelopExtractReport {
         const projectRoot = path.resolve(options.projectRoot);
@@ -195,12 +338,16 @@ export class GDevelopService {
         }
         const parsed = parseProjectDataScript(source);
         const candidates = collectTextCandidates(parsed.projectData);
+        const codeAnalysis = options.experimentalGdevelopCodeStrings === true
+            ? analyzeGDevelopCodeProject(projectRoot)
+            : { files: [], safeCandidates: [], ambiguousCandidates: [], parseErrors: [] };
         const extractDir = path.join(projectRoot, '_Extract');
         if (fs.existsSync(extractDir)) {
             if (options.force !== true) throw new OperationError(ErrorCodes.EXTRACT_EXISTS, 'GDevelop _Extract 폴더가 이미 존재합니다', { extractDir });
-            fs.rmSync(extractDir, { recursive: true, force: true });
         }
-        fs.mkdirSync(extractDir, { recursive: true });
+        const transaction = new WorkspaceTransaction({ outputPath: extractDir, force: options.force === true });
+        const workspaceDir = transaction.stagingPath;
+        try {
         const extractFile = 'gdevelop-text.txt';
         const outputLines: string[] = [];
         const manifest = createManifest('gdevelop');
@@ -222,6 +369,7 @@ export class GDevelopService {
                 encoding: 'utf8',
                 nullTerminated: false,
                 gdevelop: {
+                    kind: 'project-data',
                     jsonPointer: candidate.pointer,
                     objectType: candidate.objectType,
                     field: candidate.field,
@@ -229,15 +377,61 @@ export class GDevelopService {
                 },
             });
         }
-        atomicWriteFileSync(path.join(extractDir, extractFile), outputLines.join('\n'));
+        for (const candidate of codeAnalysis.safeCandidates) {
+            const lines = candidate.value.split('\n');
+            const lineStart = outputLines.length;
+            outputLines.push(...lines);
+            const codeFile = safeChild(projectRoot, candidate.file, 'code source');
+            if (!manifest.sourceSnapshots[candidate.file]) {
+                manifest.sourceSnapshots[candidate.file] = { hash: sha256Bytes(fs.readFileSync(codeFile)), encoding: 'utf8' };
+            }
+            manifest.entries.push({
+                id: `${candidate.file}#code:${candidate.start}:${candidate.end}:${candidate.callee}`,
+                sourceFile: candidate.file,
+                dataPath: `code:${candidate.start}:${candidate.end}`,
+                extractFile,
+                lineStart,
+                lineEnd: outputLines.length,
+                hash: sha256Text(candidate.value),
+                encoding: 'utf8',
+                nullTerminated: false,
+                gdevelop: {
+                    kind: 'code-literal',
+                    sourceHash: sha256Text(candidate.value),
+                    sourceStart: candidate.start,
+                    sourceEnd: candidate.end,
+                    quote: candidate.quote,
+                    callee: candidate.callee,
+                    candidateIndex: candidate.candidateIndex,
+                },
+            });
+        }
+        atomicWriteFileSync(path.join(workspaceDir, extractFile), outputLines.join('\n'));
+        if (options.experimentalGdevelopCodeStrings === true) {
+            atomicWriteFileSync(path.join(workspaceDir, 'gdevelop-code-report.json'), JSON.stringify({
+                schemaVersion: 1,
+                profile: 'gdevelop-code-static',
+                files: codeAnalysis.files,
+                safeCandidates: codeAnalysis.safeCandidates.length,
+                ambiguousCandidates: codeAnalysis.ambiguousCandidates,
+                parseErrors: codeAnalysis.parseErrors,
+            }, null, 2));
+        }
+        const stagedManifestPath = safeChild(workspaceDir, MANIFEST_FILE, 'manifest');
+        atomicWriteFileSync(stagedManifestPath, JSON.stringify(manifest, null, 2));
+        transaction.commit();
         const manifestPath = path.join(extractDir, MANIFEST_FILE);
-        atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
         return {
             extractDir,
             manifestPath,
-            extractedFiles: candidates.length > 0 ? 1 : 0,
-            extractedEntries: candidates.length,
+            extractedFiles: manifest.entries.length > 0 ? 1 : 0,
+            extractedEntries: manifest.entries.length,
+            codeEntries: codeAnalysis.safeCandidates.length,
+            ambiguousCodeStrings: codeAnalysis.ambiguousCandidates.length,
         };
+        } finally {
+            transaction.dispose();
+        }
     }
 
     applyToCopy(options: GDevelopApplyOptions): GDevelopApplyReport {
@@ -252,18 +446,29 @@ export class GDevelopService {
         const dataFile = findDataFile(projectRoot);
         const sourceRelative = path.relative(projectRoot, dataFile).replace(/\\/g, '/');
         const extractDir = path.join(projectRoot, '_Extract');
-        const manifestPath = path.join(extractDir, MANIFEST_FILE);
+        const manifestPath = safeChild(extractDir, MANIFEST_FILE, 'manifest');
         if (!fs.existsSync(manifestPath)) {
             throw new OperationError(ErrorCodes.MANIFEST_MISSING, 'GDevelop manifest.json이 없습니다. 먼저 extract를 실행하세요', { manifestPath });
         }
-        let manifest: ExtractManifest;
-        try {
-            manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        } catch (error) {
-            throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'GDevelop manifest.json 파싱에 실패했습니다', { error: String(error) });
-        }
+        const manifest: ExtractManifest = readExtractManifest(manifestPath);
         if (manifest.format !== 'gdevelop' || !Array.isArray(manifest.entries) || !manifest.sourceSnapshots) {
             throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'GDevelop manifest 구조가 올바르지 않습니다');
+        }
+        try {
+            assertNoSymbolicLinks(projectRoot);
+        } catch {
+            throw new OperationError(
+                ErrorCodes.VERIFY_FAILED,
+                'GDevelop 원본 복사 경로에 심볼릭 링크/정션 또는 일반 파일이 아닌 항목이 있습니다',
+            );
+        }
+        const codeEntries = manifest.entries.filter((entry) => entry.gdevelop?.kind === 'code-literal');
+        const dataEntries = manifest.entries.filter((entry) => entry.gdevelop?.kind !== 'code-literal');
+        if (codeEntries.length > 0 && options.experimentalGdevelopCodeStrings !== true) {
+            throw new OperationError(
+                ErrorCodes.EXPERIMENTAL_FEATURE_DISABLED,
+                'GDevelop code*.js 문자열 적용은 experimentalGdevelopCodeStrings=true가 필요합니다',
+            );
         }
         const sourceSnapshot = manifest.sourceSnapshots[sourceRelative];
         const sourceBytes = fs.readFileSync(dataFile);
@@ -276,10 +481,18 @@ export class GDevelopService {
         const parsed = parseProjectDataScript(source);
         const extractedLines = new Map<string, string[]>();
         const ids = new Set<string>();
-        for (const entry of manifest.entries) {
+        for (const entry of dataEntries) {
             this.applyEntry(projectRoot, extractDir, sourceRelative, parsed.projectData, entry, extractedLines, ids);
         }
         const changedSource = parsed.prefix + JSON.stringify(parsed.projectData) + parsed.suffix;
+        const { codeOutputs, codeEntriesByFile } = buildCodeOutputs(
+            projectRoot,
+            extractDir,
+            manifest,
+            codeEntries,
+            extractedLines,
+            ids,
+        );
         const before = snapshotDirectory(projectRoot);
         const staging = makeStagingDir(path.dirname(outputRoot), `.${path.basename(outputRoot)}-gdevelop-staging`);
         let completed = false;
@@ -288,19 +501,42 @@ export class GDevelopService {
             fs.cpSync(projectRoot, staging, {
                 recursive: true,
                 filter: (candidate) => {
+                    const stat = fs.lstatSync(candidate);
+                    if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) {
+                        throw new OperationError(
+                            ErrorCodes.VERIFY_FAILED,
+                            'GDevelop 복사 중 심볼릭 링크/정션 또는 일반 파일이 아닌 항목이 발견되었습니다',
+                            { source: path.relative(projectRoot, candidate).replace(/\\/g, '/') },
+                        );
+                    }
                     const relative = path.relative(extractDir, path.resolve(candidate));
                     return relative !== '' && (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative));
                 },
             });
             atomicWriteFileSync(safeChild(staging, sourceRelative, '출력'), changedSource);
+            for (const [relative, changedCode] of codeOutputs) {
+                atomicWriteFileSync(safeChild(staging, relative, 'code 출력'), changedCode);
+            }
             const verifiedSource = fs.readFileSync(safeChild(staging, sourceRelative, '출력'), 'utf8');
             const verified = parseProjectDataScript(verifiedSource);
             let validEntries = 0;
-            for (const entry of manifest.entries) {
+            for (const entry of dataEntries) {
                 const target = pointerTarget(verified.projectData, entry.gdevelop?.jsonPointer);
                 if (typeof target.value === 'string' && sha256Text(target.value) === entry.hash) validEntries++;
             }
-            const change = diffFileMaps(before, snapshotDirectory(staging));
+            for (const [relative, entries] of codeEntriesByFile) {
+                const outputCode = fs.readFileSync(safeChild(staging, relative, 'code 검증'), 'utf8');
+                const analyzed = analyzeGDevelopCodeSource(outputCode, relative);
+                for (const entry of entries) {
+                    const index = entry.gdevelop?.candidateIndex;
+                    const candidate = Number.isInteger(index)
+                        ? analyzed.approvedContextCandidates[index as number]
+                        : undefined;
+                    if (candidate && sha256Text(candidate.value) === entry.hash) validEntries++;
+                }
+            }
+            const approvedCodeFiles = new Set(codeEntriesByFile.keys());
+            const change = diffFileMaps(before, snapshotDirectory(staging), approvedCodeFiles);
             if (change.protectedScriptDamage > 0) {
                 throw new OperationError(ErrorCodes.VERIFY_FAILED, 'GDevelop 적용 과정에서 보호 런타임 스크립트가 변경되었습니다', { change });
             }
@@ -308,7 +544,7 @@ export class GDevelopService {
             const validation: StructuralValidationReport = {
                 profile: 'gdevelop',
                 ok: invalidEntries === 0,
-                filesChecked: 1,
+                filesChecked: 1 + codeEntriesByFile.size,
                 entriesChecked: manifest.entries.length,
                 validEntries,
                 invalidEntries,
@@ -324,16 +560,28 @@ export class GDevelopService {
             if (sha256Bytes(fs.readFileSync(dataFile)) !== sourceSnapshot.hash) {
                 throw new OperationError(ErrorCodes.SOURCE_CHANGED, '작업 도중 GDevelop 원본 data.js가 변경되었습니다', { sourceFile: sourceRelative });
             }
+            for (const relative of codeEntriesByFile.keys()) {
+                const snapshot = manifest.sourceSnapshots[relative];
+                if (!snapshot || sha256Bytes(fs.readFileSync(safeChild(projectRoot, relative, 'code 원본'))) !== snapshot.hash) {
+                    throw new OperationError(ErrorCodes.SOURCE_CHANGED, `작업 도중 GDevelop code 파일이 변경되었습니다: ${relative}`);
+                }
+            }
             replaceDirSync(staging, outputRoot);
             completed = true;
             return {
                 outputRoot,
-                appliedFiles: manifest.entries.length > 0 ? 1 : 0,
+                appliedFiles: new Set([
+                    ...(dataEntries.length > 0 ? [sourceRelative] : []),
+                    ...codeEntriesByFile.keys(),
+                ]).size,
                 appliedEntries: manifest.entries.length,
                 validation,
+                approvedCodeFiles: [...codeEntriesByFile.keys()].sort(),
             };
         } finally {
-            if (!completed && fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+            if (!completed && fs.existsSync(staging)) {
+                removePathBestEffortSync(staging, { recursive: true, force: true });
+            }
         }
     }
 
@@ -349,7 +597,8 @@ export class GDevelopService {
         if (ids.has(entry.id)) throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, `GDevelop manifest에 중복 id가 있습니다: ${entry.id}`);
         ids.add(entry.id);
         const meta = entry.gdevelop;
-        if (!meta || entry.sourceFile.replace(/\\/g, '/') !== sourceRelative || meta.jsonPointer !== entry.dataPath) {
+        if (!meta || (meta.kind && meta.kind !== 'project-data')
+            || entry.sourceFile.replace(/\\/g, '/') !== sourceRelative || meta.jsonPointer !== entry.dataPath) {
             throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `GDevelop source/JSON Pointer 매핑이 올바르지 않습니다: ${entry.id}`);
         }
         safeChild(projectRoot, entry.sourceFile, '원본');
@@ -380,9 +629,13 @@ export class GDevelopService {
     verifyWorkspace(projectRoot: string): StructuralValidationReport {
         const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-gdevelop-verify-'));
         try {
-            return this.applyToCopy({ projectRoot, outputRoot: path.join(tempRoot, 'output') }).validation;
+            return this.applyToCopy({
+                projectRoot,
+                outputRoot: path.join(tempRoot, 'output'),
+                experimentalGdevelopCodeStrings: true,
+            }).validation;
         } finally {
-            fs.rmSync(tempRoot, { recursive: true, force: true });
+            removePathBestEffortSync(tempRoot, { recursive: true, force: true });
         }
     }
 }

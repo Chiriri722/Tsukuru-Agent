@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": "package-lock.json",
+  "direct": [
+    { "name": "@electron/asar", "version": "3.4.1", "license": "MIT", "scope": "shared", "usedBy": ["src/core/container/adapters/asar.ts", "src/cli/operations/apply.ts", "src/core/runtimeDiagnostics.ts"] },
+    { "name": "@electron/fuses", "version": "1.8.0", "license": "MIT", "scope": "shared", "usedBy": ["src/core/runtimeDiagnostics.ts"] },
+    { "name": "@msgpack/msgpack", "version": "2.8.0", "license": "ISC", "scope": "shared", "usedBy": ["src/cli/patcher.ts", "src/js/wolf/extract/wolfExtData.ts"] },
+    { "name": "@vitalets/google-translate-api", "version": "9.2.1", "license": "MIT", "scope": "gui", "usedBy": ["src/js/rpgmv/translator.ts"] },
+    { "name": "acorn", "version": "8.18.0", "license": "MIT", "scope": "cli-core", "usedBy": ["src/js/gdevelop/GDevelopCodeProfile.ts"] },
+    { "name": "adm-zip", "version": "0.6.0", "license": "MIT", "scope": "cli-core", "usedBy": ["src/core/container/adapters/nwjs.ts"] },
+    { "name": "electron-store", "version": "8.2.0", "license": "MIT", "scope": "gui", "usedBy": ["main.ts"] },
+    { "name": "encoding-japanese", "version": "1.0.30", "license": "MIT", "scope": "shared", "usedBy": ["src/js/rpgmv/extract.ts"] },
+    { "name": "fast-csv", "version": "4.3.6", "license": "MIT", "scope": "shared", "usedBy": ["src/js/rpgmv/extract.ts"] },
+    { "name": "fast-glob", "version": "3.3.3", "license": "MIT", "scope": "gui", "usedBy": ["src/js/rpgmv/projectConvert.ts"] },
+    { "name": "fs-extra", "version": "10.1.0", "license": "MIT", "scope": "shared", "usedBy": ["src/js/rpgmv/fileCrypto.ts", "src/js/rpgmv/projectConvert.ts", "src/js/libs/preprocess.ts", "src/js/wolf/extract/decrypter.ts"] },
+    { "name": "iconv-lite", "version": "0.6.3", "license": "MIT", "scope": "shared", "usedBy": ["src/utils.ts", "src/core/validation/engines/wolf.ts", "src/core/validation/engines/tyrano.ts", "src/js/rpgmv/edtool.ts", "src/js/tyrano/TyranoService.ts"] },
+    { "name": "js-yaml", "version": "4.3.1", "license": "MIT", "scope": "shared", "usedBy": ["src/js/rpgmv/fileCrypto.ts", "src/js/rpgmv/RpgMakerService.ts"] },
+    { "name": "resedit", "version": "1.7.2", "license": "MIT", "scope": "cli-core", "usedBy": ["src/core/runtimeDiagnostics.ts"] },
+    { "name": "tcp-port-used", "version": "1.0.3", "license": "MIT", "scope": "gui", "usedBy": ["src/js/rpgmv/translator.ts"] }
+  ]
+}

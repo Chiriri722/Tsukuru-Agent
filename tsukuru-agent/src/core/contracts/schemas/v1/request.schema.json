@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/request.schema.json",
+  "title": "Tsukuru Agent legacy request contract v1",
+  "type": "object",
+  "required": ["schemaVersion", "operation", "format", "projectPath", "profile", "options", "patches"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "operation": { "enum": ["verify", "extract", "patch", "apply", "recover"] },
+    "format": { "enum": ["auto", "rpgmv", "rpgmz", "rpgmz-electron", "wolf", "gdevelop-electron", "tyrano", "nwjs-webgame"] },
+    "projectPath": { "type": "string", "minLength": 1 },
+    "outputPath": { "type": "string", "minLength": 1 },
+    "profile": { "enum": ["standard", "full", "advanced"] },
+    "options": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "translationDirectory": { "type": "string", "minLength": 1 },
+        "launchProbe": { "type": "boolean" },
+        "launchTimeoutMs": { "type": "integer", "minimum": 250, "maximum": 15000 }
+      }
+    },
+    "patches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/patch" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "options": { "required": ["launchProbe"], "properties": { "launchProbe": { "const": true } } } },
+        "required": ["options"]
+      },
+      "then": { "properties": { "operation": { "const": "apply" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "patch" } }, "required": ["operation"] },
+      "then": {
+        "anyOf": [
+          { "properties": { "patches": { "minItems": 1 } }, "required": ["patches"] },
+          { "properties": { "options": { "required": ["translationDirectory"] } }, "required": ["options"] }
+        ]
+      }
+    },
+    {
+      "not": {
+        "properties": {
+          "patches": { "minItems": 1 },
+          "options": { "required": ["translationDirectory"] }
+        },
+        "required": ["patches", "options"]
+      }
+    }
+  ],
+  "$defs": {
+    "patch": {
+      "type": "object",
+      "required": ["id", "expectedHash", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "expectedHash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "text": { "type": "string" }
+      }
+    }
+  }
+}

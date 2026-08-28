@@ -10,7 +10,7 @@ function setProgressBar(now:number, max:number, multipl=50){
     ctx().progress.set(50 + ((now/max) * multipl));
 }
 
-export default async function makeText(){
+export default async function makeText(extTextDir = path.join(ctx().wolf.sourceDir, '_Extract')){
     const ext = ctx().wolf.extData
     let texts:{[key:string]:string[]} = {}
     for(let i =0;i<ext.length;i++){
@@ -43,17 +43,19 @@ export default async function makeText(){
 
         const PushPerformace = performance.now() - perform
         perform = performance.now()
-        // console.log(`Decode: ${DecodePerformace.toFixed(2)}\nSplit: ${SplitPerformace.toFixed(2)}\nPush: ${PushPerformace.toFixed(2)}\n`)
     }
-    const extTextDir = path.join(ctx().wolf.sourceDir, '_Extract')
     if(fs.existsSync(extTextDir)){
-        fs.rmSync(extTextDir, { recursive: true, force: true });
+        const stat = fs.lstatSync(extTextDir)
+        if(stat.isSymbolicLink() || !stat.isDirectory() || fs.readdirSync(extTextDir).length > 0){
+            throw new Error(`Wolf extraction staging directory is not an empty regular directory: ${extTextDir}`)
+        }
     }
-    fs.mkdirSync(extTextDir)
+    else{
+        fs.mkdirSync(extTextDir)
+    }
     fs.mkdirSync(path.join(extTextDir, 'Texts'))
 
     for(const key in texts){
-        console.log(path.join(extTextDir, 'Texts',`${key}.txt`))
         fs.writeFileSync(path.join(extTextDir, 'Texts',`${key}.txt`),texts[key].join('\n'), 'utf-8')
     }
     ctx().progress.set(0);

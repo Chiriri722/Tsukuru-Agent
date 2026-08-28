@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-08-22",
+  "command": "npm run test:coverage",
+  "runtime": {
+    "node": "24.14.0",
+    "npm": "11.19.0"
+  },
+  "tests": {
+    "files": 23,
+    "checks": 123,
+    "passed": 123
+  },
+  "coverage": {
+    "lines": 76.91,
+    "branches": 64.67,
+    "functions": 77.98
+  },
+  "thresholds": {
+    "scope": "schema/path/transaction",
+    "lines": 70,
+    "branches": 50,
+    "functions": 85
+  },
+  "coreGate": {
+    "measuredAt": "2026-08-23",
+    "command": "npm run test:coverage:core",
+    "tests": {
+      "files": 28,
+      "checks": 150,
+      "passed": 150
+    },
+    "includes": [
+      ".build/app/src/core/schema.js",
+      ".build/app/src/core/atomic.js",
+      ".build/app/src/electron/ipcPolicy.js",
+      ".build/app/src/electron/atomicTextReplace.js",
+      ".build/app/src/electron/versionPort.js"
+    ],
+    "coverage": {
+      "lines": 81.68,
+      "branches": 64.26,
+      "functions": 96.08
+    }
+  },
+  "note": "The original Phase 2 whole-suite measurement remains above. Stable schema/path/transaction seams now have a CI-enforced minimum gate."
+}

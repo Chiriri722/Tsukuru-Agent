@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v2/result.schema.json",
+  "title": "Tsukuru Agent result contract v2",
+  "type": "object",
+  "required": ["schemaVersion", "ok", "format", "artifacts", "stats", "warnings", "warningDetails", "error"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "ok": { "type": "boolean" },
+    "format": { "type": ["string", "null"] },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "stats": { "type": "object", "additionalProperties": true },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "warningDetails": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "error": { "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "warning": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "pattern": "^W_[A-Z0-9_]+$" },
+        "message": { "type": "string" },
+        "details": true
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string", "pattern": "^E_[A-Z0-9_]+$" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

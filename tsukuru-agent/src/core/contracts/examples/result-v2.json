@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "ok": true,
+  "format": "rpgmz",
+  "artifacts": ["C:\\Output\\ElectronMZ_working"],
+  "stats": {
+    "files": 8,
+    "entries": 126,
+    "elapsedMs": 840
+  },
+  "warnings": ["One optional plugin script was not classified."],
+  "warningDetails": [
+    {
+      "code": "W_STRUCTURAL_VALIDATION",
+      "message": "One optional plugin script was not classified.",
+      "details": { "files": ["js/plugins/Custom.js"] }
+    }
+  ],
+  "error": null
+}

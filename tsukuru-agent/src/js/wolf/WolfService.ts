@@ -10,11 +10,13 @@ import makeText from './extract/makeText';
 import { wolfAppyier } from './apply/applyWolf';
 import { getAllFileInDir } from '../../utils';
 import { wolfDecrypt } from './extract/decrypter';
-import { OperationContext, ctx, setActiveContext } from '../../core/context';
+import { OperationContext, ctx, withOperationContext } from '../../core/context';
 import { OperationError, ErrorCodes } from '../../core/types';
 import { buildWolfManifest } from '../../core/manifestBuild';
 import { MANIFEST_FILE } from '../../core/manifest';
 import { atomicWriteFileSync } from '../../core/atomic';
+import { throwIfSignalAborted } from '../../core/operationRuntime';
+import { WorkspaceTransaction } from '../../core/workspaceTransaction';
 
 export interface WolfOperationOptions {
     /** 게임 루트 또는 data 폼더(평문 경로). extract는 둘 다 허용, apply는 data 폼더만. */
@@ -37,7 +39,7 @@ export class WolfService {
 
     /** 기존 wolf_ext 핸들러 이식. .wolf 복호화 시도 → 추출 → 텍스트화. */
     async extract(arg: WolfOperationOptions): Promise<WolfOperationReport> {
-        setActiveContext(this.context);
+        return withOperationContext(this.context, async () => {
         ctx().wolf.metadata = { ver: -1 };
         let dir = arg.folder;
         if (path.parse(dir).name !== 'data') {
@@ -57,6 +59,10 @@ export class WolfService {
 
         ctx().wolf.sourceDir = arg.folder;
         ctx().wolf.extData = [];
+        const extractDir = path.join(ctx().wolf.sourceDir, '_Extract');
+        if (fs.existsSync(extractDir) && arg.config.force !== true) {
+            throw new OperationError(ErrorCodes.EXTRACT_EXISTS, 'Wolf _Extract 폴더가 이미 존재합니다', { extractDir });
+        }
         const encrypted = getAllFileInDir(path.dirname(dir), '.wolf');
         if (encrypted.length > 0) {
             const d = await wolfDecrypt(encrypted);
@@ -74,25 +80,36 @@ export class WolfService {
             }
         }
         await extractWolfFolder(dir, arg.config);
-        await makeText();
-        // _Extract/manifest.json 생성(계획서 §Manifest와 안전성)
-        const encoding = ctx().wolf.metadata.ver === 2 ? 'shift_jis' : 'utf8';
-        const manifest = buildWolfManifest(ctx().wolf.extData, ctx().wolf.sourceDir, encoding);
-        const manifestPath = path.join(ctx().wolf.sourceDir, '_Extract', MANIFEST_FILE);
-        atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+        throwIfSignalAborted(ctx().signal, 'wolf-extract');
+        const transaction = new WorkspaceTransaction({ outputPath: extractDir, force: arg.config.force === true });
+        let extractedEntries = 0;
+        try {
+            await makeText(transaction.stagingPath);
+            throwIfSignalAborted(ctx().signal, 'wolf-extract-manifest');
+            // _Extract/manifest.json 생성(계획서 §Manifest와 안전성)
+            const encoding = ctx().wolf.metadata.ver === 2 ? 'shift_jis' : 'utf8';
+            const manifest = buildWolfManifest(ctx().wolf.extData, ctx().wolf.sourceDir, encoding);
+            atomicWriteFileSync(path.join(transaction.stagingPath, MANIFEST_FILE), JSON.stringify(manifest, null, 2));
+            extractedEntries = ctx().wolf.extData.length;
+            transaction.commit();
+        } finally {
+            transaction.dispose();
+        }
+        const manifestPath = path.join(extractDir, MANIFEST_FILE);
         return {
             folder: arg.folder,
             dataDir: dir,
-            extractDir: path.join(ctx().wolf.sourceDir, '_Extract'),
-            extractedEntries: ctx().wolf.extData.length,
+            extractDir,
+            extractedEntries,
             appliedEntries: 0,
             manifestPath,
         };
+        });
     }
 
     /** 기존 wolf_apply 핸들러 이식. _Extract의 텍스트를 바이너리에 적용한다. */
     async apply(arg: WolfOperationOptions): Promise<WolfOperationReport> {
-        setActiveContext(this.context);
+        return withOperationContext(this.context, async () => {
         const dir = arg.folder;
         if (!fs.existsSync(dir)) {
             throw new OperationError(ErrorCodes.PATH_NOT_FOUND, '지정된 디렉토리가 없습니다', { dir });
@@ -103,6 +120,7 @@ export class WolfService {
         ctx().wolf.sourceDir = arg.folder;
         ctx().wolf.extData = [];
         const res = await wolfAppyier();
+        throwIfSignalAborted(ctx().signal, 'wolf-apply');
         for (const skipped of res.skipped) {
             ctx().logger.warn(`wolf apply skipped: ${skipped.sourceFile} - ${skipped.reason}`);
         }
@@ -111,6 +129,7 @@ export class WolfService {
             extractedEntries: 0,
             appliedEntries: res.applied,
         };
+        });
     }
 
     /**
@@ -119,7 +138,7 @@ export class WolfService {
      * targetDir는 호출자가 미리 dataDir의 복사본으로 만들어 두어야 한다.
      */
     async applyToCopy(arg: { dataDir: string; targetDir: string }): Promise<WolfOperationReport> {
-        setActiveContext(this.context);
+        return withOperationContext(this.context, async () => {
         if (!fs.existsSync(arg.dataDir)) {
             throw new OperationError(ErrorCodes.PATH_NOT_FOUND, '지정된 디렉토리가 없습니다', { dir: arg.dataDir });
         }
@@ -133,6 +152,7 @@ export class WolfService {
         ctx().wolf.sourceDir = arg.dataDir;
         ctx().wolf.extData = [];
         const res = await wolfAppyier({ from: arg.dataDir, to: arg.targetDir });
+        throwIfSignalAborted(ctx().signal, 'wolf-apply-copy');
         for (const skipped of res.skipped) {
             ctx().logger.warn(`wolf apply skipped: ${skipped.sourceFile} - ${skipped.reason}`);
         }
@@ -141,5 +161,6 @@ export class WolfService {
             extractedEntries: 0,
             appliedEntries: res.applied,
         };
+        });
     }
 }

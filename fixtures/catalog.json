@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "policy": "Only redistributable synthetic data is stored. Generated fixtures are recreated inside the isolated test temp root.",
+  "fixtures": [
+    {
+      "id": "rpgmv-basic",
+      "engine": "rpgmv",
+      "wrapper": "directory",
+      "kind": "tracked-directory",
+      "path": "fixtures/rpgmv-basic",
+      "sha256": "981f40c7e716a638d6871e56cf673efddfbf9bd7a8e1a56fa90c1b447b505604",
+      "testFile": "tsukuru-agent/test/e2e/cli-operations.test.js",
+      "recipe": "test('CLI operations preserve stdout, exit-code, and round-trip contracts')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "rpgmz-basic",
+      "engine": "rpgmz",
+      "wrapper": "directory",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/e2e/agent-workflows.test.js",
+      "recipe": "test('extracts a nested MZ ASAR into a sibling working directory')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "wolf-map-v3",
+      "engine": "wolf",
+      "wrapper": "directory",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/e2e/cli-operations.test.js",
+      "recipe": "test('CLI operations preserve stdout, exit-code, and round-trip contracts')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "tyrano-utf8",
+      "engine": "tyrano",
+      "wrapper": "directory",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/integration/tyrano.test.js",
+      "recipe": "test('runs the Tyrano extract, patch, verify, and apply pipeline through the agent CLI')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "tyrano-shift-jis",
+      "engine": "tyrano",
+      "wrapper": "directory",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/integration/tyrano.test.js",
+      "recipe": "test('returns a specific integrity error when translation cannot round-trip Shift_JIS')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "gdevelop-strict",
+      "engine": "gdevelop",
+      "wrapper": "directory",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/integration/compat.test.js",
+      "recipe": "test('runs the loose GDevelop extract, patch, verify, and copy-only apply pipeline through the agent CLI')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "electron-asar-rpgmz",
+      "engine": "rpgmz",
+      "wrapper": "electron-asar",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/e2e/agent-workflows.test.js",
+      "recipe": "test('applies a patched ASAR working directory into a verified runnable copy')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
+      "id": "nwjs-package-nw",
+      "engine": "gdevelop",
+      "wrapper": "package.nw",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/integration/compat.test.js",
+      "recipe": "test('round-trips a GDevelop package.nw through CLI provenance without modifying the source wrapper')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    }
+  ]
+}

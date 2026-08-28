@@ -1,3 +1,24 @@
+:root {
+  --mainColor: #f8f8f2;
+  --Highlight3: #21222c;
+  --Highlight2: #343746;
+  --Highlight1: #21222c;
+  --Background: #282a36;
+  --Selected: #44475a;
+  --Gap: 0px;
+  --font: "NotoSansKR";
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 160ms;
+  --dur-panel: 180ms;
+  --dur-drawer: 220ms;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("../main/styles/fonts/NotoSansKR.otf");
+}
 body {
   margin: 0px;
   background-color: var(--Background);
@@ -8,16 +29,9 @@ body {
 }
 
 .alligner {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-      -ms-flex-direction: column;
-          flex-direction: column;
-  -webkit-box-pack: start;
-      -ms-flex-pack: start;
-          justify-content: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
   width: 100vw;
   gap: 10px;
 }
@@ -27,31 +41,21 @@ body {
 }
 
 .center {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   width: 100%;
-  -webkit-box-pack: center;
-      -ms-flex-pack: center;
-          justify-content: center;
+  justify-content: center;
 }
 
 .box-cont {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   width: 100%;
-  -webkit-box-pack: center;
-      -ms-flex-pack: center;
-          justify-content: center;
+  justify-content: center;
   gap: 10px;
   margin-top: 30px;
 }
 
 #loading_bar {
-  -moz-user-select: none;
-   -ms-user-select: none;
-       user-select: none;
+  user-select: none;
   -webkit-user-select: none;
   -webkit-app-region: drag;
   width: 100vw;
@@ -84,6 +88,10 @@ body {
   height: 20px;
   cursor: pointer;
   z-index: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mainColor);
 }
 
 .subtitle {
@@ -96,6 +104,9 @@ body {
   border-radius: 20px;
   padding: 20px;
   cursor: pointer;
+  border: 0;
+  color: var(--mainColor);
+  font-family: var(--font);
 }
 
 .box2 {
@@ -104,6 +115,9 @@ body {
   padding: 5px;
   cursor: pointer;
   font-size: smaller;
+  border: 0;
+  color: var(--mainColor);
+  font-family: var(--font);
 }
 
 .smalmar {
@@ -125,6 +139,9 @@ body {
   padding: 5px;
   font-size: 12px;
   border-radius: 3px;
+  border: 0;
+  color: var(--mainColor);
+  font-family: var(--font);
 }
 
 .btxSel {
@@ -181,15 +198,29 @@ body {
 }
 
 .flags {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   position: absolute;
   top: 10px;
   left: 10px;
-  -webkit-box-pack: start;
-      -ms-flex-pack: start;
-          justify-content: flex-start;
+  justify-content: flex-start;
   gap: 5px;
 }
-/*# sourceMappingURL=back.css.map */
+
+:where(.box, .box2, .btnx, .highlight2):not(:disabled) {
+  transition: transform var(--dur-press) var(--ease-out), background-color 150ms ease;
+}
+
+:where(.box, .box2, .btnx, .highlight2):not(:disabled):active {
+  transform: scale(0.97);
+}
+
+:where(button, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--Selected);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.box, .box2, .btnx, .highlight2):active {
+    transform: none;
+  }
+}

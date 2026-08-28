@@ -1,90 +1,121 @@
 {
-  "name": "mv-extractor-pp",
+  "name": "tsukuru-agent",
   "version": "2.5.0",
-  "description": "Tsukuru Extractor",
+  "description": "Agent-friendly CLI and GUI for safe game translation workflows",
   "main": "main.js",
   "scripts": {
     "codepage": "chcp 65001",
-    "start2": "electron . start",
+    "start2": "npm run compile && electron .build/app start",
     "start": "npm-run-all --parallel codepage start2",
-    "build": "electron-builder --windows portable nsis:x64",
-    "build2": "electron-builder --windows portable",
-    "compile": "tsc",
-    "build:cli": "electron-builder --config electron-builder.cli.yml",
+    "build": "npm run compile:gui && npm run clean:gui && electron-builder --windows portable nsis:x64",
+    "build2": "npm run compile:gui && npm run clean:gui && electron-builder --windows portable",
+    "styles": "sass src/html:src/html --no-source-map",
+    "compile": "npm run styles && node scripts/prepare-build.js",
+    "compile:gui": "npm run styles && node scripts/prepare-build.js gui",
+    "compile:cli": "npm run styles && node scripts/prepare-build.js cli",
+    "clean:gui": "node scripts/clean-output.js dist",
+    "clean:cli": "node scripts/clean-output.js dist-cli",
+    "build:cli": "npm run compile:cli && npm run clean:cli && electron-builder --config electron-builder.cli.yml && npm run normalize:cli-zip",
+    "normalize:cli-zip": "node scripts/normalize-release-zip.js",
+    "sync:version": "node scripts/sync-version.js",
+    "check:version": "node scripts/check-version.js",
+    "check:styles": "node scripts/check-style-drift.js",
+    "check:complexity": "node scripts/check-complexity.js",
+    "check:generated": "node scripts/check-generated-drift.js",
+    "check:inventory": "node scripts/check-test-inventory.js",
+    "check:supply-chain": "node scripts/check-supply-chain.js",
+    "generate:notices": "node scripts/generate-notices.js",
+    "release:evidence": "node scripts/generate-release-evidence.js --output-dir",
+    "prebenchmark": "npm run compile",
+    "benchmark": "node scripts/run-benchmarks.js --profile baseline",
+    "benchmark:check": "node scripts/run-benchmarks.js --profile ci --check",
+    "compat:corpus": "node scripts/run-compat-corpus.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test",
-    "agent": "node src/cli/main.js"
+    "pretest": "npm run compile",
+    "test": "node scripts/run-tests.js",
+    "test:coverage": "node scripts/run-tests.js --coverage",
+    "test:coverage:core": "node scripts/run-tests.js --coverage-core",
+    "test:order": "node scripts/run-tests.js --order-seed=1414747474",
+    "test:electron": "npm run compile:gui && electron test/electron-smoke-app",
+    "verify": "npm-run-all --sequential check:version typecheck check:styles check:complexity test check:generated check:inventory check:supply-chain",
+    "verify:package": "node scripts/verify-package.js",
+    "agent": "npm run compile && node .build/app/src/cli/main.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/gramedcart/mvextractor.git"
+    "url": "https://github.com/Chiriri722/Tsukuru-Agent.git"
   },
-  "author": "Sziya",
+  "homepage": "https://github.com/Chiriri722/Tsukuru-Agent#readme",
+  "bugs": {
+    "url": "https://github.com/Chiriri722/Tsukuru-Agent/issues"
+  },
+  "author": "Chiriri722 and Tsukuru Agent contributors",
+  "contributors": [
+    "Sziya (original Tsukuru Extractor author)"
+  ],
   "license": "GPL-3.0-only",
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "electron-winstaller": false
+  },
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10 <12"
+  },
   "bin": {
     "tsukuru-agent": "src/cli/main.js"
   },
   "devDependencies": {
     "@types/aes-js": "^3.1.1",
+    "@types/fs-extra": "^9.0.13",
     "@types/js-yaml": "^4.0.5",
-    "@types/lodash": "^4.14.190",
     "@types/tcp-port-used": "^1.0.1",
-    "electron": "^22.0.0",
-    "electron-builder": "^22.10.3",
-    "electron-packager": "^17.1.1",
+    "electron": "43.4.1",
+    "electron-builder": "26.15.7",
     "npm-run-all": "^4.1.5",
+    "sass": "1.103.1",
     "typescript": "5.5"
   },
   "dependencies": {
     "@electron/asar": "^3.4.1",
     "@electron/fuses": "^1.8.0",
     "@msgpack/msgpack": "^2.8.0",
-    "@types/adm-zip": "^0.5.0",
-    "@types/fs-extra": "^9.0.13",
-    "@types/glob": "^8.0.0",
-    "@types/jsdom": "^16.2.14",
     "@vitalets/google-translate-api": "^9.0.0",
-    "adm-zip": "^0.5.18",
-    "aes-js": "^3.1.2",
-    "axios": "^0.24.0",
-    "bson": "^4.6.1",
-    "electron-log": "^4.4.4",
+    "acorn": "8.18.0",
+    "adm-zip": "^0.6.0",
     "electron-store": "^8.0.1",
     "encoding-japanese": "^1.0.30",
     "fast-csv": "^4.3.6",
     "fast-glob": "^3.2.11",
     "fs-extra": "^10.0.1",
-    "glob": "^8.0.3",
     "iconv-lite": "^0.6.3",
     "js-yaml": "^4.1.0",
-    "jsdom": "^19.0.0",
-    "lodash": "^4.17.21",
-    "lz-string": "^1.4.4",
-    "open": "^8.4.0",
-    "os-locale": "^6.0.2",
-    "request": "^2.88.2",
     "resedit": "^1.7.0",
-    "sha3": "^2.1.4",
     "tcp-port-used": "^1.0.2"
   },
   "build": {
-    "productName": "Tsukuru Extractor",
+    "productName": "Tsukuru Agent",
     "appId": "net.electron.MVExtractor",
     "asar": true,
+    "extraMetadata": {
+      "main": "main.js"
+    },
     "files": [
-      "**/*",
-      "!test/*",
-      "!dist/*",
-      "!addon/*",
-      "!**/*.ts",
-      "!**/*.d.ts"
+      {
+        "from": ".build/app",
+        "to": ".",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "extraResources": [
       "./exfiles/**"
     ],
     "protocols": {
-      "name": "MVExtractor",
+      "name": "Tsukuru Agent",
       "schemes": [
+        "tsukuru-agent",
         "MVExtractor"
       ]
     },
@@ -93,16 +124,7 @@
         "zip",
         "nsis"
       ],
-      "icon": "./res/icon.ico",
-      "files": [
-        "!gruntfile.js",
-        "!README.md",
-        "!notarize.js",
-        "!.env",
-        "!minify.js",
-        "!.git/*",
-        "!resources/mac/*"
-      ]
+      "icon": "./res/icon.ico"
     },
     "nsis": {
       "oneClick": false,

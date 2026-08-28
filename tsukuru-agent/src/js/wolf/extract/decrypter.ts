@@ -1,7 +1,8 @@
-import { exec } from "child_process";
 import { removeSync } from "fs-extra";
 import path from "path";
 import { ctx } from '../../../core/context';
+import { spawnTracked } from '../../../core/processRegistry';
+import { verifyExternalBinary } from '../../../core/externalBinaryPolicy';
 
 /**
  * 복호화 도구(wolfdec.exe) 경로를 해석한다.
@@ -37,9 +38,15 @@ function setProgressBar(now: number, max: number, multipl = 100) {
 }
 
 function DecryptFile(decrypter: string, file: string) {
-    return new Promise<void>((resolve) => {
-        const d = exec(`${decrypter} ${file}`, { cwd: path.dirname(file) })
-        d.on('exit', () => {
+    return new Promise<void>((resolve, reject) => {
+        const command = verifyExternalBinary('wolfdec-v0.3', decrypter);
+        const child = spawnTracked(command, [file], { cwd: path.dirname(file), timeoutMs: 60_000 })
+        child.once('error', reject);
+        child.once('exit', (code) => {
+            if (code !== 0) {
+                reject(new Error(`WolfDec exited with code ${String(code)}`));
+                return;
+            }
             removeSync(file)
             resolve()
         })
@@ -54,7 +61,7 @@ export async function wolfDecrypt(files: string[]) {
         let i = 0;
         for (const file of files) {
             setProgressBar(i, files.length)
-            console.log(file)
+            ctx().logger.debug(`Wolf decrypting: ${path.basename(file)}`)
             await DecryptFile(decrypter, file)
             i += 1
         }

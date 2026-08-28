@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/manifest.schema.json",
+  "title": "Tsukuru Agent extraction manifest v1",
+  "type": "object",
+  "required": ["schemaVersion", "format", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "format": { "enum": ["rpgmv", "wolf", "tyrano", "gdevelop"] },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+    "sourceSnapshots": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/sourceSnapshot" }
+    }
+  },
+  "$defs": {
+    "sourceSnapshot": {
+      "type": "object",
+      "required": ["hash", "encoding"],
+      "additionalProperties": false,
+      "properties": {
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "encoding": { "enum": ["utf8", "shift_jis"] }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["id", "extractFile", "hash"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sourceFile": { "type": "string", "minLength": 1 },
+        "dataPath": { "type": "string" },
+        "extractFile": { "type": "string", "minLength": 1 },
+        "lineStart": { "type": "integer", "minimum": 0 },
+        "lineEnd": { "type": "integer", "minimum": 0 },
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "encoding": { "enum": ["utf8", "shift_jis"] },
+        "nullTerminated": { "type": "boolean" },
+        "mv": { "type": "object", "additionalProperties": true },
+        "wolf": { "type": "object", "additionalProperties": true },
+        "tyrano": { "type": "object", "additionalProperties": true },
+        "gdevelop": { "type": "object", "additionalProperties": true }
+      }
+    }
+  }
+}

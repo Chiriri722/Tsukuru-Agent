@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    { "path": "src/html/main/styles/fonts/NotoSansKR.otf", "version": "unversioned-vendored-copy", "origin": "https://github.com/notofonts/noto-cjk", "license": "OFL-1.1", "licenseText": "src/html/license.html", "sha256": "3c23dc5fad202dccdd8ba148174094db3444f7af5f69f2e24f5ba98a721d3915" },
+    { "path": "src/lib/sweetalert2/main.js", "version": "11.3.0", "origin": "https://github.com/sweetalert2/sweetalert2", "license": "MIT", "licenseText": "src/html/license.html", "sha256": "0d85f7eebd5c8f6f2959e08d96f8fd89b00be01b34778d1cc893394b276a05a3" },
+    { "path": "src/lib/sweetalert2/css.css", "version": "11.3.0", "origin": "https://github.com/sweetalert2/sweetalert2", "license": "MIT", "licenseText": "src/html/license.html", "sha256": "71d5d94e1d39ae43233bbd4bd913da6b93874835ca0312afb8102608e18c1cd4" }
+  ]
+}

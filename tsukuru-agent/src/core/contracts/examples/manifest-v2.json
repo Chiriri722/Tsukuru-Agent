@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "format": "rpgmv",
+  "createdAt": "2026-08-23T00:00:00.000Z",
+  "entries": [],
+  "sourceSnapshots": {
+    "Actors.json": {
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "encoding": "utf8"
+    }
+  }
+}

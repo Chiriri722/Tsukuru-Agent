@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/result.schema.json",
+  "title": "Tsukuru Agent legacy result contract v1",
+  "type": "object",
+  "required": ["ok", "format", "artifacts", "stats", "warnings", "error"],
+  "additionalProperties": true,
+  "properties": {
+    "ok": { "type": "boolean" },
+    "format": { "type": ["string", "null"] },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "stats": { "type": "object", "additionalProperties": true },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "error": { "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string", "pattern": "^E_[A-Z0-9_]+$" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

@@ -6,7 +6,10 @@
 import { app } from 'electron';
 import { runAgent } from './run';
 
-app.whenReady().then(async () => {
-    const code = await runAgent(process.argv.slice(1));
-    app.exit(code);
-});
+void runAgent(process.argv.slice(1)).then(
+    (code) => app.exit(code),
+    () => {
+        process.stderr.write('tsukuru-agent internal startup failure\n');
+        app.exit(1);
+    },
+);

@@ -1,6 +1,11 @@
 import { BrowserWindow } from "electron"
+import type { TsukuruBridge } from './src/electron/ipcTypes'
 
 export declare global {
+    interface Window {
+        tsukuru: TsukuruBridge
+        Swal: any
+    }
     var mwindow:BrowserWindow
     var settings:{[key:string]: any}
     var keyvalue:CryptoKey|undefined

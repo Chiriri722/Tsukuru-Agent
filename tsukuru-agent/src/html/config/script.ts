@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+const ipc = window.tsukuru
 
 let gsettings:{[key:string]:any} = {}
 const CheckboxValues = [
@@ -15,7 +15,7 @@ const CheckboxValues = [
   'hideUnrecomenedTranslators'
 ]
 
-ipcRenderer.on("settings", (evt, arg) => {
+ipc.on("settings", (arg) => {
   try{
     gsettings = arg
     const userdict = arg.userdict
@@ -36,8 +36,8 @@ ipcRenderer.on("settings", (evt, arg) => {
       (document.getElementById(val) as HTMLInputElement).checked = gsettings[val]
     })
     document.getElementById('update').innerText = `업데이트 확인 (현재: ${gsettings.version})`
-    document.getElementById('update').onclick = () => {ipcRenderer.send('updates')}
-    document.getElementById('license').onclick = () => {ipcRenderer.send('license')}
+    document.getElementById('update').onclick = () => {ipc.send('updates')}
+    document.getElementById('license').onclick = () => {ipc.send('license')}
     _reload()
   }
   catch(e){
@@ -87,9 +87,9 @@ document.getElementById('apply').onclick = () => {
   }
   gsettings.extractPlus = extP
 
-  ipcRenderer.send('applysettings', gsettings);
+  ipc.send('applysettings', gsettings);
 }
 
 document.getElementById('close').onclick = () => {
-  ipcRenderer.send('closesettings', gsettings);
+  ipc.send('closesettings');
 }

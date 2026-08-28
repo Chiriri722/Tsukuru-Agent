@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { DetectedFormat } from '../core/schema';
 import { ContainerInfo, inspectContainer } from '../core/container';
+import { ContainerLimits } from '../core/container/types';
 
 export interface DetectedProject {
     format: DetectedFormat;
@@ -105,8 +106,8 @@ export function detectFormat(projectPath: string): DetectedProject | null {
 }
 
 /** v2 탐지: loose directory와 Electron/NW.js wrapper를 엔진 프로파일로 정규화한다. */
-export function detectProject(projectPath: string): DetectedProject | null {
-    const container = inspectContainer(projectPath);
+export function detectProject(projectPath: string, limits: ContainerLimits = {}): DetectedProject | null {
+    const container = inspectContainer(projectPath, limits);
     const engine = container.engine.type;
     if (engine !== 'unknown') {
         const base = path.join(container.rootPath, container.engine.root);

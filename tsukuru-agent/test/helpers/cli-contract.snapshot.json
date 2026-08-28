@@ -1,0 +1,152 @@
+{
+  "verifyFailure": {
+    "request": "schema=2 operation=verify format=auto profile=standard options=- patches=0",
+    "exitCode": 1,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "change", "container", "engine", "error", "format", "ok", "schemaVersion", "scores", "stats", "warningDetails", "warnings"],
+      "ok": false,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["entries", "performance", "resources", "score"],
+      "warnings": ["추출 산출물 디렉터리가 없습니다: <project>/www/data/Extract"],
+      "errorCode": "E_VERIFY_FAILED",
+      "errorDetailKeys": ["0"]
+    }
+  },
+  "applyFailure": {
+    "request": "schema=2 operation=apply format=auto profile=standard options=- patches=0",
+    "exitCode": 1,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": false,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["performance", "resources"],
+      "warnings": [],
+      "errorCode": "E_PATH_NOT_FOUND",
+      "errorDetailKeys": ["dir"]
+    }
+  },
+  "recoverFailure": {
+    "request": "schema=2 operation=recover format=auto profile=standard options=- patches=0",
+    "exitCode": 1,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": false,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["performance", "resources"],
+      "warnings": [],
+      "errorCode": "E_MAPPING_CORRUPT",
+      "errorDetailKeys": ["message"]
+    }
+  },
+  "extractSuccess": {
+    "request": "schema=2 operation=extract format=auto profile=standard options=- patches=0",
+    "exitCode": 0,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": true,
+      "format": "rpgmv",
+      "artifactNames": [".extracteddata", "Backup", "Extract", "manifest.json"],
+      "statKeys": ["elapsedMs", "entries", "files", "performance", "resources", "textBytes"],
+      "warnings": [],
+      "errorCode": null,
+      "errorDetailKeys": []
+    }
+  },
+  "extractFailure": {
+    "request": "schema=2 operation=extract format=auto profile=standard options=- patches=0",
+    "exitCode": 1,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": false,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["performance", "resources"],
+      "warnings": [],
+      "errorCode": "E_EXTRACT_EXISTS",
+      "errorDetailKeys": ["artifacts", "dir"]
+    }
+  },
+  "verifySuccess": {
+    "request": "schema=2 operation=verify format=auto profile=standard options=- patches=0",
+    "exitCode": 0,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "change", "container", "engine", "error", "format", "ok", "schemaVersion", "scores", "stats", "validation", "warningDetails", "warnings"],
+      "ok": true,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["encodingWarnings", "entries", "files", "invalidEntries", "performance", "resources", "score", "tokenErrors"],
+      "warnings": [],
+      "errorCode": null,
+      "errorDetailKeys": []
+    }
+  },
+  "patchSuccess": {
+    "request": "schema=2 operation=patch format=auto profile=standard options=- patches=1",
+    "exitCode": 0,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": true,
+      "format": "rpgmv",
+      "artifactNames": ["manifest.json"],
+      "statKeys": ["files", "patched", "performance", "resources"],
+      "warnings": [],
+      "errorCode": null,
+      "errorDetailKeys": []
+    }
+  },
+  "patchFailure": {
+    "request": "schema=2 operation=patch format=auto profile=standard options=- patches=1",
+    "exitCode": 1,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": false,
+      "format": "rpgmv",
+      "artifactNames": [],
+      "statKeys": ["performance", "resources"],
+      "warnings": [],
+      "errorCode": "E_PATCH_HASH_MISMATCH",
+      "errorDetailKeys": ["id"]
+    }
+  },
+  "applySuccess": {
+    "request": "schema=2 operation=apply format=auto profile=standard options=- patches=0",
+    "exitCode": 0,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": true,
+      "format": "rpgmv",
+      "artifactNames": ["Completed"],
+      "statKeys": ["elapsedMs", "files", "performance", "resources"],
+      "warnings": [],
+      "errorCode": null,
+      "errorDetailKeys": []
+    }
+  },
+  "recoverSuccess": {
+    "request": "schema=2 operation=recover format=auto profile=standard options=- patches=0",
+    "exitCode": 0,
+    "stderrHasProgress": true,
+    "result": {
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "ok": true,
+      "format": "rpgmv",
+      "artifactNames": ["manifest.json"],
+      "statKeys": ["entries", "files", "hashesUpdated", "performance", "resources"],
+      "warnings": [],
+      "errorCode": null,
+      "errorDetailKeys": []
+    }
+  }
+}

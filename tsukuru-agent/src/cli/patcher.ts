@@ -3,18 +3,20 @@
  * - id/expectedHash 검증 후 추출 작업본(txt)만 수정한다(원본·Backup 불변).
  * - 해시 불일치·중복 ID·매핑 손상이 하나라도 있으면 아무것도 변경하지 않는다.
  * - 여러 줄 치환 후에는 manifest와 .extracteddata의 줄 매핑을 재생성한다.
- * - 모든 기록은 원자적 쓰기(atomicWriteFileSync).
+ * - 모든 기록은 하나의 rollback 가능한 원자적 파일 배치로 교체한다.
  */
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import iconv from 'iconv-lite';
 import { encode, decode } from '@msgpack/msgpack';
 import { OperationError, ErrorCodes } from '../core/types';
 import { ExtractManifest, ManifestEntry, MANIFEST_FILE, sha256Text } from '../core/manifest';
 import { PatchEntry } from '../core/schema';
-import { atomicWriteFileSync } from '../core/atomic';
+import { AtomicFileWrite, atomicWriteFilesSync } from '../core/atomic';
 import { DetectedFormat } from '../core/schema';
+import { readExtractManifest } from '../core/contracts/manifestContract';
+import { resolveContainedPathWithoutLinks } from '../core/pathSafety';
+import * as edTool from '../js/rpgmv/edtool';
 
 export interface PatchOutcome {
     patched: number;
@@ -22,31 +24,30 @@ export interface PatchOutcome {
 }
 
 export function resolveExtractArtifactPath(extractDir: string, relativePath: unknown): string {
-    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path.isAbsolute(relativePath)) {
+    const resolution = resolveContainedPathWithoutLinks(extractDir, relativePath);
+    if (resolution.ok === false && resolution.reason === 'linked') {
+        throw new OperationError(
+            ErrorCodes.MAPPING_CORRUPT,
+            `추출 파일 경로에 심볼릭 링크/정션이 있습니다: ${String(relativePath)}`,
+        );
+    }
+    if (resolution.ok === false && resolution.reason === 'outside') {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `추출 폴더 밖을 가리키는 경로입니다: ${String(relativePath)}`);
+    }
+    if (resolution.ok === false) {
         throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 추출 파일 경로입니다: ${String(relativePath)}`);
     }
-    const root = path.resolve(extractDir);
-    const target = path.resolve(root, relativePath);
-    const relative = path.relative(root, target);
-    if (!relative || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
-        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `추출 폴더 밖을 가리키는 경로입니다: ${relativePath}`);
-    }
-    return target;
+    return resolution.path;
 }
 
 /** extractDir(Extract/ 또는 _Extract/) 안의 작업본에 patches를 적용한다. */
 export function applyPatches(extractDir: string, format: DetectedFormat, patches: PatchEntry[]): PatchOutcome {
     // 1. manifest 로드
-    const manifestPath = path.join(extractDir, MANIFEST_FILE);
+    const manifestPath = resolveExtractArtifactPath(extractDir, MANIFEST_FILE);
     if (!fs.existsSync(manifestPath)) {
         throw new OperationError(ErrorCodes.MANIFEST_MISSING, 'manifest.json이 없습니다. 먼저 extract를 실행하세요', { manifestPath });
     }
-    let manifest: ExtractManifest;
-    try {
-        manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    } catch {
-        throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'manifest.json 파싱에 실패했습니다', { manifestPath });
-    }
+    const manifest: ExtractManifest = readExtractManifest(manifestPath);
     if (manifest.format !== format) {
         throw new OperationError(ErrorCodes.FORMAT_MISMATCH, `manifest 포맷(${manifest.format})과 실제 포맷(${format})이 다릅니다`);
     }
@@ -141,17 +142,21 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
             } else {
                 e.lineEnd = e.lineStart + oldLen;
             }
+            if (e.mv) e.mv.endLine = e.lineEnd;
         }
     }
 
-    // 6. .extracteddata 줄 매핑 재생성 + 모든 산출물 원자적 기록
-    regenerateExtractedData(extractDir, format, manifest, byFile);
+    // 6. .extracteddata 줄 매핑 재생성 + 모든 산출물의 단일 rollback 배치 기록
+    const writes: AtomicFileWrite[] = [];
+    const mappingWrite = regenerateExtractedData(extractDir, format, manifest, byFile);
+    if (mappingWrite) writes.push(mappingWrite);
     for (const [file, lines] of fileLines) {
         if (byFile.has(file)) {
-            atomicWriteFileSync(resolveExtractArtifactPath(extractDir, file), lines.join('\n'));
+            writes.push({ file: resolveExtractArtifactPath(extractDir, file), data: lines.join('\n') });
         }
     }
-    atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    writes.push({ file: manifestPath, data: JSON.stringify(manifest, null, 2) });
+    atomicWriteFilesSync(writes);
     return { patched: patches.length, files: byFile.size };
 }
 
@@ -161,33 +166,38 @@ function regenerateExtractedData(
     format: DetectedFormat,
     manifest: ExtractManifest,
     byFile: Map<string, { p: PatchEntry; e: ManifestEntry }[]>,
-): void {
+): AtomicFileWrite | undefined {
     if (format === 'tyrano' || format === 'gdevelop') {
         // Tyrano/GDevelop manifest 자체가 원본 위치 매핑을 보유하므로 별도 legacy mapping 파일이 없다.
-        return;
+        return undefined;
     }
     if (format === 'rpgmv') {
         // RPG: data 폼더의 .extracteddata(gb) — data 키(cid)와 m을 새 줄 번호로 재구성
         const dataDir = path.dirname(extractDir);
-        const edPath = path.join(dataDir, '.extracteddata');
-        const readF = fs.readFileSync(edPath);
-        let ext_data: any = JSON.parse(iconv.decode(zlib.inflateSync(readF), 'utf8'));
-        while (ext_data.main === undefined) {
-            ext_data = ext_data.dat;
-        }
+        const edPath = resolveExtractArtifactPath(dataDir, '.extracteddata');
+        const ext_data: any = edTool.readFile(edPath);
         for (const [file] of byFile) {
             const bucket = file === 'ext_javascript.js' ? 'ext_javascript.json' : `${path.parse(file).name}.json`;
             const gbEntry = ext_data.main[bucket];
-            if (!gbEntry || !gbEntry.data) {
+            if (!gbEntry || typeof gbEntry.data !== 'object' || gbEntry.data === null || Array.isArray(gbEntry.data)) {
                 throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata에 버킷이 없습니다: ${bucket}`);
+            }
+            const byIdentity = new Map<string, string>();
+            for (const cid of Object.keys(gbEntry.data)) {
+                const data = gbEntry.data[cid];
+                if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+                    throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata 항목이 올바르지 않습니다: ${bucket}#${cid}`);
+                }
+                const identity = `${String(data.origin)}#${String(data.val)}`;
+                if (byIdentity.has(identity)) {
+                    throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata에 중복 항목이 있습니다: ${identity}`);
+                }
+                byIdentity.set(identity, cid);
             }
             const fileEntries = manifest.entries.filter((e) => e.extractFile === file);
             const newData: { [cid: string]: unknown } = {};
             for (const e of fileEntries) {
-                const matchKey = Object.keys(gbEntry.data).find((cid) => {
-                    const d = gbEntry.data[cid];
-                    return d.origin === e.mv?.originFile && String(d.val) === e.dataPath;
-                });
+                const matchKey = byIdentity.get(`${String(e.mv?.originFile)}#${e.dataPath}`);
                 if (matchKey === undefined) {
                     throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata 항목을 찾을 수 없습니다: ${e.id}`);
                 }
@@ -195,23 +205,45 @@ function regenerateExtractedData(
             }
             gbEntry.data = newData;
         }
-        atomicWriteFileSync(edPath, zlib.deflateSync(iconv.encode(JSON.stringify({ dat: ext_data }), 'utf8')));
+        return { file: edPath, data: edTool.serialize(ext_data) };
     } else {
         // Wolf: _Extract/.extracteddata(msgpack+zlib) — textLineNumber를 새 줄 번호로 재구성
-        const edPath = path.join(extractDir, '.extracteddata');
-        const ca = decode(zlib.inflateSync(fs.readFileSync(edPath))) as any;
+        const edPath = resolveExtractArtifactPath(extractDir, '.extracteddata');
+        let ca: any;
+        try {
+            const stat = fs.lstatSync(edPath);
+            if (stat.isSymbolicLink() || !stat.isFile()) {
+                throw new Error('mapping path is not a regular file');
+            }
+            if (stat.size > 256 * 1024 * 1024) {
+                throw new Error(`compressed mapping exceeds 268435456 bytes: ${stat.size}`);
+            }
+            const inflated = zlib.inflateSync(fs.readFileSync(edPath), { maxOutputLength: 512 * 1024 * 1024 });
+            ca = decode(inflated) as any;
+        } catch (error) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, 'Wolf .extracteddata 파싱에 실패했습니다', {
+                edPath,
+                cause: error instanceof Error ? error.message : String(error),
+            });
+        }
+        if (typeof ca !== 'object' || ca === null || !Array.isArray(ca.ext)) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, 'Wolf .extracteddata ext 매핑이 올바르지 않습니다');
+        }
         for (const [file] of byFile) {
             const fileEntries = manifest.entries.filter((e) => e.extractFile === file);
             for (const e of fileEntries) {
                 const idx = parseInt(e.id.substring(e.id.lastIndexOf('#') + 1), 10);
+                if (!Number.isSafeInteger(idx) || idx < 0) {
+                    throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata 인덱스가 올바르지 않습니다: ${e.id}`);
+                }
                 const ext = ca.ext?.[idx];
-                if (!ext) {
+                if (!ext || typeof ext !== 'object' || Array.isArray(ext)) {
                     throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `.extracteddata 항목을 찾을 수 없습니다: ${e.id}`);
                 }
                 const len = e.lineEnd - e.lineStart;
                 ext.textLineNumber = Array.from({ length: len }, (_, k) => e.lineStart + k);
             }
         }
-        atomicWriteFileSync(edPath, zlib.deflateSync(Buffer.from(encode(ca))));
+        return { file: edPath, data: zlib.deflateSync(Buffer.from(encode(ca))) };
     }
 }

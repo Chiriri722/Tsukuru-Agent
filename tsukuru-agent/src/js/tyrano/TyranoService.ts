@@ -3,10 +3,14 @@ import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import iconv from 'iconv-lite';
-import { atomicWriteFileSync, makeStagingDir, replaceDirSync } from '../../core/atomic';
+import { atomicWriteFileSync, makeStagingDir, removePathBestEffortSync, replaceDirSync } from '../../core/atomic';
 import { createManifest, ExtractManifest, MANIFEST_FILE, ManifestEntry, sha256Text } from '../../core/manifest';
 import { ErrorCodes, OperationError } from '../../core/types';
 import { inspectTyranoProject, StructuralValidationReport } from '../../core/validator';
+import { readExtractManifest } from '../../core/contracts/manifestContract';
+import { resolveContainedPathWithoutLinks } from '../../core/pathSafety';
+import { WorkspaceTransaction } from '../../core/workspaceTransaction';
+import { assertNoSymbolicLinks } from '../../core/container/fileSystemPolicy';
 
 export interface TyranoExtractOptions {
     projectRoot: string;
@@ -121,21 +125,27 @@ function scenarioFiles(scenarioRoot: string): string[] {
 }
 
 function safeChild(root: string, relativePath: unknown, label: string): string {
-    if (typeof relativePath !== 'string' || relativePath.trim() === '' || path.isAbsolute(relativePath)) {
-        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 Tyrano ${label} 경로입니다`, { relativePath });
+    const resolution = resolveContainedPathWithoutLinks(root, relativePath);
+    if (resolution.ok === false && resolution.reason === 'linked') {
+        throw new OperationError(
+            ErrorCodes.MAPPING_CORRUPT,
+            `Tyrano ${label} 경로에 심볼릭 링크/정션이 있습니다`,
+            { relativePath },
+        );
     }
-    const target = path.resolve(root, relativePath);
-    const relative = path.relative(root, target);
-    if (!relative || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
+    if (resolution.ok === false && resolution.reason === 'outside') {
         throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `Tyrano ${label} 경로가 작업 루트 밖을 가리킵니다`, { relativePath });
     }
-    return target;
+    if (resolution.ok === false) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 Tyrano ${label} 경로입니다`, { relativePath });
+    }
+    return resolution.path;
 }
 
 function pathsOverlap(left: string, right: string): boolean {
     const contains = (parent: string, child: string): boolean => {
         const relative = path.relative(path.resolve(parent), path.resolve(child));
-        return relative === '' || (!relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+        return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
     };
     return contains(left, right) || contains(right, left);
 }
@@ -155,9 +165,10 @@ export class TyranoService {
         const extractDir = path.join(dataRoot, '_Extract');
         if (fs.existsSync(extractDir)) {
             if (options.force !== true) throw new OperationError(ErrorCodes.EXTRACT_EXISTS, 'Tyrano _Extract 폴더가 이미 존재합니다', { extractDir });
-            fs.rmSync(extractDir, { recursive: true, force: true });
         }
-        fs.mkdirSync(extractDir, { recursive: true });
+        const transaction = new WorkspaceTransaction({ outputPath: extractDir, force: options.force === true });
+        const workspaceDir = transaction.stagingPath;
+        try {
         const manifest = createManifest('tyrano');
         manifest.sourceSnapshots = {};
         let extractedFiles = 0;
@@ -170,7 +181,7 @@ export class TyranoService {
             if (segments.length === 0) continue;
             const scenarioRelative = path.relative(scenarioRoot, sourcePath).replace(/\\/g, '/');
             const extractFile = `scenario/${scenarioRelative}.txt`;
-            const target = path.join(extractDir, ...extractFile.split('/'));
+            const target = path.join(workspaceDir, ...extractFile.split('/'));
             fs.mkdirSync(path.dirname(target), { recursive: true });
             atomicWriteFileSync(target, segments.map((segment) => segment.text).join('\n'));
             extractedFiles++;
@@ -195,9 +206,14 @@ export class TyranoService {
                 });
             }
         }
+        const stagedManifestPath = safeChild(workspaceDir, MANIFEST_FILE, 'manifest');
+        atomicWriteFileSync(stagedManifestPath, JSON.stringify(manifest, null, 2));
+        transaction.commit();
         const manifestPath = path.join(extractDir, MANIFEST_FILE);
-        atomicWriteFileSync(manifestPath, JSON.stringify(manifest, null, 2));
         return { extractDir, manifestPath, extractedFiles, extractedEntries: manifest.entries.length };
+        } finally {
+            transaction.dispose();
+        }
     }
 
     applyToCopy(options: TyranoApplyOptions): TyranoApplyReport {
@@ -210,18 +226,21 @@ export class TyranoService {
             throw new OperationError(ErrorCodes.OUTPUT_CONFLICT, 'Tyrano 출력 경로가 이미 존재합니다', { outputRoot });
         }
         const extractDir = path.join(projectRoot, 'data', '_Extract');
-        const manifestPath = path.join(extractDir, MANIFEST_FILE);
+        const manifestPath = safeChild(extractDir, MANIFEST_FILE, 'manifest');
         if (!fs.existsSync(manifestPath)) {
             throw new OperationError(ErrorCodes.MANIFEST_MISSING, 'Tyrano manifest.json이 없습니다. 먼저 extract를 실행하세요', { manifestPath });
         }
-        let manifest: ExtractManifest;
-        try {
-            manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        } catch (error) {
-            throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'Tyrano manifest.json 파싱에 실패했습니다', { error: String(error) });
-        }
+        const manifest: ExtractManifest = readExtractManifest(manifestPath);
         if (manifest.format !== 'tyrano' || !Array.isArray(manifest.entries) || !manifest.sourceSnapshots) {
             throw new OperationError(ErrorCodes.MANIFEST_CORRUPT, 'Tyrano manifest 구조가 올바르지 않습니다');
+        }
+        try {
+            assertNoSymbolicLinks(projectRoot);
+        } catch {
+            throw new OperationError(
+                ErrorCodes.VERIFY_FAILED,
+                'Tyrano 원본 복사 경로에 심볼릭 링크/정션 또는 일반 파일이 아닌 항목이 있습니다',
+            );
         }
         const snapshotEntries = Object.entries(manifest.sourceSnapshots);
         const assertSourcesUnchanged = (): void => {
@@ -324,6 +343,14 @@ export class TyranoService {
             fs.cpSync(projectRoot, staging, {
                 recursive: true,
                 filter: (source) => {
+                    const stat = fs.lstatSync(source);
+                    if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) {
+                        throw new OperationError(
+                            ErrorCodes.VERIFY_FAILED,
+                            'Tyrano 복사 중 심볼릭 링크/정션 또는 일반 파일이 아닌 항목이 발견되었습니다',
+                            { source: path.relative(projectRoot, source).replace(/\\/g, '/') },
+                        );
+                    }
                     const relative = path.relative(extractDir, path.resolve(source));
                     return relative !== '' && (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative));
                 },
@@ -348,7 +375,9 @@ export class TyranoService {
                 validation,
             };
         } finally {
-            if (!completed && fs.existsSync(staging)) fs.rmSync(staging, { recursive: true, force: true });
+            if (!completed && fs.existsSync(staging)) {
+                removePathBestEffortSync(staging, { recursive: true, force: true });
+            }
         }
     }
 
@@ -357,7 +386,7 @@ export class TyranoService {
         try {
             return this.applyToCopy({ projectRoot, outputRoot: path.join(tempRoot, 'output') }).validation;
         } finally {
-            fs.rmSync(tempRoot, { recursive: true, force: true });
+            removePathBestEffortSync(tempRoot, { recursive: true, force: true });
         }
     }
 }

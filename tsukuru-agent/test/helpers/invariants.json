@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "invariants": [
+    {
+      "id": "INV-01",
+      "description": "원본 디렉터리와 archive를 기본 동작으로 직접 수정하지 않는다.",
+      "tests": [
+        {
+          "file": "test/integration/core.test.js",
+          "title": "round-trips an ASAR through staging without modifying the source archive"
+        },
+        {
+          "file": "test/e2e/cli-operations.test.js",
+          "title": "CLI operations preserve stdout, exit-code, and round-trip contracts"
+        }
+      ]
+    },
+    {
+      "id": "INV-02",
+      "description": "검증 실패 시 최종 출력을 남기지 않고 staging을 정리한다.",
+      "tests": [
+        {
+          "file": "test/e2e/agent-workflows.test.js",
+          "title": "ASAR apply rejects changed sources, protected scripts, unsafe outputs, and corrupt provenance"
+        },
+        {
+          "file": "test/unit/test-temp.test.js",
+          "title": "test temp roots are isolated under the OS temp directory and fully removed"
+        }
+      ]
+    },
+    {
+      "id": "INV-03",
+      "description": "출력 전환 실패 시 기존 출력과 원본을 보존한다.",
+      "tests": [
+        {
+          "file": "test/e2e/agent-workflows.test.js",
+          "title": "ASAR apply rejects changed sources, protected scripts, unsafe outputs, and corrupt provenance"
+        }
+      ]
+    },
+    {
+      "id": "INV-04",
+      "description": "stdout은 최종 JSON 하나이고 로그와 진행률은 stderr에 둔다.",
+      "tests": [
+        {
+          "file": "test/contract/cli-snapshot.test.js",
+          "title": "all five CLI operations keep deterministic success and failure snapshots"
+        }
+      ]
+    },
+    {
+      "id": "INV-05",
+      "description": "schema v1/v2와 지원되는 기존 manifest를 계속 읽는다.",
+      "tests": [
+        {
+          "file": "test/unit/schema-detect.test.js",
+          "title": "keeps v1 requests and accepts v2 diagnostic options"
+        }
+      ]
+    },
+    {
+      "id": "INV-06",
+      "description": "archive 탈출·절대 경로·링크·중복·크기 폭탄을 차단한다.",
+      "tests": [
+        {
+          "file": "test/unit/archive-path.test.js",
+          "title": "archive entry validation rejects traversal, platform aliases, NUL, and excessive paths"
+        },
+        {
+          "file": "test/unit/archive-path.test.js",
+          "title": "package.nw inspection rejects a case-colliding duplicate before extraction"
+        },
+        {
+          "file": "test/integration/core.test.js",
+          "title": "rejects loose-directory symbolic links instead of silently skipping them"
+        },
+        {
+          "file": "test/integration/core.test.js",
+          "title": "enforces exact loose-directory file count limits"
+        }
+      ]
+    }
+  ]
+}

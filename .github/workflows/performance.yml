@@ -1,0 +1,25 @@
+name: Manual performance regression
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: tsukuru-agent
+
+jobs:
+  benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tsukuru-agent/package-lock.json
+      - run: npm ci
+      - run: npm run benchmark:check

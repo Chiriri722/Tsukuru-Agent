@@ -2,9 +2,11 @@
  * tsukuru-agent CLI 요청/결과 스키마 (schemaVersion 2, v1 호환).
  * 계획서 §CLI 계약 구현.
  */
-import { OperationError, ErrorCodes } from './types';
+import { OperationError, ErrorCodes, WarningCode } from './types';
 import type { ElectronRuntimeInspection } from './runtimeDiagnostics';
 import type { StructuralValidationReport } from './validator';
+import { validateContract } from './contracts/schemaRegistry';
+import type { ResourceLimits } from './resourcePolicy';
 
 export const REQUEST_SCHEMA_VERSION = 2;
 export const SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2] as const;
@@ -20,14 +22,90 @@ export interface PatchEntry {
     text: string;
 }
 
+export interface CommonRequestOptions {
+    operationTimeoutMs?: number;
+    diagnosticReportPath?: string;
+    resourceLimits?: ResourceLimits;
+    experimentalNwDirectory?: boolean;
+    experimentalNwAppendedZip?: boolean;
+    experimentalMalformedAsarRepack?: boolean;
+    experimentalGdevelopCodeStrings?: boolean;
+}
+
+export interface VerifyOptions extends CommonRequestOptions {
+    verifyDepth?: 'shallow' | 'deep';
+    humanSummary?: boolean;
+}
+
+export interface RpgExtractRequestOptions extends CommonRequestOptions {
+    force?: boolean;
+    ext_plugin?: boolean;
+    ext_src?: boolean;
+    ext_javascript?: boolean;
+    ext_note?: boolean;
+    exJson?: boolean;
+    autoline?: boolean;
+    decryptImg?: boolean;
+    decryptAudio?: boolean;
+}
+
+export interface WolfExtractRequestOptions extends CommonRequestOptions {
+    force?: boolean;
+    extPattern?: boolean;
+    extBuran?: boolean;
+    extAll?: boolean;
+}
+
+export interface PatchOptions extends CommonRequestOptions {
+    translationDirectory?: string;
+}
+
+export interface ApplyOptions extends CommonRequestOptions {
+    force?: boolean;
+    translationDirectory?: string;
+    containerSourcePath?: string;
+    launchProbe?: boolean;
+    launchTimeoutMs?: number;
+    autoline?: boolean;
+    isComment?: boolean;
+    useYaml?: boolean;
+}
+
+export interface RecoverOptions extends CommonRequestOptions {
+    dryRun?: boolean;
+    conflictPolicy?: 'backup-and-replace' | 'fail-if-present';
+}
+
+export type RequestOptions = CommonRequestOptions & VerifyOptions & RpgExtractRequestOptions & WolfExtractRequestOptions & PatchOptions & ApplyOptions & RecoverOptions;
+export interface LegacyRequestOptions extends RequestOptions { [key: string]: unknown }
+
+interface AgentRequestV2Base<T extends Operation, O extends object> {
+    schemaVersion: 2;
+    operation: T;
+    format: RequestFormat;
+    projectPath: string;
+    outputPath?: string;
+    profile: Profile;
+    options: O;
+    patches: PatchEntry[];
+}
+
+/** v2의 operation discriminant를 보존하는 정적 요청 타입. */
+export type AgentRequestV2 =
+    | AgentRequestV2Base<'verify', VerifyOptions>
+    | AgentRequestV2Base<'extract', RpgExtractRequestOptions | WolfExtractRequestOptions>
+    | AgentRequestV2Base<'patch', PatchOptions>
+    | AgentRequestV2Base<'apply', ApplyOptions>
+    | AgentRequestV2Base<'recover', RecoverOptions>;
+
 export interface AgentRequest {
-    schemaVersion: number;
+    schemaVersion: 1 | 2;
     operation: Operation;
     format: RequestFormat;
     projectPath: string;
     outputPath?: string;
     profile: Profile;
-    options: { [key: string]: unknown };
+    options: RequestOptions | LegacyRequestOptions;
     patches: PatchEntry[];
 }
 
@@ -71,13 +149,21 @@ export interface ResultChange {
     protectedScriptDamage: number;
 }
 
+export interface ResultWarning {
+    code: WarningCode;
+    message: string;
+    details?: unknown;
+}
+
 /** stdout에 출력되는 최종 결과 JSON 계약. */
 export interface AgentResult {
+    schemaVersion?: 2;
     ok: boolean;
     format: DetectedFormat | null;
     artifacts: string[];
     stats: { [key: string]: unknown };
     warnings: string[];
+    warningDetails?: ResultWarning[];
     error: ResultError | null;
     container?: ResultContainer;
     engine?: ResultEngine;
@@ -87,13 +173,17 @@ export interface AgentResult {
     validation?: StructuralValidationReport;
 }
 
-export function emptyResult(): AgentResult {
-    return { ok: false, format: null, artifacts: [], stats: {}, warnings: [], error: null };
+export function emptyResult(schemaVersion: 1 | 2 = 1): AgentResult {
+    return {
+        ...(schemaVersion === 2 ? { schemaVersion: 2 as const, warningDetails: [] } : {}),
+        ok: false,
+        format: null,
+        artifacts: [],
+        stats: {},
+        warnings: [],
+        error: null,
+    };
 }
-
-const OPERATIONS: Operation[] = ['verify', 'extract', 'patch', 'apply', 'recover'];
-const FORMATS: RequestFormat[] = ['auto', 'rpgmv', 'rpgmz', 'rpgmz-electron', 'wolf', 'gdevelop-electron', 'tyrano', 'nwjs-webgame'];
-const PROFILES: Profile[] = ['standard', 'full', 'advanced'];
 
 function invalid(message: string, details?: unknown): OperationError {
     return new OperationError(ErrorCodes.REQUEST_INVALID, message, details);
@@ -105,84 +195,62 @@ export function validateRequest(raw: unknown): AgentRequest {
         throw invalid('요청은 JSON 객체여야 합니다');
     }
     const r = raw as { [key: string]: unknown };
-
     if (typeof r.schemaVersion !== 'number' || !SUPPORTED_REQUEST_SCHEMA_VERSIONS.includes(r.schemaVersion as 1 | 2)) {
         throw invalid(`지원하지 않는 schemaVersion입니다: ${String(r.schemaVersion)}`, { expected: SUPPORTED_REQUEST_SCHEMA_VERSIONS });
     }
-    if (typeof r.operation !== 'string' || !OPERATIONS.includes(r.operation as Operation)) {
-        throw invalid(`operation은 ${OPERATIONS.join('|')} 중 하나여야 합니다`, { got: r.operation });
-    }
-    if (r.format !== undefined && (typeof r.format !== 'string' || !FORMATS.includes(r.format as RequestFormat))) {
-        throw invalid(`format은 ${FORMATS.join('|')} 중 하나여야 합니다`, { got: r.format });
-    }
-    if (typeof r.projectPath !== 'string' || r.projectPath.trim() === '') {
-        throw invalid('projectPath는 비어있지 않은 문자열이어야 합니다');
-    }
-    if (r.outputPath !== undefined && typeof r.outputPath !== 'string') {
-        throw invalid('outputPath는 문자열이어야 합니다');
-    }
-    if (r.profile !== undefined && (typeof r.profile !== 'string' || !PROFILES.includes(r.profile as Profile))) {
-        throw invalid(`profile은 ${PROFILES.join('|')} 중 하나여야 합니다`, { got: r.profile });
-    }
-    if (r.options !== undefined && (typeof r.options !== 'object' || r.options === null || Array.isArray(r.options))) {
-        throw invalid('options는 객체여야 합니다');
-    }
-    const options = (r.options as { [key: string]: unknown } | undefined) ?? {};
-    if (options.translationDirectory !== undefined
-        && (typeof options.translationDirectory !== 'string' || options.translationDirectory.trim() === '')) {
-        throw invalid('options.translationDirectory는 비어있지 않은 문자열이어야 합니다');
-    }
-    if (options.launchProbe !== undefined && typeof options.launchProbe !== 'boolean') {
-        throw invalid('options.launchProbe는 boolean이어야 합니다');
-    }
-    if (options.launchProbe === true && r.operation !== 'apply') {
-        throw invalid('options.launchProbe는 apply 작업에서만 사용할 수 있습니다');
-    }
-    if (options.launchTimeoutMs !== undefined
-        && (typeof options.launchTimeoutMs !== 'number'
-            || !Number.isInteger(options.launchTimeoutMs)
-            || options.launchTimeoutMs < 250
-            || options.launchTimeoutMs > 15_000)) {
-        throw invalid('options.launchTimeoutMs는 250~15000 범위의 정수여야 합니다');
-    }
-
-    const patches: PatchEntry[] = [];
-    if (r.patches !== undefined) {
-        if (!Array.isArray(r.patches)) {
-            throw invalid('patches는 배열이어야 합니다');
-        }
-        for (let i = 0; i < r.patches.length; i++) {
-            const p = r.patches[i] as { [key: string]: unknown };
-            if (typeof p !== 'object' || p === null) {
-                throw invalid(`patches[${i}]는 객체여야 합니다`);
-            }
-            if (typeof p.id !== 'string' || p.id === '') {
-                throw invalid(`patches[${i}].id는 비어있지 않은 문자열이어야 합니다`);
-            }
-            if (typeof p.expectedHash !== 'string' || !/^[0-9a-f]{64}$/i.test(p.expectedHash)) {
-                throw invalid(`patches[${i}].expectedHash는 SHA-256 hex(64자)여야 합니다`);
-            }
-            if (typeof p.text !== 'string') {
-                throw invalid(`patches[${i}].text는 문자열이어야 합니다`);
-            }
-            patches.push({ id: p.id, expectedHash: p.expectedHash.toLowerCase(), text: p.text });
-        }
-    }
-    if (patches.length > 0 && options.translationDirectory !== undefined) {
-        throw invalid('patches와 options.translationDirectory는 동시에 사용할 수 없습니다');
-    }
-    if (r.operation === 'patch' && patches.length === 0 && options.translationDirectory === undefined) {
-        throw new OperationError(ErrorCodes.PATCH_EMPTY, 'patch 작업에는 최소 1개의 patches 항목이 필요합니다');
-    }
-
-    return {
-        schemaVersion: r.schemaVersion as number,
-        operation: r.operation as Operation,
-        format: (r.format as RequestFormat) ?? 'auto',
-        projectPath: r.projectPath,
-        outputPath: r.outputPath as string | undefined,
-        profile: (r.profile as Profile) ?? 'standard',
-        options,
-        patches,
+    const schemaVersion = r.schemaVersion as 1 | 2;
+    const candidate: Record<string, unknown> = {
+        ...r,
+        format: r.format ?? 'auto',
+        profile: r.profile ?? 'standard',
+        options: r.options ?? {},
+        patches: r.patches ?? [],
     };
+    const validation = validateContract('request', schemaVersion, candidate);
+    if (!validation.ok) {
+        const patchMissing = candidate.operation === 'patch'
+            && Array.isArray(candidate.patches) && candidate.patches.length === 0
+            && (typeof candidate.options !== 'object' || candidate.options === null
+                || !('translationDirectory' in candidate.options));
+        if (patchMissing) {
+            throw new OperationError(ErrorCodes.PATCH_EMPTY, 'patch 작업에는 최소 1개의 patches 항목이 필요합니다');
+        }
+        throw invalid('요청 스키마 검증에 실패했습니다', { violations: validation.errors });
+    }
+    const normalizedPatches = (candidate.patches as PatchEntry[]).map((patch) => ({
+        id: patch.id,
+        expectedHash: patch.expectedHash.toLowerCase(),
+        text: patch.text,
+    }));
+    return {
+        schemaVersion,
+        operation: candidate.operation as Operation,
+        format: candidate.format as RequestFormat,
+        projectPath: candidate.projectPath as string,
+        ...(candidate.outputPath !== undefined ? { outputPath: candidate.outputPath as string } : {}),
+        profile: candidate.profile as Profile,
+        options: candidate.options as RequestOptions | LegacyRequestOptions,
+        patches: normalizedPatches,
+    };
+}
+
+/** auto format 탐지 뒤 실제 엔진과 옵션 조합을 작업 시작 전에 재검증한다. */
+export function validateResolvedRequest(request: AgentRequest, format: DetectedFormat): AgentRequest {
+    if (request.schemaVersion === 1) return request;
+    const validation = validateContract('engine-options', 2, {
+        operation: request.operation,
+        format,
+        options: request.options,
+    });
+    const unsupportedOperation = (request.operation === 'recover' && format !== 'rpgmv' && format !== 'rpgmz')
+        || (format === 'nwjs' && request.operation !== 'verify')
+        || format === 'unknown';
+    if (!validation.ok || unsupportedOperation) {
+        throw invalid('탐지된 엔진과 요청 옵션 조합이 호환되지 않습니다', {
+            operation: request.operation,
+            format,
+            violations: validation.errors,
+        });
+    }
+    return request;
 }

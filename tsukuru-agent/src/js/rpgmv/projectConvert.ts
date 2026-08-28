@@ -1,10 +1,14 @@
 import fs from 'fs'
 import fsa from 'fs-extra'
 import {app, dialog} from 'electron'
+import crypto from 'crypto'
 import path from 'path'
 import tools from '../libs/projectTools'
 import fg from 'fast-glob'
 import * as rpgencrypt from '../libs/rpgencrypt'
+import { publicErrorMessage } from '../../core/publicError'
+import { enumerateRegularFilesWithoutLinks, findLinkedPathComponent } from '../../core/pathSafety'
+import { WorkspaceTransaction } from '../../core/workspaceTransaction'
 
 function setProgressBar(now:number, max:number=100){
     globalThis.mwindow.webContents.send('loading', (now/max) * 100);
@@ -26,11 +30,19 @@ function createTempFolder(){
 async function clearTemp() {
     const qTemp = path.join(app.getPath('temp'), 'Extractorpp')
     fsa.emptyDirSync(qTemp)
-    console.log('temp clear')
+}
+
+function pathsOverlap(left: string, right: string): boolean {
+    const contains = (parent: string, child: string): boolean => {
+        const relative = path.relative(path.resolve(parent), path.resolve(child))
+        return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+    }
+    return contains(left, right) || contains(right, left)
 }
 
 
 export async function ConvertProject(dir:string){
+    let transaction: WorkspaceTransaction | undefined
     try {
         if(!fs.existsSync(dir)){
             tools.sendError("경로가 올바르지 않습니다")
@@ -45,6 +57,14 @@ export async function ConvertProject(dir:string){
                 return
             }
         }
+        const selectedPath = path.resolve(dir)
+        const linkedSelection = findLinkedPathComponent(selectedPath)
+        const selectedStat = fs.lstatSync(selectedPath)
+        if(linkedSelection || selectedStat.isSymbolicLink() || !selectedStat.isFile()){
+            throw new Error(`프로젝트 선택 경로는 링크가 아닌 일반 파일이어야 합니다: ${linkedSelection ?? selectedPath}`)
+        }
+        const sourceDir = path.dirname(selectedPath)
+        const files = enumerateRegularFilesWithoutLinks(sourceDir)
     
         const fd = await dialog.showOpenDialog(globalThis.mwindow, {
             title: "프로젝트 저장 위치 선택",
@@ -55,19 +75,17 @@ export async function ConvertProject(dir:string){
             return
         }
     
-    
-        dir = path.dirname(dir)
-        const projectSaveDir = path.join(fd.filePaths[0], `Project${Math.floor(Date.now()/1000).toString(16)}`)
-        if(fs.existsSync(projectSaveDir)){
-            fsa.emptyDirSync(projectSaveDir)
+        const projectOutputDir = path.join(
+            fd.filePaths[0],
+            `Project${Math.floor(Date.now()/1000).toString(16)}-${crypto.randomUUID().slice(0, 8)}`,
+        )
+        if(pathsOverlap(sourceDir, projectOutputDir)){
+            throw new Error('프로젝트 출력 경로는 원본 게임 디렉터리와 겹칠 수 없습니다')
         }
-        else{
-            fs.mkdirSync(projectSaveDir)
-        }
-        const commonDir = dir.replaceAll('\\','/')
-        let files = await fg(path.join(dir,'**','*.*').replaceAll('\\','/'))
+        transaction = new WorkspaceTransaction({ outputPath: projectOutputDir })
+        const projectSaveDir = transaction.stagingPath
         for(let i = 0;i<files.length;i++){
-            const f = files[i].substring(commonDir.length + 1)
+            const f = path.relative(sourceDir, files[i])
             const targetdir = (path.join(projectSaveDir, f))
             if(!fs.existsSync(path.dirname(targetdir))){
                 fsa.mkdirsSync(path.dirname(targetdir))
@@ -93,7 +111,6 @@ export async function ConvertProject(dir:string){
             }
             pluginDat = pluginDat.substring(0, pluginDat.length-1) + '\n];\n'
             fs.writeFileSync(pluginjsPath, pluginDat, 'utf8')
-            console.log('pluginjs')
         }
         const sysJsonDir = path.join(projectSaveDir, 'data', 'System.json')
         if(fs.existsSync(sysJsonDir)){
@@ -106,7 +123,7 @@ export async function ConvertProject(dir:string){
             for(const i in EncryptedExtensions){
                 patterns.push(path.join(projectSaveDir,'**','*' + EncryptedExtensions[i]).replaceAll('\\','/'))
             }
-            const encryptedFiles = (await fg(patterns, {dot: true}))
+            const encryptedFiles = (await fg(patterns, {dot: true, followSymbolicLinks: false}))
             if(encryptedFiles.length > 0){
                 const key:string = sysdata.encryptionKey
                 for(const i in encryptedFiles){
@@ -131,7 +148,6 @@ export async function ConvertProject(dir:string){
                     break
                 }
             }
-            console.log('mv core')
         }
         if(fs.existsSync(mzCoreDir)){
             isMz = true
@@ -145,20 +161,23 @@ export async function ConvertProject(dir:string){
                     break
                 }
             }
-            console.log('mz core')
         }
-        console.log(fileVersion)
         if(isMz){
             fs.writeFileSync(path.join(projectSaveDir, 'game.rmmzproject'), fileVersion)
         }
         else{
             fs.writeFileSync(path.join(projectSaveDir, 'Game.rpgproject'), fileVersion)
         }
+        transaction.commit()
         setProgressBar(0)
         tools.sendAlert('완료되었습니다')
         tools.worked()
         clearTemp()
     } catch (err) {
-        globalThis.mwindow.webContents.send('alert', {icon: 'error', message: JSON.stringify(err, Object.getOwnPropertyNames(err))}); 
+        transaction?.dispose()
+        globalThis.mwindow.webContents.send('alert', {icon: 'error', message: publicErrorMessage(err)});
+        tools.worked()
+    } finally {
+        transaction?.dispose()
     }
 }

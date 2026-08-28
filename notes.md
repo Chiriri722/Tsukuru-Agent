@@ -3,7 +3,7 @@
 ## Sources
 
 ### Source 1: 원본 계획서
-- 경로: `C:\Users\White\Documents\GitHub\Tsukuru_agent\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`
+- 경로: `<legacy-repo>\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`
 - Key points:
   - 핵심 변경 지점 3곳: `main.ts:299 extractor`, `apply.ts:14 apply`, `wolf/main.ts:11 wolfInit`
   - 서비스 분리: `RpgMakerService`, `WolfService` / 추상화: `ProgressSink`, `Logger`, `OperationError`

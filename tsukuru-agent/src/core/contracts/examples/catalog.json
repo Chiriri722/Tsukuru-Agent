@@ -1,0 +1,10 @@
+[
+  { "file": "request-v1.json", "kind": "request", "version": 1 },
+  { "file": "request-v2.json", "kind": "request", "version": 2 },
+  { "file": "result-v1.json", "kind": "result", "version": 1 },
+  { "file": "result-v2.json", "kind": "result", "version": 2 },
+  { "file": "manifest-v1.json", "kind": "manifest", "version": 1 },
+  { "file": "manifest-v2.json", "kind": "manifest", "version": 2 },
+  { "file": "container-provenance-v1.json", "kind": "container-provenance", "version": 1 },
+  { "file": "engine-options-v2.json", "kind": "engine-options", "version": 2 }
+]

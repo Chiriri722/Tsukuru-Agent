@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "operation": "verify",
+  "format": "auto",
+  "projectPath": "C:\\Games\\ElectronMZ_working",
+  "outputPath": "C:\\Output\\reports",
+  "profile": "standard",
+  "options": {
+    "verifyDepth": "deep",
+    "humanSummary": true,
+    "operationTimeoutMs": 30000
+  },
+  "patches": []
+}

@@ -265,9 +265,6 @@ export class WolfParserIo{
           const note = this.readLenStr();
         }
         const check = this.readU1();
-        if (!( ((check === 142) || (check === 143) || (check === 144)) )) {
-            console.log(`ValidationNotEqualError ${check}`)
-        }
         if (check !== 142) {
           const hmm = this.readHmm()
         }

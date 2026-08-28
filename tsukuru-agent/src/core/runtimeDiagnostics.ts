@@ -275,6 +275,7 @@ export function runLaunchProbe(
     const executable = path.resolve(executablePath);
     const timeoutMs = Math.max(50, Math.trunc(options.timeoutMs ?? 3_000));
     const maxOutputBytes = Math.max(1024, Math.trunc(options.maxOutputBytes ?? 64 * 1024));
+    const terminationGraceMs = 1_000;
     const startedAt = Date.now();
     const env: NodeJS.ProcessEnv = { ...process.env, ...options.env };
     delete env.ELECTRON_RUN_AS_NODE;
@@ -288,10 +289,14 @@ export function runLaunchProbe(
         let timedOut = false;
         let terminatedByProbe = false;
         let child: ReturnType<typeof spawn>;
+        let observationTimer: ReturnType<typeof setTimeout> | undefined;
+        let terminationTimer: ReturnType<typeof setTimeout> | undefined;
 
         const finish = (partial: Omit<LaunchProbeResult, 'executable' | 'timeoutMs' | 'elapsedMs' | 'stdout' | 'stderr'>) => {
             if (settled) return;
             settled = true;
+            if (observationTimer) clearTimeout(observationTimer);
+            if (terminationTimer) clearTimeout(terminationTimer);
             resolve({
                 ...partial,
                 executable,
@@ -339,6 +344,7 @@ export function runLaunchProbe(
             });
         });
         child.once('exit', (exitCode, signal) => {
+            if (timedOut) terminatedByProbe = true;
             finish({
                 status: timedOut ? 'running' : (exitCode === 0 ? 'exited-ok' : 'exited-error'),
                 exitCode: timedOut ? null : exitCode,
@@ -348,18 +354,42 @@ export function runLaunchProbe(
             });
         });
 
-        const timer = setTimeout(() => {
+        observationTimer = setTimeout(() => {
             if (settled || child.exitCode !== null || child.signalCode !== null) return;
             timedOut = true;
             if (process.platform === 'win32' && child.pid) {
                 const treeKill = spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
                     windowsHide: true,
                     stdio: 'ignore',
+                    timeout: 5_000,
                 });
                 terminatedByProbe = treeKill.status === 0;
             }
             if (!terminatedByProbe) terminatedByProbe = child.kill();
-            if (!terminatedByProbe) {
+            if (child.exitCode !== null || child.signalCode !== null) {
+                terminatedByProbe = true;
+                finish({
+                    status: 'running',
+                    exitCode: null,
+                    signal: null,
+                    timedOut,
+                    terminatedByProbe,
+                });
+                return;
+            }
+            terminationTimer = setTimeout(() => {
+                if (settled) return;
+                if (child.exitCode !== null || child.signalCode !== null) {
+                    terminatedByProbe = true;
+                    finish({
+                        status: 'running',
+                        exitCode: null,
+                        signal: null,
+                        timedOut,
+                        terminatedByProbe,
+                    });
+                    return;
+                }
                 finish({
                     status: 'failed',
                     exitCode: child.exitCode,
@@ -368,10 +398,8 @@ export function runLaunchProbe(
                     terminatedByProbe,
                     error: 'Launch probe could not terminate the process after the observation window',
                 });
-            }
+            }, terminationGraceMs);
         }, timeoutMs);
-        child.once('exit', () => clearTimeout(timer));
-        child.once('error', () => clearTimeout(timer));
     });
 }
 

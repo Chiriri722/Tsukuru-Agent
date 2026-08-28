@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v2/engine-options.schema.json",
+  "title": "Tsukuru Agent engine option contract v2",
+  "type": "object",
+  "required": ["operation", "format", "options"],
+  "additionalProperties": true,
+  "properties": {
+    "operation": { "enum": ["verify", "extract", "patch", "apply", "recover"] },
+    "format": { "enum": ["auto", "rpgmv", "rpgmz", "rpgmz-electron", "wolf", "gdevelop-electron", "tyrano", "nwjs-webgame", "gdevelop", "nwjs", "unknown"] },
+    "options": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "verify" } }, "required": ["operation"] },
+      "then": { "properties": { "options": { "$ref": "#/$defs/verify" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "extract" } }, "required": ["operation"] },
+      "then": { "properties": { "options": { "$ref": "#/$defs/extractAuto" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "patch" } }, "required": ["operation"] },
+      "then": { "properties": { "options": { "$ref": "#/$defs/patchAuto" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "apply" } }, "required": ["operation"] },
+      "then": { "properties": { "options": { "$ref": "#/$defs/applyAuto" } } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "recover" } }, "required": ["operation"] },
+      "then": { "properties": { "options": { "$ref": "#/$defs/recover" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "extract" },
+          "format": { "enum": ["rpgmv", "rpgmz", "rpgmz-electron"] }
+        },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/extractRpg" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "extract" }, "format": { "const": "wolf" } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/extractWolf" } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": { "const": "extract" },
+          "format": { "enum": ["gdevelop-electron", "gdevelop", "tyrano", "nwjs-webgame", "nwjs"] }
+        },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/forceOnly" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "patch" }, "format": { "enum": ["rpgmv", "rpgmz", "rpgmz-electron"] } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/patchRpg" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "patch" }, "format": { "enum": ["wolf", "gdevelop-electron", "gdevelop", "tyrano", "nwjs-webgame", "nwjs"] } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/empty" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "apply" }, "format": { "enum": ["rpgmv", "rpgmz", "rpgmz-electron"] } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/applyRpg" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "apply" }, "format": { "enum": ["gdevelop-electron", "gdevelop", "nwjs-webgame", "nwjs"] } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/applyContainer" } } }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "apply" }, "format": { "enum": ["wolf", "tyrano"] } },
+        "required": ["operation", "format"]
+      },
+      "then": { "properties": { "options": { "$ref": "#/$defs/forceOnly" } } }
+    }
+  ],
+  "$defs": {
+    "empty": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "recover": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dryRun": { "type": "boolean", "default": false },
+        "conflictPolicy": {
+          "enum": ["backup-and-replace", "fail-if-present"],
+          "default": "backup-and-replace"
+        },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "operationTimeoutMs": { "type": "integer", "minimum": 1, "maximum": 3600000 },
+    "resourceLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxFiles": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "maxInputBytes": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "maxFileBytes": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "maxTempBytes": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "minFreeTempBytes": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "forceOnly": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" },
+        "experimentalNwDirectory": { "type": "boolean", "default": false },
+        "experimentalNwAppendedZip": { "type": "boolean", "default": false },
+        "experimentalGdevelopCodeStrings": { "type": "boolean", "default": false }
+      }
+    },
+    "verify": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verifyDepth": { "enum": ["shallow", "deep"], "default": "shallow" },
+        "humanSummary": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" },
+        "experimentalNwDirectory": { "type": "boolean", "default": false },
+        "experimentalNwAppendedZip": { "type": "boolean", "default": false },
+        "experimentalGdevelopCodeStrings": { "type": "boolean", "default": false }
+      }
+    },
+    "extractRpg": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "ext_plugin": { "type": "boolean", "default": false },
+        "ext_src": { "type": "boolean", "default": false },
+        "ext_javascript": { "type": "boolean", "default": false },
+        "ext_note": { "type": "boolean", "default": false },
+        "exJson": { "type": "boolean", "default": false },
+        "autoline": { "type": "boolean", "default": false },
+        "decryptImg": { "type": "boolean", "default": false },
+        "decryptAudio": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "extractWolf": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "extPattern": { "type": "boolean", "default": false },
+        "extBuran": { "type": "boolean", "default": false },
+        "extAll": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "extractAuto": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "ext_plugin": { "type": "boolean", "default": false },
+        "ext_src": { "type": "boolean", "default": false },
+        "ext_javascript": { "type": "boolean", "default": false },
+        "ext_note": { "type": "boolean", "default": false },
+        "exJson": { "type": "boolean", "default": false },
+        "autoline": { "type": "boolean", "default": false },
+        "decryptImg": { "type": "boolean", "default": false },
+        "decryptAudio": { "type": "boolean", "default": false },
+        "extPattern": { "type": "boolean", "default": false },
+        "extBuran": { "type": "boolean", "default": false },
+        "extAll": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" },
+        "experimentalNwDirectory": { "type": "boolean", "default": false },
+        "experimentalNwAppendedZip": { "type": "boolean", "default": false },
+        "experimentalGdevelopCodeStrings": { "type": "boolean", "default": false }
+      }
+    },
+    "patchRpg": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "translationDirectory": { "type": "string", "minLength": 1 },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "patchAuto": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "translationDirectory": { "type": "string", "minLength": 1 },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      }
+    },
+    "applyContainer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "containerSourcePath": { "type": "string", "minLength": 1 },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" },
+        "experimentalNwDirectory": { "type": "boolean", "default": false },
+        "experimentalNwAppendedZip": { "type": "boolean", "default": false },
+        "experimentalMalformedAsarRepack": { "type": "boolean", "default": false },
+        "experimentalGdevelopCodeStrings": { "type": "boolean", "default": false }
+      }
+    },
+    "applyRpg": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "translationDirectory": { "type": "string", "minLength": 1 },
+        "containerSourcePath": { "type": "string", "minLength": 1 },
+        "launchProbe": { "type": "boolean", "default": false },
+        "launchTimeoutMs": { "type": "integer", "minimum": 250, "maximum": 15000, "default": 3000 },
+        "autoline": { "type": "boolean", "default": false },
+        "isComment": { "type": "boolean", "default": false },
+        "useYaml": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["launchTimeoutMs"] },
+          "then": { "required": ["launchProbe"], "properties": { "launchProbe": { "const": true } } }
+        }
+      ]
+    },
+    "applyAuto": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force": { "type": "boolean", "default": false },
+        "translationDirectory": { "type": "string", "minLength": 1 },
+        "containerSourcePath": { "type": "string", "minLength": 1 },
+        "launchProbe": { "type": "boolean", "default": false },
+        "launchTimeoutMs": { "type": "integer", "minimum": 250, "maximum": 15000, "default": 3000 },
+        "autoline": { "type": "boolean", "default": false },
+        "isComment": { "type": "boolean", "default": false },
+        "useYaml": { "type": "boolean", "default": false },
+        "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
+        "diagnosticReportPath": { "type": "string", "minLength": 1 },
+        "resourceLimits": { "$ref": "#/$defs/resourceLimits" },
+        "experimentalNwDirectory": { "type": "boolean", "default": false },
+        "experimentalNwAppendedZip": { "type": "boolean", "default": false },
+        "experimentalMalformedAsarRepack": { "type": "boolean", "default": false },
+        "experimentalGdevelopCodeStrings": { "type": "boolean", "default": false }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["launchTimeoutMs"] },
+          "then": { "required": ["launchProbe"], "properties": { "launchProbe": { "const": true } } }
+        }
+      ]
+    }
+  }
+}

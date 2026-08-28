@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "containerType": "electron-asar",
+  "archiveRelativePath": "resources/app.asar",
+  "archiveSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "engine": {
+    "type": "rpgmz",
+    "root": "project"
+  },
+  "archiveFiles": ["project/data/Actors.json"],
+  "unpackedFiles": [],
+  "requiredEntries": ["project/data/Actors.json"],
+  "invalidEntryCount": 0
+}

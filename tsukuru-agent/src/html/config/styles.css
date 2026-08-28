@@ -20,6 +20,11 @@ body::-webkit-scrollbar-thumb {
     margin-top: 10px;
 }
 
+.boxc {
+    cursor: pointer;
+    line-height: 1.8;
+}
+
 textarea {
     width: 80vw;
     height: 20vh;
@@ -72,6 +77,19 @@ textarea {
     margin-right: 5px;
 }
 
+:where(.btn, .btn2):not(:disabled) {
+    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease;
+}
+
+:where(.btn, .btn2):not(:disabled):active {
+    transform: scale(0.97);
+}
+
+:where(button, input, textarea, summary):focus-visible {
+    outline: 2px solid #6272a4;
+    outline-offset: 2px;
+}
+
 #apply {
     margin-top: 30px;
 }
@@ -81,4 +99,10 @@ textarea {
     position: absolute;
     height: 0px;
     width: 0px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(.btn, .btn2):active {
+        transform: none;
+    }
 }

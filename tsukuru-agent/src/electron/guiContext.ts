@@ -5,6 +5,7 @@
  */
 import { createOperationContext, createRpgState, createWolfState, OperationContext } from '../core/context';
 import { ProgressSink, Logger } from '../core/types';
+import { createOperationRuntime } from '../core/operationRuntime';
 
 class GuiProgressSink implements ProgressSink {
     set(percent: number): void {
@@ -34,9 +35,12 @@ class GuiLogger implements Logger {
 }
 
 /** 기존 globalThis.settings를 공유하는 GUI 작업 Context를 생성한다. */
-export function buildGuiContext(): OperationContext {
-    return createOperationContext(new GuiProgressSink(), new GuiLogger(), {
+export function buildGuiContext(signal?: AbortSignal): OperationContext {
+    const progress = new GuiProgressSink();
+    const logger = new GuiLogger();
+    const runtime = createOperationRuntime({ progress, logger, signal });
+    return createOperationContext(progress, logger, {
         rpg: createRpgState(globalThis.settings),
         wolf: createWolfState(),
-    });
+    }, runtime);
 }

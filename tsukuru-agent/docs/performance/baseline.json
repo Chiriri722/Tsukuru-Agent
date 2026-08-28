@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "profile": "ci",
+  "environment": "Windows x64, Node 24; ceilings are deliberately broad for hosted runners",
+  "cases": {
+    "rpgmv": { "maxElapsedMs": 2000, "maxPeakRssBytes": 268435456, "expectedFiles": 48, "expectedTotalBytes": 77601 },
+    "wolf": { "maxElapsedMs": 2000, "maxPeakRssBytes": 268435456, "expectedFiles": 1, "expectedTotalBytes": 8290 },
+    "tyrano": { "maxElapsedMs": 2000, "maxPeakRssBytes": 268435456, "expectedFiles": 40, "expectedTotalBytes": 91560 },
+    "gdevelop": { "maxElapsedMs": 2000, "maxPeakRssBytes": 268435456, "expectedFiles": 3, "expectedTotalBytes": 733548 },
+    "asar": { "maxElapsedMs": 10000, "maxPeakRssBytes": 536870912, "expectedFiles": 802, "expectedTotalBytes": 819279 },
+    "nwjs": { "maxElapsedMs": 10000, "maxPeakRssBytes": 536870912, "expectedFiles": 802, "expectedTotalBytes": 819279 }
+  }
+}

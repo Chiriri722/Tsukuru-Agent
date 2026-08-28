@@ -4,7 +4,8 @@
  * - 테스트: 메모리 캡처 구현.
  * GUI(Electron IPC) 구현은 Phase 8 adapter에서 추가한다.
  */
-import { ProgressSink, Logger } from './types';
+import { ProgressEvent, ProgressSink, Logger } from './types';
+import { ProtectedPath, redactSensitivePaths } from './diagnostics';
 
 /** 진행률 무시 구현(verify 등 비대화 작업용). */
 export class NullProgressSink implements ProgressSink {
@@ -14,19 +15,25 @@ export class NullProgressSink implements ProgressSink {
 
 /** CLI 표준 로거: 모든 로그를 stderr로 본낸다. */
 export class StderrLogger implements Logger {
-    constructor(private readonly verbose: boolean = false) {}
+    constructor(
+        private readonly verbose: boolean = false,
+        private readonly protectedPaths: ProtectedPath[] = [],
+    ) {}
+    private write(level: string, message: string): void {
+        process.stderr.write(`[${level}] ${redactSensitivePaths(message, this.protectedPaths)}\n`);
+    }
     info(message: string): void {
-        process.stderr.write(`[info] ${message}\n`);
+        this.write('info', message);
     }
     warn(message: string): void {
-        process.stderr.write(`[warn] ${message}\n`);
+        this.write('warn', message);
     }
     error(message: string): void {
-        process.stderr.write(`[error] ${message}\n`);
+        this.write('error', message);
     }
     debug(message: string): void {
         if (this.verbose) {
-            process.stderr.write(`[debug] ${message}\n`);
+            this.write('debug', message);
         }
     }
 }
@@ -47,17 +54,28 @@ export class StderrProgressSink implements ProgressSink {
     setTag(tag: string): void {
         process.stderr.write(`[progress] ${tag}\n`);
     }
+    report(event: ProgressEvent): void {
+        process.stderr.write(`[progress-event] ${JSON.stringify(event)}\n`);
+    }
 }
 
 /** 테스트용 캡처 싱크. */
 export class CapturingProgressSink implements ProgressSink {
     readonly events: number[] = [];
+    readonly structuredEvents: ProgressEvent[] = [];
+    readonly tags: string[] = [];
     doneCalled = false;
     set(percent: number): void {
         this.events.push(percent);
     }
     done(): void {
         this.doneCalled = true;
+    }
+    setTag(tag: string): void {
+        this.tags.push(tag);
+    }
+    report(event: ProgressEvent): void {
+        this.structuredEvents.push(event);
     }
 }
 

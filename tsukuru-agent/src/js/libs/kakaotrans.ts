@@ -1,39 +1,32 @@
-import request from "request"
+import { requestJson } from '../../core/httpClient';
 
-export function kakaoTrans(text:string, queryLanguage:string) {
-    const bodyObj = {
-        queryLanguage: queryLanguage,
-        resultLanguage: 'kr',
-        q: (text)
+interface KakaoTranslationResponse {
+    result?: { output?: string[][] };
+}
+
+export async function kakaoTrans(text:string, queryLanguage:string): Promise<string> {
+    const response = await requestJson<KakaoTranslationResponse>(
+        'https://translate.kakao.com/translator/translate.json',
+        {
+            method: 'POST',
+            timeoutMs: 15_000,
+            maxBytes: 1024 * 1024,
+            maxRedirects: 0,
+            headers: {
+                'Origin': 'https://translate.kakao.com',
+                'Referer': 'https://translate.kakao.com/',
+                'User-Agent': 'Tsukuru-Agent/2.5',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            form: {
+                queryLanguage,
+                resultLanguage: 'kr',
+                q: text,
+            },
+        },
+    );
+    if (response.status !== 200 || !Array.isArray(response.data.result?.output)) {
+        throw new Error(`Kakao translation returned an invalid response (${response.status})`);
     }
-    const reqOptions = {
-		url: 'https://translate.kakao.com/translator/translate.json',
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-			'Host': 'translate.kakao.com',
-			'Origin': 'https://translate.kakao.com',
-			'Referer': 'https://translate.kakao.com/',
-			'Sec-Fetch-Mode': 'cors',
-			'Sec-Fetch-Site': 'same-origin',
-			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36',
-			'X-Requested-With': 'XMLHttpRequest'	
-		},
-		form: bodyObj
-	}
-    return new Promise<string>((resolve, reject) => {
-        request(reqOptions, (error, response, body) => {
-            try {
-                const outs:string[][] = JSON.parse(body).result.output
-                let result:string[] = []
-                for(const q of outs){
-                    result.push(q[0])
-                }
-                const re = decodeURIComponent(result.join('\n'))
-                resolve(re)
-            } catch (error) {
-                reject()
-            }
-        })
-    })
+    return decodeURIComponent(response.data.result.output.map((row) => row[0]).join('\n'));
 }

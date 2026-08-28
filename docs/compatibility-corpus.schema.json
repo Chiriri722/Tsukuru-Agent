@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Chiriri722/Tsukuru-Agent/blob/main/docs/compatibility-corpus.schema.json",
+  "title": "Tsukuru Agent public compatibility corpus report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "records"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "engine", "wrapper", "sourceSha256", "structural", "playtest"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "engine": { "type": "string", "minLength": 1 },
+          "wrapper": { "type": "string", "minLength": 1 },
+          "sourceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "structural": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "format", "score", "risk", "errorCode", "warnings"],
+            "properties": {
+              "status": { "enum": ["passed", "failed", "not-run"] },
+              "format": { "type": ["string", "null"] },
+              "score": { "type": ["number", "null"] },
+              "risk": { "type": ["string", "null"] },
+              "errorCode": { "type": ["string", "null"] },
+              "warnings": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "playtest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "notes"],
+            "properties": {
+              "status": { "enum": ["passed", "failed", "not-run"] },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

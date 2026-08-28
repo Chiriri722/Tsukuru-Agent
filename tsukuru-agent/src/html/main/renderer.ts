@@ -1,6 +1,5 @@
 (() => {
-    const { ipcRenderer } = window.require('electron');
-    const {_} = window.require('lodash');
+    const ipc = window.tsukuru
     const info = document.getElementById('info')
     let running = false
     let loadingTag = ''
@@ -10,6 +9,13 @@
     let LastPercent = -1.0
     let estimatedTime = ''
     let zinheng = [0, 0]
+
+    function setPanelVisibility(id: string, visible: boolean){
+        const panel = document.getElementById(id)
+        panel.classList.toggle('hiddenc', !visible)
+        panel.toggleAttribute('inert', !visible)
+        panel.setAttribute('aria-hidden', String(!visible))
+    }
 
     //@ts-ignore
     const Swal = window.Swal
@@ -28,24 +34,24 @@
     }
     let _mode = -1
     
-    document.getElementById('icon1').onclick = () => {ipcRenderer.send('close')}
-    document.getElementById('icon2').onclick = () => {ipcRenderer.send('minimize')}
-    document.getElementById('fold').onclick = () => {ipcRenderer.send("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)}
+    document.getElementById('icon1').onclick = () => {ipc.send('close')}
+    document.getElementById('icon2').onclick = () => {ipc.send('minimize')}
+    document.getElementById('fold').onclick = () => {void ipc.invoke("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)}
     document.querySelector('#sel').addEventListener('click', () => {
-        ipcRenderer.send('select_folder', 'folder_input');
+        ipc.send('select_folder', 'folder_input');
     });
 
-    ipcRenderer.send('setheight', 550);
+    ipc.send('setheight', 550);
 
     
-    ipcRenderer.on('set_path', (evn, tt) => {
+    ipc.on('set_path', (tt) => {
         (document.getElementById(tt.type) as HTMLInputElement).value = tt.dir
         if(tt.type !== 'folder_input'){
             document.getElementById(tt.type).innerText = tt.dir
         }
     });
     
-    ipcRenderer.on('updateFound', (evn, tt) => {
+    ipc.on('updateFound', () => {
         Swal.fire({
             icon: 'question',
             text: '업데이트가 발견되었습니다. \n업데이트 하시겠습니까?',
@@ -54,14 +60,14 @@
             denyButtonText: `아니오`,
         }).then((result) => {
             if (result.isConfirmed) {
-                ipcRenderer.send('updatePage');
+                ipc.send('updatePage');
             }
         })
     });
     
     
     
-    ipcRenderer.on('getGlobalSettings', (evn, tt) => {
+    ipc.on('getGlobalSettings', (tt) => {
         if(tt.language === 'en'){
             
             globalThis.loadEn()
@@ -74,12 +80,13 @@
         }
     })
     
-    ipcRenderer.on('loadingTag', (evn, tt) => {
+    ipc.on('loadingTag', (tt) => {
         loadingTag = tt
     })
     
-    ipcRenderer.on('loading', (evn, tt) => {
-        document.getElementById('border_r').style.width = `${tt}vw`
+    ipc.on('loading', (tt) => {
+        const progress = Math.min(100, Math.max(0, Number(tt) || 0))
+        document.getElementById('border_r').style.transform = `scaleX(${progress / 100})`
         let ds = Math.floor(new Date().getTime()/1000)
         if(tt > 0 && globalSettings.loadingText){
             if(LastTime != ds){
@@ -122,9 +129,9 @@
         }
     });
     
-    ipcRenderer.on('worked', () => {running = false})
+    ipc.on('worked', () => {running = false})
     
-    ipcRenderer.on('eztransError', async () => {
+    ipc.on('eztransError', async () => {
         const result = await Swal.fire({
             icon: 'error',
             text: 'dotnet 6.0 이 설치되지 않은 것 같습니다. 5초 내에 다운로드 창을 띄웁니다.',
@@ -132,11 +139,11 @@
             denyButtonText: `설치 후에도 계속 뜨나요?`,
         })
         if (result.isDenied){
-            ipcRenderer.send('eztransHelp')
+            ipc.send('eztransHelp')
         }
     })
     
-    ipcRenderer.on('check_force', (evn, arg) => {
+    ipc.on('check_force', (arg) => {
         Swal.fire({
             icon: 'question',
             text: 'Extract 폴더가 존재합니다. \n덮어씌우겠습니까?',
@@ -146,12 +153,12 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 arg.force = true
-                ipcRenderer.send('extract', arg);
+                ipc.send('extract', arg);
             }
         })
     });
     
-    ipcRenderer.on('alert', (evn, tt) => {
+    ipc.on('alert', (tt) => {
         if (typeof tt === 'string') {
             Swal.fire({
                 icon: 'success',
@@ -166,11 +173,11 @@
         }
     });
     
-    ipcRenderer.on('alert_free', (evn, tt) => {
+    ipc.on('alert_free', (tt) => {
         Swal.fire(tt)
     });
     
-    ipcRenderer.on('alert2', async (evn, tt) => {
+    ipc.on('alert2', async () => {
         const {isDenied} = await Swal.fire({
             icon: 'success',
             showDenyButton: true,
@@ -179,34 +186,32 @@
             title: '완료되었습니다',
         })
         if(isDenied){
-            ipcRenderer.send("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)
+            void ipc.invoke("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)
         }
     });
     
     document.getElementById('WolfBtn').onclick = () => {
-        ipcRenderer.send('changeURL', './src/html/wolf/index.html')
+        ipc.send('changeURL', 'wolf')
     }
     
     function _reload(){
         if(_mode == 0){
             document.getElementById('ext').style.backgroundColor = 'var(--Selected)'
             document.getElementById('apply').style.backgroundColor = 'var(--Highlight2)'
-            if (document.getElementById('c-ext').classList.contains("hiddenc")) {
-                document.getElementById('c-ext').classList.remove("hiddenc");}
-            if (!document.getElementById('c-app').classList.contains("hiddenc")) {
-                document.getElementById('c-app').classList.add("hiddenc");}
+            setPanelVisibility('c-ext', true)
+            setPanelVisibility('c-app', false)
         }
         else if(_mode == 1){
             document.getElementById('ext').style.backgroundColor = 'var(--Highlight2)'
             document.getElementById('apply').style.backgroundColor = 'var(--Selected)'
-            if (document.getElementById('c-app').classList.contains("hiddenc")) {
-                document.getElementById('c-app').classList.remove("hiddenc");}
-            if (!document.getElementById('c-ext').classList.contains("hiddenc")) {
-                document.getElementById('c-ext').classList.add("hiddenc");}
+            setPanelVisibility('c-app', true)
+            setPanelVisibility('c-ext', false)
         }
         else{
             document.getElementById('ext').style.backgroundColor = 'var(--Highlight2)'
             document.getElementById('apply').style.backgroundColor = 'var(--Highlight2)'
+            setPanelVisibility('c-ext', false)
+            setPanelVisibility('c-app', false)
         }
         const DomList = ['ext_plugin','ext_note','ext_src','autoline','instantapply','exJson','decryptImg','decryptAudio', 'ext_javascript']
         for(const i in DomList){
@@ -219,7 +224,7 @@
         }
     }
     
-    ipcRenderer.on('is_version', (ev, arg)=>{
+    ipc.on('is_version', (arg)=>{
         globalThis.version = arg
     })
     
@@ -229,7 +234,7 @@
     
     if(true){
         document.getElementById("addons").style.height = "165px";
-        ipcRenderer.send('extend', 460)
+        ipc.send('setheight', 460)
         menu_open = true
         
         const InfoList = {
@@ -328,7 +333,7 @@
             })
             return
         }
-        ipcRenderer.send('settings')
+        ipc.send('settings')
         running = true
     }
     
@@ -403,7 +408,7 @@
                     text: "프로젝트를 저장할 위치를 선택해주세요"
                 })
                 running = true
-                ipcRenderer.send('projectConvert', (document.getElementById('folder_input') as HTMLInputElement).value)
+                ipc.send('projectConvert', (document.getElementById('folder_input') as HTMLInputElement).value)
             }
         })
     }
@@ -433,7 +438,7 @@
         }
     }
     
-    ipcRenderer.on('alertExten', async (ev, arg) => {
+    ipc.on('alertExten', async (arg) => {
         const {isDenied} = await Swal.fire({
             icon: 'success',
             showDenyButton: true,
@@ -441,10 +446,10 @@
             title: arg[0],
         })
         if(!isDenied){
-            ipcRenderer.send("getextention", arg[1])
+            ipc.send("getextention", arg[1])
         }
         else{
-            ipcRenderer.send("getextention", 'none')
+            ipc.send("getextention", 'none')
         }
     })
 
@@ -462,18 +467,21 @@
         const kas = (document.getElementById('folder_input') as HTMLInputElement).value
         if(_mode == 0){
             const a = {
-                dir: Buffer.from(kas.replace('\\','/'), "utf8").toString('base64')
+                dir: encodeRpgPath(kas.replace('\\','/'))
             };
             running = true
-            ipcRenderer.send('extract', _.merge({}, a, config));
+            ipc.send('extract', {...a, ...config});
         }
         else if(_mode == 1){
             const a = {
-                dir: Buffer.from(kas.replace('\\','/'), "utf8").toString('base64')
+                dir: encodeRpgPath(kas.replace('\\','/'))
             };
             running = true
-            ipcRenderer.send('apply', _.merge({}, a, config));
+            ipc.send('apply', {...a, ...config});
         }
+    }
+    document.getElementById('cancel').onclick = () => {
+        if (running) ipc.send('cancelOperation')
     }
     
     document.getElementById('eztrans').onclick = async () => {
@@ -539,7 +547,7 @@
                         resolve()
                     }
                     else {
-                        ipcRenderer.send('log', value)
+                        ipc.send('log', value)
                         resolve('설정되지 않음')
                     }
                 })
@@ -581,7 +589,7 @@
                             resolve()
                         }
                         else {
-                            ipcRenderer.send('log', value)
+                            ipc.send('log', value)
                             resolve('설정되지 않음')
                         }
                     })
@@ -592,15 +600,15 @@
                 return
             }
         }
-        ipcRenderer.send('log', v.value)
+        ipc.send('log', v.value)
         const a = {
-            dir: Buffer.from((document.getElementById('folder_input') as HTMLInputElement).value.replace('\\','/'), "utf8").toString('base64'),
+            dir: encodeRpgPath((document.getElementById('folder_input') as HTMLInputElement).value.replace('\\','/')),
             type: transtype,
             langu: langu,
             game: 'mv'
         };
         running = true
-        ipcRenderer.send('eztrans', a);
+        ipc.send('eztrans', a);
         return
     }
     
@@ -632,11 +640,11 @@
             if(!(formValues[0] === formValues[1] || formValues[0] === '' || formValues[1] === '' )){
                 const kas = (document.getElementById('folder_input') as HTMLInputElement).value
                 const a = {
-                    dir: Buffer.from(kas.replace('\\','/'), "utf8").toString('base64'),
+                    dir: encodeRpgPath(kas.replace('\\','/')),
                     data: formValues
                 };
                 running = true
-                ipcRenderer.send("changeAllString",(a))
+                ipc.send("changeAllString",(a))
             }
         }
     }
@@ -670,15 +678,17 @@
         const { value: formValues } = await Swal.fire({
             title: '버전 업 툴',
             html:
-              '<div id="swi1" class="cfolder" placeholder="구버전 번역 data 폴더"'+
-              'onclick="ipcRenderer.send(\'select_folder\', \'swi1\')">구버전 번역본 폴더</div>' +
-              '<div id="swi3" class="cfolder" placeholder="구버전 미번역 data 폴더"'+
-              'onclick="ipcRenderer.send(\'select_folder\', \'swi3\')">구버전 미번역 폴더</div>' +
-              '<div id="swi2" class="cfolder" placeholder="신버전 미번역 data 폴더"'+
-              'onclick="ipcRenderer.send(\'select_folder\', \'swi2\')">신버전 폴더</div>',
+              '<div id="swi1" class="cfolder" placeholder="구버전 번역 data 폴더">구버전 번역본 폴더</div>' +
+              '<div id="swi3" class="cfolder" placeholder="구버전 미번역 data 폴더">구버전 미번역 폴더</div>' +
+              '<div id="swi2" class="cfolder" placeholder="신버전 미번역 data 폴더">신버전 폴더</div>',
             focusConfirm: false,
             showDenyButton: true,
             denyButtonText: `취소`,
+            didOpen: () => {
+              for (const id of ['swi1', 'swi2', 'swi3'] as const) {
+                document.getElementById(id).onclick = () => ipc.send('select_folder', id)
+              }
+            },
             preConfirm: () => {
               return [
                 document.getElementById('swi1').innerText,
@@ -698,16 +708,16 @@
                     const kas2 = formValues[1]
                     const kas3 = formValues[2]
                     const a = {
-                        dir1: _.merge({}, {dir: Buffer.from(kas.replace('\\','/'), "utf8").toString('base64')}, config),
-                        dir2: _.merge({}, {dir: Buffer.from(kas2.replace('\\','/'), "utf8").toString('base64')}, config),
-                        dir3: _.merge({}, {dir: Buffer.from(kas3.replace('\\','/'), "utf8").toString('base64')}, config),
+                        dir1: {dir: encodeRpgPath(kas.replace('\\','/')), ...config},
+                        dir2: {dir: encodeRpgPath(kas2.replace('\\','/')), ...config},
+                        dir3: {dir: encodeRpgPath(kas3.replace('\\','/')), ...config},
                         dir1_base: kas,
                         dir2_base: kas2,
                         dir3_base: kas3,
                         config: config
                     };
                     running = true
-                    ipcRenderer.send('updateVersion', a);
+                    ipc.send('updateVersion', a);
                 }
             }
         }
@@ -737,7 +747,7 @@
         })
         if (result.isConfirmed) {
             running = true
-            ipcRenderer.send('selFont', (document.getElementById('folder_input') as HTMLInputElement).value)
+            ipc.send('selFont', (document.getElementById('folder_input') as HTMLInputElement).value)
         } else if (result.isDenied) {
             let { value: result2 } = await Swal.fire({
                 title: '폰트 크기 입력',
@@ -755,9 +765,16 @@
             })
             if(result2){
                 running = true
-                ipcRenderer.send('changeFontSize', [(document.getElementById('folder_input') as HTMLInputElement).value, parseInt(result2)])
+                ipc.send('changeFontSize', [(document.getElementById('folder_input') as HTMLInputElement).value, parseInt(result2)])
             }
     
         }
     }
 })()
+
+function encodeRpgPath(value: string): string {
+    const bytes = new TextEncoder().encode(value)
+    let binary = ''
+    for (const byte of bytes) binary += String.fromCharCode(byte)
+    return btoa(binary)
+}

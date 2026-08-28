@@ -38,13 +38,20 @@ export interface TyranoApplyMeta {
 }
 
 export interface GDevelopApplyMeta {
+    /** projectData JSON 또는 opt-in code literal. 누락은 기존 projectData entry로 해석한다. */
+    kind?: 'project-data' | 'code-literal';
     /** gdjs.projectData 안의 RFC 6901 JSON Pointer. */
-    jsonPointer: string;
+    jsonPointer?: string;
     /** 허용된 정적 텍스트 객체 타입과 필드. */
-    objectType: string;
-    field: string;
+    objectType?: string;
+    field?: string;
     /** 추출 당시 data.js 안 원문 해시. */
     sourceHash: string;
+    sourceStart?: number;
+    sourceEnd?: number;
+    quote?: '"' | "'";
+    callee?: 'setString' | 'setBBText';
+    candidateIndex?: number;
 }
 
 export interface SourceSnapshot {

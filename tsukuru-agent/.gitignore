@@ -1,11 +1,10 @@
 node_modules
 data/
-test/
 out/
 /electron-builder.yml
 dist/
+.build/
 *.txt
-package-lock.json
 *.js.map
 *.css.map
 /main.js
@@ -13,11 +12,5 @@ package-lock.json
 /src/js/**/*.js
 /src/html/**/*.js
 /src/utils.js
-
-# v2.5 regression tests are source-controlled; legacy smoke files remain ignored.
-!test/
-test/*
-!test/v25-core.test.js
-!test/v25-cli.test.js
-!test/v25-schema-detect.test.js
-!test/v25-runtime.test.js
+compatibility-corpus.private.json
+compatibility-corpus-results.json

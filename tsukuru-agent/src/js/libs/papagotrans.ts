@@ -1,5 +1,6 @@
-import { BrowserWindow } from "electron"
+import type { BrowserWindow } from "electron"
 import { sleep } from "../rpgmv/globalutils"
+import { createSecureWindow } from "../../electron/windowFactory"
 
 let papagoWindow:Electron.BrowserWindow = null
 let loadFinish = false
@@ -16,16 +17,14 @@ async function loadUrlAndWait(url:string) {
 export async function papagoTrans(text:string, queryLanguage:string) {
     if(!papagoWindow){
         console.log('init papago')
-        papagoWindow = new BrowserWindow({
+        papagoWindow = createSecureWindow({
             width: 800,
             height: 800,
             resizable: false,
             autoHideMenuBar: true,
             frame: false,
-            webPreferences: {
-              nodeIntegration: true,
-              contextIsolation: false,
-            },
+            bridge: false,
+            allowedNavigationHosts: ['papago.naver.com'],
             show: false
         })
         papagoWindow.webContents.on('did-finish-load', function () {

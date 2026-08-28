@@ -1,3 +1,24 @@
+:root {
+  --mainColor: #f8f8f2;
+  --Highlight3: #21222c;
+  --Highlight2: #343746;
+  --Highlight1: #21222c;
+  --Background: #282a36;
+  --Selected: #44475a;
+  --Gap: 0px;
+  --font: "NotoSansKR";
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 160ms;
+  --dur-panel: 180ms;
+  --dur-drawer: 220ms;
+}
+
+@font-face {
+  font-family: "NotoSansKR";
+  src: url("../main/styles/fonts/NotoSansKR.otf");
+}
 body {
   margin: 0px;
   background-color: var(--Background);
@@ -8,16 +29,9 @@ body {
 }
 
 .alligner {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-      -ms-flex-direction: column;
-          flex-direction: column;
-  -webkit-box-pack: start;
-      -ms-flex-pack: start;
-          justify-content: flex-start;
+  flex-direction: column;
+  justify-content: flex-start;
   width: 100vw;
   gap: 10px;
 }
@@ -27,31 +41,21 @@ body {
 }
 
 .center {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   width: 100%;
-  -webkit-box-pack: center;
-      -ms-flex-pack: center;
-          justify-content: center;
+  justify-content: center;
 }
 
 .box-cont {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   width: 100%;
-  -webkit-box-pack: center;
-      -ms-flex-pack: center;
-          justify-content: center;
+  justify-content: center;
   gap: 10px;
   margin-top: 30px;
 }
 
 #loading_bar {
-  -moz-user-select: none;
-   -ms-user-select: none;
-       user-select: none;
+  user-select: none;
   -webkit-user-select: none;
   -webkit-app-region: drag;
   width: 100vw;
@@ -84,6 +88,10 @@ body {
   height: 20px;
   cursor: pointer;
   z-index: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mainColor);
 }
 
 .subtitle {
@@ -117,6 +125,9 @@ body {
   padding: 5px;
   font-size: 12px;
   border-radius: 3px;
+  border: 0;
+  color: var(--mainColor);
+  font-family: var(--font);
 }
 
 .btxSel {
@@ -180,10 +191,8 @@ body {
 }
 
 .options-grid {
-  display: -ms-grid;
   display: grid;
-  -ms-grid-columns: 1fr 1fr 1fr;
-      grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   background-color: var(--Highlight1);
   grid-gap: var(--Gap);
   width: 90%;
@@ -208,16 +217,17 @@ body {
   border: 1px solid var(--Highlight3);
 }
 
-.runbtn:hover {
-  border: 1px solid #bd93f9;
+@media (hover: hover) and (pointer: fine) {
+  .runbtn:hover {
+    border: 1px solid #bd93f9;
+  }
 }
-
 #addons {
   position: relative;
   width: calc(90vw - 150px);
   height: 0px;
-  -webkit-transition: 0.2s;
-  transition: 0.2s;
+  opacity: 1;
+  transition: height var(--dur-drawer) var(--ease-drawer), opacity 160ms ease;
 }
 
 #addons-block {
@@ -230,10 +240,8 @@ body {
 .container2 {
   margin-top: 5px;
   margin-bottom: 5px;
-  display: -ms-grid;
   display: grid;
-  -ms-grid-columns: 1fr 1fr 1fr 1fr;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
   grid-gap: var(--Gap);
   border-radius: 10px;
   border: transparent;
@@ -242,16 +250,10 @@ body {
 }
 
 .center2 {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
   width: 90%;
-  -webkit-box-pack: center;
-      -ms-flex-pack: center;
-          justify-content: center;
-  -webkit-box-align: center;
-      -ms-flex-align: center;
-          align-items: center;
+  justify-content: center;
+  align-items: center;
 }
 
 [btn-active] {
@@ -259,16 +261,36 @@ body {
 }
 
 #border_r {
-  -moz-user-select: none;
-   -ms-user-select: none;
-       user-select: none;
+  user-select: none;
   -webkit-user-select: none;
   -webkit-app-region: drag;
   height: 20px;
   top: 0px;
   left: 0px;
-  width: 0vw;
+  width: 100vw;
   position: absolute;
-  background-color: #00968850;
+  background-color: rgba(0, 150, 136, 0.3137254902);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 200ms linear;
+  will-change: transform;
 }
-/*# sourceMappingURL=back.css.map */
+
+:where(.btn, .btnx, .runbtn, #sel):not(:disabled) {
+  transition: transform var(--dur-press) var(--ease-out), background-color 150ms ease;
+}
+
+:where(.btn, .btnx, .runbtn, #sel):not(:disabled):active {
+  transform: scale(0.97);
+}
+
+:where(button, input, textarea, summary):focus-visible {
+  outline: 2px solid var(--Selected);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.btn, .btnx, .runbtn, #sel):active {
+    transform: none;
+  }
+}

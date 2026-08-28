@@ -1,0 +1,36 @@
+name: Optional compatibility corpus
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility-corpus:
+    runs-on: [self-hosted, Windows, tsukuru-corpus]
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: tsukuru-agent
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tsukuru-agent/package-lock.json
+      - run: npm ci
+      - run: npm run compile:cli
+      - name: Validate private compatibility corpus
+        shell: pwsh
+        run: npm run compat:corpus
+        env:
+          TSUKURU_CORPUS_CATALOG: ${{ vars.TSUKURU_CORPUS_CATALOG }}
+          TSUKURU_CORPUS_OUTPUT: ../compatibility-corpus-results.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: compatibility-corpus-results
+          path: compatibility-corpus-results.json
+          retention-days: 30

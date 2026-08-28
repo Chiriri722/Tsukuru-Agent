@@ -1,9 +1,8 @@
 (() => {
-    const { ipcRenderer} = require('electron');
+    const ipc = window.tsukuru
     const bottomMenu = document.querySelector('.smalmar') as HTMLDivElement
     const mainMenu = document.querySelector('#mainMenu') as HTMLDivElement
     const simpleMenu = document.querySelector('#simpleMenu') as HTMLDivElement
-    const Popper = (window as any).Popper as any
     let running = false
     let globalSettings:{[key:string]:any}
     let LastPercent = -1.0
@@ -11,11 +10,11 @@
     let estimatedTime = ''
     let loadingTag = ''
 
-    ipcRenderer.send('setheight', 420);
+    ipc.send('setheight', 420);
     //@ts-ignore
     const Swal = window.Swal
     
-    ipcRenderer.on('getGlobalSettings', (evn, tt) => {
+    ipc.on('getGlobalSettings', (tt) => {
         globalSettings = tt
         if(tt.language === 'en'){
             globalThis.loadEn()
@@ -27,7 +26,7 @@
         }
     })
 
-    ipcRenderer.on('alertExten', async (ev, arg) => {
+    ipc.on('alertExten', async (arg) => {
         const {isDenied} = await Swal.fire({
             icon: 'success',
             showDenyButton: true,
@@ -35,10 +34,10 @@
             title: arg[0],
         })
         if(!isDenied){
-            ipcRenderer.send("getextention", arg[1])
+            ipc.send("getextention", arg[1])
         }
         else{
-            ipcRenderer.send("getextention", 'none')
+            ipc.send("getextention", 'none')
         }
     })
 
@@ -53,21 +52,18 @@
         document.body.appendChild(tooltip)
         const button = document.getElementById(id)
         console.log(button)
-        tooltip.innerHTML = text.replace(/\r/g, '').replace(/\n/g, '<br>');
+        tooltip.textContent = text.replace(/\r/g, '')
+        tooltip.style.whiteSpace = 'pre-line'
         tooltip.setAttribute('enlang', entext)
-        const popperInstance = Popper.createPopper(button, tooltip, {
-            modifiers: [
-              {
-                name: 'offset',
-                options: {
-                  offset: [0, 8],
-                },
-              },
-            ],
-        });
+        const position = () => {
+            const box = button.getBoundingClientRect()
+            tooltip.style.position = 'fixed'
+            tooltip.style.left = `${box.left}px`
+            tooltip.style.top = `${box.bottom + 8}px`
+        }
         function show() {
+            position()
             tooltip.setAttribute('data-show', '');
-            popperInstance.update();
         }
         function hide() {
             tooltip.removeAttribute('data-show');
@@ -93,19 +89,19 @@
         }
     }
     
-    document.getElementById('icon1').onclick = () => {ipcRenderer.send('close')}
-    document.getElementById('icon2').onclick = () => {ipcRenderer.send('minimize')}
+    document.getElementById('icon1').onclick = () => {ipc.send('close')}
+    document.getElementById('icon2').onclick = () => {ipc.send('minimize')}
     document.getElementById('sel').addEventListener('click', () => {
-        ipcRenderer.send('select_folder', 'folder_input');
+        ipc.send('select_folder', 'folder_input');
     });
-    ipcRenderer.on('set_path', (evn, tt) => {
+    ipc.on('set_path', (tt) => {
         (document.getElementById(tt.type) as HTMLInputElement).value = tt.dir
         if(tt.type !== 'folder_input'){
             document.getElementById(tt.type).innerText = tt.dir
         }
     });
     document.getElementById('WolfBtn').onclick = () => {
-        ipcRenderer.send('changeURL', './src/html/main/index.html')
+        ipc.send('changeURL', 'rpg')
     }
     changeMenu('simple')
     {
@@ -147,7 +143,7 @@
             }
             running = true
             const folder = (document.getElementById('folder_input') as HTMLInputElement).value
-            ipcRenderer.send('wolf_ext', {folder:folder,config:config})
+            ipc.send('wolf_ext', {folder:folder,config:config})
         }
         document.getElementById('runbtn2').onclick = () => {
             if(running){
@@ -159,10 +155,16 @@
             }
             running = true
             const folder = (document.getElementById('folder_input') as HTMLInputElement).value
-            ipcRenderer.send('wolf_apply', {folder:folder,config:config})
+            ipc.send('wolf_apply', {folder:folder,config:config})
+        }
+        document.getElementById('cancelbtn').onclick = () => {
+            if (running) ipc.send('cancelOperation')
+        }
+        document.getElementById('cancelbtn2').onclick = () => {
+            if (running) ipc.send('cancelOperation')
         }
 
-        document.getElementById('fold').onclick = () => {ipcRenderer.send("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)}
+        document.getElementById('fold').onclick = () => {void ipc.invoke("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)}
 
     }
     {
@@ -182,7 +184,7 @@
         }
     }
 
-    ipcRenderer.on('alert', (evn, tt) => {
+    ipc.on('alert', (tt) => {
         if (typeof tt === 'string') {
             Swal.fire({
                 icon: 'success',
@@ -197,12 +199,13 @@
         }
     });
 
-    ipcRenderer.on('loadingTag', (evn, tt) => {
+    ipc.on('loadingTag', (tt) => {
         loadingTag = tt
     })
 
-    ipcRenderer.on('loading', (evn, tt) => {
-        document.getElementById('border_r').style.width = `${tt}vw`
+    ipc.on('loading', (tt) => {
+        const progress = Math.min(100, Math.max(0, Number(tt) || 0))
+        document.getElementById('border_r').style.transform = `scaleX(${progress / 100})`
         let ds = Math.floor(new Date().getTime()/1000)
         if(tt > 0 && globalSettings.loadingText){
             if(LastTime != ds){
@@ -245,7 +248,7 @@
         }
     });
 
-    ipcRenderer.on('alert2', async (evn, tt) => {
+    ipc.on('alert2', async () => {
         const {isDenied} = await Swal.fire({
             icon: 'success',
             showDenyButton: true,
@@ -254,7 +257,7 @@
             title: '완료되었습니다',
         })
         if(isDenied){
-            ipcRenderer.send("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)
+            void ipc.invoke("openFolder", (document.getElementById('folder_input') as HTMLInputElement).value)
         }
     });
 
@@ -309,7 +312,7 @@
                         resolve()
                     }
                     else {
-                        ipcRenderer.send('log', value)
+                        ipc.send('log', value)
                         resolve('설정되지 않음')
                     }
                 })
@@ -351,7 +354,7 @@
                             resolve()
                         }
                         else {
-                            ipcRenderer.send('log', value)
+                            ipc.send('log', value)
                             resolve('설정되지 않음')
                         }
                     })
@@ -362,18 +365,18 @@
                 return
             }
         }
-        ipcRenderer.send('log', v.value)
+        ipc.send('log', v.value)
         const a = {
-            dir: Buffer.from((document.getElementById('folder_input') as HTMLInputElement).value.replace('\\','/'), "utf8").toString('base64'),
+            dir: encodeWolfPath((document.getElementById('folder_input') as HTMLInputElement).value.replace('\\','/')),
             type: transtype,
             langu: langu,
             game: 'wolf'
         };
         running = true
-        ipcRenderer.send('eztrans', a);
+        ipc.send('eztrans', a);
         return
     }
-    ipcRenderer.on('worked', () => {
+    ipc.on('worked', () => {
         running = false
     })
 
@@ -385,8 +388,15 @@
             })
             return
         }
-        ipcRenderer.send('settings')
+        ipc.send('settings')
         running = true
     }
     
 })()
+
+function encodeWolfPath(value: string): string {
+    const bytes = new TextEncoder().encode(value)
+    let binary = ''
+    for (const byte of bytes) binary += String.fromCharCode(byte)
+    return btoa(binary)
+}

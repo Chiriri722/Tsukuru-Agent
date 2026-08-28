@@ -1,0 +1,11 @@
+{
+  "operation": "extract",
+  "format": "wolf",
+  "options": {
+    "force": false,
+    "extPattern": true,
+    "extBuran": false,
+    "extAll": false,
+    "operationTimeoutMs": 30000
+  }
+}

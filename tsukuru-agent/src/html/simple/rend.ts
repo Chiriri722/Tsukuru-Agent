@@ -1,10 +1,10 @@
 (() => {
-    const { ipcRenderer} = require('electron');
+    const ipc = window.tsukuru
     const mainMenu = document.querySelector('#mainMenu') as HTMLDivElement
     
     let globalSettings
     
-    ipcRenderer.on('getGlobalSettings', (evn, tt) => {
+    ipc.on('getGlobalSettings', (tt) => {
         globalSettings = tt
         if(tt.language === 'en'){
             document.getElementById('lang-en').classList.add('btxSel')            
@@ -20,14 +20,14 @@
         }
     })
     
-    document.getElementById('icon1').onclick = () => {ipcRenderer.send('close')}
-    document.getElementById('icon2').onclick = () => {ipcRenderer.send('minimize')}
-    document.getElementById('gokupu').onclick = () => {ipcRenderer.send('changeURL', './src/html/main/index.html')}
-    document.getElementById('simpuru').onclick = () => {ipcRenderer.send('changeURL', './src/html/wolf/index.html')}
-    document.getElementById('lang-en').onclick = () => {ipcRenderer.send('changeLang', 'en')}
-    document.getElementById('lang-ko').onclick = () => {ipcRenderer.send('changeLang', 'ko')}
+    document.getElementById('icon1').onclick = () => {ipc.send('close')}
+    document.getElementById('icon2').onclick = () => {ipc.send('minimize')}
+    document.getElementById('gokupu').onclick = () => {ipc.send('changeURL', 'rpg')}
+    document.getElementById('simpuru').onclick = () => {ipc.send('changeURL', 'wolf')}
+    document.getElementById('lang-en').onclick = () => {ipc.send('changeLang', 'en')}
+    document.getElementById('lang-ko').onclick = () => {ipc.send('changeLang', 'ko')}
 
-    ipcRenderer.on('set_path', (evn, tt) => {
+    ipc.on('set_path', (tt) => {
         (document.getElementById(tt.type) as HTMLInputElement).value = tt.dir
         if(tt.type !== 'folder_input'){
             document.getElementById(tt.type).innerText = tt.dir
@@ -35,7 +35,7 @@
     });
     mainMenu.style.display = 'block'
 
-    ipcRenderer.on('alert_free', (evn, tt) => {
+    ipc.on('alert_free', (tt) => {
         //@ts-ignore
         Swal.fire(tt)
     });

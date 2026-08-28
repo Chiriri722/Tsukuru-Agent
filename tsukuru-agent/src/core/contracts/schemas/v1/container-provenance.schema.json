@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/container-provenance.schema.json",
+  "title": "Tsukuru Agent container provenance v1",
+  "type": "object",
+  "required": ["schemaVersion", "containerType", "archiveRelativePath", "archiveSha256", "engine", "archiveFiles", "unpackedFiles", "requiredEntries", "invalidEntryCount"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "containerType": { "enum": ["electron-asar", "nwjs-package"] },
+    "archiveRelativePath": { "type": "string", "minLength": 1 },
+    "archiveSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "engine": {
+      "type": "object",
+      "required": ["type", "root"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["rpgmv", "rpgmz", "gdevelop"] },
+        "root": { "type": "string" }
+      }
+    },
+    "archiveFiles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "unpackedFiles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "requiredEntries": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "invalidEntryCount": { "type": "integer", "minimum": 0 }
+  }
+}

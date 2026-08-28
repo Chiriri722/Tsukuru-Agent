@@ -1,18 +1,20 @@
 import path from 'path';
 import fs from 'fs';
 import PU from 'tcp-port-used';
-const spawn = require('child_process').spawn;
+import { spawnTracked } from '../../core/processRegistry';
+import { publicErrorMessage } from '../../core/publicError';
 import dataBaseO from './datas.js';
 import { checkIsMapFile, sleep } from './globalutils.js';
-import axios from 'axios'
+import { requestData } from '../../core/httpClient';
 import { translateable, note2able, translateableOne, hanguls } from './datas.js';
 import * as edTool from './edtool';
 import zlib from 'zlib'
-import open from 'open'
 import { translate as gTranslate } from '@vitalets/google-translate-api';
 import { kakaoTrans } from '../libs/kakaotrans.js';
 import { postProcessTranslate, preProcessTranslate } from '../libs/preprocess.js';
-import { app } from 'electron';
+import { app, shell } from 'electron';
+import { validateExternalUrl } from '../../electron/ipcPolicy';
+import { resolveVerifiedBundledBinary } from '../../core/externalBinaryPolicy';
 
 let junChori = false
 
@@ -117,25 +119,22 @@ class Translator{
             let t:string
             // console.log(text)
             try {
-                const a =  await axios.get(
-                    'http://localhost:8000/',
-                    {
-                        params: {
-                            text: text
-                        },
-                        timeout: 10000
-                    }
-                )
-                t = a.data
+                const response = await requestData('http://127.0.0.1:8000/', {
+                    allowHttpLoopback: true,
+                    timeoutMs: 10_000,
+                    maxBytes: 4 * 1024 * 1024,
+                    query: { text },
+                });
+                t = response.data as string
             } catch (error) {
                 try {
                     try {
                         this.KillLs()
                     } catch (error) {}
-                    this.ls = spawn(path.join(oPath(), 'exfiles', 'eztrans' ,'eztransServer2.exe'));
+                    this.ls = spawnTracked(resolveVerifiedBundledBinary(oPath(), 'eztrans-server2'), [], { timeoutMs: 60 * 60 * 1000 });
                     console.log('spawned')
                     await sleep(2000)
-                    await PU.waitUntilUsed(8000)
+                    await PU.waitUntilUsed(8000, 250, 10_000)
                 } catch (error) {
                     console.log('spawn failed')
                 }
@@ -226,20 +225,19 @@ class Translator{
                         return encodeURIp(aSplit.join('\n'))
                     }
                     else{
-                        const a = (await axios.get(
-                            'http://localhost:8000/',
-                            {
-                                params: {
-                                    text: tempTxt,
-                                    platform: this.type2,
-                                    source: this.langu,
-                                    target: 'ko'
-                                },
-                                timeout: 10000
-                            }
-                        ))
+                        const response = await requestData('http://127.0.0.1:8000/', {
+                            allowHttpLoopback: true,
+                            timeoutMs: 10_000,
+                            maxBytes: 4 * 1024 * 1024,
+                            query: {
+                                text: tempTxt,
+                                platform: this.type2,
+                                source: this.langu,
+                                target: 'ko',
+                            },
+                        });
                         try {
-                            t = a.data.data.translatedContent
+                            t = (response.data as { data?: { translatedContent?: string } }).data?.translatedContent as string
                             t = decodeSafe(t, this.type2 === 'papago')
                             this.transMemory[text] = t
                         } catch (error) {
@@ -257,10 +255,10 @@ class Translator{
                         try {
                             this.KillLs()
                         } catch (error) {}
-                        this.ls = spawn(path.join(oPath(), 'exfiles', 'transEngine' ,'translate_engine.exe'));
+                        this.ls = spawnTracked(resolveVerifiedBundledBinary(oPath(), 'translate-engine'), [], { timeoutMs: 60 * 60 * 1000 });
                         console.log('spawned')
                         await sleep(2000)
-                        await PU.waitUntilUsed(8000)
+                        await PU.waitUntilUsed(8000, 250, 10_000)
                     } catch (error) {
                         console.log('spawn failed')
                     }
@@ -301,58 +299,406 @@ function isASCII(str:string) {
     return asciiRegex.test(str);
 }
 
+type TranslationFileType = '' | 'src' | 'note' | 'note2';
 
-export const trans = async (ev, arg) => {
-    let translateMemorys:{[key:string]:string} = {}
+interface TranslationLineState {
+    transIt: boolean;
+    folkt: boolean;
+    typeofit: number;
+}
 
-    const dm = true
-    let usePreProcess  = arg.usePreProcess ?? false
-    globalThis.settings.safeTrans = true
-    globalThis.settings.smartTrans = true;
-    globalThis.settings.fastEztrans = true;
+interface TranslationStep {
+    output: string;
+    aborted: boolean;
+}
 
+interface TranslationFileContext {
+    arg: any;
+    compatibilityMode: boolean;
+    edDat: any;
+    note2Codes: Record<string, number>;
+}
 
+function configureTranslationMode(arg: any): {
+    compatibilityMode: boolean;
+    type2: string;
+    langu: string;
+    usePreProcess: boolean;
+} {
     let compatibilityMode = false
     let type2 = ''
-    const langu = arg.langu
-    if(arg.type == 'eztransh'){
-        globalThis.settings.smartTrans = false;
+    let usePreProcess = arg.usePreProcess ?? false
+    globalThis.settings.safeTrans = true
+    globalThis.settings.smartTrans = true
+    globalThis.settings.fastEztrans = true
+    if (arg.type == 'eztransh') {
+        globalThis.settings.smartTrans = false
         compatibilityMode = true
         arg.type = 'eztrans'
     }
-    if(arg.type == 'papago'){
-        globalThis.settings.smartTrans = false;
+    if (arg.type == 'papago') {
+        globalThis.settings.smartTrans = false
         arg.type = 'transEngine'
         type2 = 'papago'
     }
-    if(arg.type == 'google'){
-        globalThis.settings.smartTrans = false;
+    if (arg.type == 'google') {
+        globalThis.settings.smartTrans = false
         arg.type = 'transEngine'
         type2 = 'google'
     }
-    if(arg.type == 'googleh'){
+    if (arg.type == 'googleh') {
         junChori = true
-        globalThis.settings.smartTrans = false;
+        globalThis.settings.smartTrans = false
         arg.type = 'transEngine'
         type2 = 'googleh'
     }
-    if(arg.type == 'kakao'){
+    if (arg.type == 'kakao') {
         junChori = true
-        globalThis.settings.smartTrans = false;
+        globalThis.settings.smartTrans = false
         arg.type = 'transEngine'
         type2 = 'kakao'
-        if(arg.langu === 'en'){
-            usePreProcess = true
+        if (arg.langu === 'en') usePreProcess = true
+    }
+    if (arg.type == 'kakaosafe') {
+        junChori = true
+        globalThis.settings.smartTrans = false
+        arg.type = 'transEngine'
+        type2 = 'kakao'
+    }
+    return { compatibilityMode, type2, langu: arg.langu, usePreProcess }
+}
+
+function translationAlert(message: string): void {
+    globalThis.mwindow.webContents.send('alert', { icon: 'error', message })
+}
+
+async function startTranslationBackend(translator: Translator, type2: string): Promise<boolean> {
+    if (translator.getType() === 'transEngine' && type2 === 'papago') {
+        console.log('transEngine')
+        if (await PU.check(8000)) {
+            translationAlert('포트 8000이 사용중입니다.')
+            globalThis.mwindow.webContents.send('worked', 0)
+            return false
+        }
+        const process = spawnTracked(resolveVerifiedBundledBinary(oPath(), 'translate-engine'), [], { timeoutMs: 60 * 60 * 1000 })
+        translator.setLs(process)
+        await sleep(1000)
+        try {
+            await PU.waitUntilUsed(8000, 250, 10_000)
+        } catch {
+            translationAlert('구동 도중 오류가 발생하였습니다')
+            translator.KillLs()
+            globalThis.mwindow.webContents.send('worked', 0)
+            return false
+        }
+        await sleep(1000)
+    }
+    if (translator.getType() === 'eztrans') {
+        console.log('eztrans')
+        if (await PU.check(8000)) {
+            translationAlert('포트 8000이 사용중입니다.')
+            globalThis.mwindow.webContents.send('worked', 0)
+            return false
+        }
+        const process = spawnTracked(resolveVerifiedBundledBinary(oPath(), 'eztrans-server'), [], { timeoutMs: 60 * 60 * 1000 })
+        translator.setLs(process)
+        process.stderr.on('data', function (data) {
+            console.log('eztrans - Error')
+            console.log('test: ' + data)
+        })
+        process.on('close', function () {
+            console.log('eztrans')
+            console.log('close')
+        })
+        await sleep(3000)
+        try {
+            await PU.waitUntilUsed(8000, 250, 10_000)
+        } catch {
+            globalThis.mwindow.webContents.send('eztransError')
+            setTimeout(() => {
+                void shell.openExternal(validateExternalUrl('https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-6.0.1-windows-x86-installer'))
+            }, 2000)
+            translator.KillLs()
+            globalThis.mwindow.webContents.send('worked', 0)
+            return false
+        }
+        await sleep(1000)
+    }
+    return true
+}
+
+function classifyTranslationFile(name: string, context: TranslationFileContext): TranslationFileType | null {
+    if (context.arg.game === 'wolf') {
+        return name.includes('map.txt') || name.includes('commonEvent.txt') ? '' : null
+    }
+    if (!globalThis.settings.safeTrans && !globalThis.settings.smartTrans) return null
+    console.log(name)
+    if (context.compatibilityMode && name === 'System.txt') {
+        console.log('skipping by compatibilityMode')
+        return null
+    }
+    if (name.includes('ext_scripts.txt')) {
+        console.log('src')
+        return globalThis.settings.smartTrans && !context.compatibilityMode ? 'src' : null
+    }
+    if (name.includes('ext_note.txt')) {
+        if (!globalThis.settings.smartTrans || context.compatibilityMode) console.log('skiping note')
+        return globalThis.settings.smartTrans && !context.compatibilityMode ? 'note' : null
+    }
+    if (name.includes('ext_note2.txt')) {
+        if (!globalThis.settings.smartTrans || context.compatibilityMode) {
+            console.log('skiping note2')
+            return null
+        }
+        const metadata = context.edDat.main['ext_note2.json'].data
+        for (const key in metadata) context.note2Codes[key] = metadata[key].conf.code
+        return 'note2'
+    }
+    if (!dataBaseO.includes(name) && !checkIsMapFile(name)) {
+        console.log('skiping')
+        return null
+    }
+    if (name === 'ext_plugins.txt' && (globalThis.settings.safeTrans || context.compatibilityMode)) {
+        console.log('skiping ' + name)
+        return null
+    }
+    return ''
+}
+
+async function translateSourceLine(readLine: string, translator: Translator): Promise<string> {
+    if (!readLine.startsWith('D_TEXT ')) return `${readLine}\n`
+    const parts = readLine.split(' ')
+    while (parts.length > 3) {
+        parts[1] = `${parts[1]} ${parts[2]}`
+        parts.splice(2)
+    }
+    if (parts.length === 3 && isNaN(parseInt(parts[2]))) {
+        console.log(parts.join(' '))
+        parts[1] = `${parts[1]} ${parts[2]}`
+        parts.splice(2)
+    }
+    parts[1] = encodeSp(await translator.translate(parts[1]), true)
+    return `${parts.join(' ')}\n`
+}
+
+async function translateNoteLine(
+    readLine: string,
+    state: TranslationLineState,
+    translator: Translator,
+): Promise<TranslationStep> {
+    let marker = ''
+    let line = readLine
+    if (!state.transIt) {
+        const matched = translateable.find((candidate) => readLine.replaceAll(' ', '').startsWith(candidate))
+        if (!matched) return { output: `${line}\n`, aborted: false }
+        marker = matched
+        state.folkt = translateableOne.includes(marker)
+        console.log(`${marker} | ${state.folkt}`)
+        state.transIt = true
+        line = line.substring(marker.length, line.length)
+    }
+    if (line.includes('>') || (state.folkt && line.includes(' '))) {
+        state.transIt = false
+        const boundary = state.folkt && line.includes(' ') ? ' ' : '>'
+        const suffix = `${line.substring(line.indexOf(boundary))}\n`
+        line = line.substring(0, line.indexOf(boundary))
+        const translated = await translator.translate(line)
+        try {
+            return { output: marker + encodeSp(translated, true) + suffix, aborted: false }
+        } catch {
+            return { output: marker + line + suffix, aborted: await translator.isCrash() }
         }
     }
-    if(arg.type == 'kakaosafe'){
-        junChori = true
-        globalThis.settings.smartTrans = false;
-        arg.type = 'transEngine'
-        type2 = 'kakao'
+    const translated = await translator.translate(line)
+    try {
+        return { output: `${marker}${encodeSp(translated, true)}\n`, aborted: false }
+    } catch {
+        return { output: `${marker}${line}\n`, aborted: await translator.isCrash() }
     }
+}
+
+async function translateNote2Line(
+    readLine: string,
+    lineIndex: number,
+    state: TranslationLineState,
+    translator: Translator,
+    note2Codes: Record<string, number>,
+): Promise<TranslationStep> {
+    if (state.transIt) {
+        if (note2Codes[lineIndex] == 408) {
+            let run = true
+            if (readLine.startsWith('\\>')) state.typeofit = 1
+            else if (state.typeofit == 1) {
+                run = false
+                state.transIt = false
+            }
+            if (run) {
+                const translated = await translator.translate(readLine)
+                try {
+                    return { output: `${encodeSp(translated, true)}\n`, aborted: false }
+                } catch {
+                    return { output: `${readLine}\n`, aborted: await translator.isCrash() }
+                }
+            }
+        } else {
+            state.transIt = false
+        }
+    }
+    if (!state.transIt && note2able.includes(readLine) && note2Codes[lineIndex] == 108) {
+        state.transIt = true
+        state.typeofit = 0
+    }
+    return { output: `${readLine}\n`, aborted: false }
+}
+
+async function translateStructuredLines(
+    fileRead: string,
+    fileType: TranslationFileType,
+    translator: Translator,
+    note2Codes: Record<string, number>,
+    workedFileLength: number,
+    fullFileLength: number,
+): Promise<TranslationStep> {
+    const lines = fileRead.split('\n')
+    const state: TranslationLineState = { transIt: false, folkt: false, typeofit: 0 }
+    let output = ''
+    for (let index = 0; index < lines.length; index++) {
+        const readLine = lines[index]
+        try {
+            setProgressBar(workedFileLength + output.length, fullFileLength)
+            let step: TranslationStep
+            if (fileType === 'src') {
+                step = { output: await translateSourceLine(readLine, translator), aborted: false }
+            } else if (fileType === 'note') {
+                step = await translateNoteLine(readLine, state, translator)
+            } else if (fileType === 'note2') {
+                step = await translateNote2Line(readLine, index, state, translator, note2Codes)
+            } else {
+                step = { output: `${encodeSp(await translator.translate(readLine))}\n`, aborted: false }
+            }
+            output += step.output
+            if (step.aborted) return { output, aborted: true }
+        } catch {
+            console.log(readLine)
+            console.log('err')
+            if (await translator.isCrash()) return { output, aborted: true }
+            output += `${readLine}\n`
+        }
+    }
+    return { output, aborted: false }
+}
+
+async function translateLegacyFastFile(
+    fileRead: string,
+    translator: Translator,
+    readLen: number,
+    workedFileLength: number,
+    fullFileLength: number,
+): Promise<TranslationStep> {
+    const remaining = fileRead.split('\n')
+    const chunks: string[] = []
+    let chunk = ''
+    let length = 0
+    while (remaining.length > 0) {
+        const line = remaining[0]
+        if (length + line.length > readLen) {
+            length = 0
+            chunks.push(encodeURIp(chunk))
+            chunk = ''
+        }
+        length += line.length
+        chunk += `${line}\n`
+        remaining.shift()
+    }
+    chunks.push(encodeURIp(chunk))
+    let output = ''
+    for (const encodedChunk of chunks) {
+        let translated = ''
+        try {
+            translated = await translator.translate(encodedChunk)
+        } catch {
+            console.log('err-crash')
+            if (await translator.isCrash()) return { output, aborted: true }
+            translated = encodedChunk
+        }
+        const sourceLines = encodedChunk.split('\n')
+        const translatedLines = translated.split('\n')
+        const lineMismatch = sourceLines.length !== translatedLines.length
+        const unchanged = translated === encodedChunk
+            && (!globalThis.settings.DoNotTransHangul || !hanguls.test(translated))
+        if (unchanged || lineMismatch) {
+            console.log(`err-line ${sourceLines.length} | ${translatedLines.length}`)
+            const fallback: string[] = []
+            for (const sourceLine of sourceLines) {
+                try {
+                    fallback.push(await translator.translate(sourceLine))
+                } catch {
+                    if (await translator.isCrash()) return { output, aborted: true }
+                    fallback.push(sourceLine)
+                }
+            }
+            translated = fallback.join('\n')
+        }
+        output += encodeSp(decodeURIp(translated))
+        setProgressBar(workedFileLength + output.length, fullFileLength)
+    }
+    return { output, aborted: false }
+}
+
+async function translateFiles(
+    fileList: string[],
+    edir: string,
+    translator: Translator,
+    classifier: TranslationFileContext,
+    useOldWay: boolean,
+    readLen: number,
+    translateMemorys: Record<string, string>,
+    fullFileLength: number,
+): Promise<boolean> {
+    let workedFileLength = 0
+    for (const fileName of fileList) {
+        const fileType = classifyTranslationFile(fileName, classifier)
+        if (fileType === null) continue
+        const filePath = path.join(edir, fileName)
+        const fileRead = fs.readFileSync(filePath, 'utf8')
+        let step: TranslationStep
+        if (fileType === '' && globalThis.settings.fastEztrans && !useOldWay) {
+            const translated = fileRead.split('\n').map((line) => translateMemorys[line])
+            const output = encodeSp(decodeURIp(translated.join('\n')))
+            console.log('applied new')
+            setProgressBar(workedFileLength + output.length, fullFileLength)
+            step = { output, aborted: false }
+        } else if (fileType === '' && globalThis.settings.fastEztrans) {
+            step = await translateLegacyFastFile(fileRead, translator, readLen, workedFileLength, fullFileLength)
+        } else {
+            step = await translateStructuredLines(
+                fileRead,
+                fileType,
+                translator,
+                classifier.note2Codes,
+                workedFileLength,
+                fullFileLength,
+            )
+        }
+        if (step.aborted) return true
+        workedFileLength += step.output.length
+        fs.writeFileSync(filePath, step.output, 'utf8')
+        await sleep(0)
+    }
+    return false
+}
+
+export const translatorTestHooks = {
+    configureTranslationMode,
+    classifyTranslationFile,
+    translateSourceLine,
+    translateFiles,
+}
+
+export const trans = async (ev, arg) => {
+    let translateMemorys:{[key:string]:string} = {}
+    const { compatibilityMode, type2, langu, usePreProcess } = configureTranslationMode(arg)
     const translator = new Translator(arg.type, type2, langu)
-    let ls
 
 
     try {
@@ -366,160 +712,23 @@ export const trans = async (ev, arg) => {
             globalThis.mwindow.webContents.send('worked', 0);
             return
         }
-        let isUsed:boolean
         const fileList = fs.readdirSync(edir)
-        const max_files = fileList.length
         let fullFileLength = 0
-        let workedFileLength = 0
         if(usePreProcess){
             await preProcessTranslate(edir)
         }
         console.log(translator.getType())
-
-
-        for(const i in fileList){
-            const iPath = path.join(edir, fileList[i])
-            fullFileLength += fs.readFileSync(iPath, 'utf-8').length
+        for(const fileName of fileList){
+            fullFileLength += fs.readFileSync(path.join(edir, fileName), 'utf-8').length
         }
         console.log(fullFileLength)
-        if(translator.getType() == 'transEngine' && type2 === 'papago'){
-            console.log('transEngine')
-            await PU.check(8000).then(function (inUse) {
-                isUsed = inUse
-            })
-            if (isUsed) {
-                globalThis.mwindow.webContents.send('alert', {
-                    icon: 'error',
-                    message: '포트 8000이 사용중입니다.'
-                });
-                globalThis.mwindow.webContents.send('worked', 0);
-                return
-            }
-            ls = spawn(path.join(oPath(), 'exfiles', 'transEngine' ,'translate_engine.exe'));
-            translator.setLs(ls)
-
-            await sleep(1000)
-            try {
-                await PU.waitUntilUsed(8000)
-            } catch (error) {
-                globalThis.mwindow.webContents.send('alert', {
-                    icon: 'error',
-                    message: '구동 도중 오류가 발생하였습니다'
-                });
-                try {
-                    translator.KillLs()
-                } catch (error) {   }
-                globalThis.mwindow.webContents.send('worked', 0);
-                return
-            }
-            await sleep(1000)
-        }
-        if(translator.getType() == 'eztrans'){
-            console.log('eztrans')
-            await PU.check(8000).then(function (inUse) {
-                isUsed = inUse
-            })
-            if (isUsed) {
-                globalThis.mwindow.webContents.send('alert', {
-                    icon: 'error',
-                    message: '포트 8000이 사용중입니다.'
-                });
-                globalThis.mwindow.webContents.send('worked', 0);
-                return
-            }
-            ls = spawn(path.join(oPath(), 'exfiles', 'eztrans' ,'eztransServer.exe'));
-            translator.setLs(ls)
-            // ls.stdout.on('data', function (data) {
-            //     console.log("eztrans");
-            //     console.log('data' + data);
-            // });
-            
-            ls.stderr.on('data', function (data) {
-                console.log("eztrans - Error");
-                console.log('test: ' + data);
-            });
-            
-            ls.on('close', function (code) {
-                console.log("eztrans");
-                console.log("close");
-            });
-            
-            await sleep(3000)
-            try {
-                await PU.waitUntilUsed(8000)
-            } catch (error) {
-                globalThis.mwindow.webContents.send('eztransError');
-                setTimeout(() => {open(`https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-6.0.1-windows-x86-installer`)}, 2000)
-                try {
-                    translator.KillLs()
-                } catch (error) {   }
-                globalThis.mwindow.webContents.send('worked', 0);
-                return
-            }
-            await sleep(1000)
-        }
-        let worked_files = 0
+        if (!await startTranslationBackend(translator, type2)) return
         const edDat:any = arg.game === 'wolf' ? null : edTool.read(dir)
-        let eed = {}
-        let typeOfFile = ''
-        function checkVaildTransFile(name:string){
-            if(arg.game === 'wolf'){
-                if(name.includes('map.txt')){
-                    return true
-                }
-                else if(name.includes('commonEvent.txt')){
-                    return true
-                }
-                return false
-            }
-            if (globalThis.settings.safeTrans || globalThis.settings.smartTrans) {
-                console.log(name)
-                if(compatibilityMode){
-                    const NoneCompList = [
-                        'System.txt'
-                    ]
-                    if(NoneCompList.includes(name)){
-                        console.log('skipping by compatibilityMode')
-                        return false
-                    }
-                }
-                if (name.includes('ext_scripts.txt')) {
-                    typeOfFile = 'src'
-                    console.log('src')
-                    if(!globalThis.settings.smartTrans ||compatibilityMode){
-                        return false
-                    }
-                } else if (name.includes('ext_note.txt')) {
-                    typeOfFile = 'note'
-                    if(!globalThis.settings.smartTrans || compatibilityMode){
-                        console.log('skiping note')
-                        return false
-                    }
-                } else if (name.includes('ext_note2.txt')) {
-                    typeOfFile = 'note2'
-                    if(!globalThis.settings.smartTrans || compatibilityMode){
-                        console.log('skiping note2')
-                        return false
-                    }
-                    else{
-                        let eed2 = edDat.main['ext_note2.json'].data
-                        for(const i2 in eed2){
-                            const cdat = eed2[i2]
-                            eed[i2] = cdat.conf.code
-                        }
-                    }
-                } else if ((!(dataBaseO.includes(name))) && (!checkIsMapFile(name))) {
-                    console.log('skiping')
-                    return false
-                }
-                else if(name == 'ext_plugins.txt'){
-                    if(globalThis.settings.safeTrans || compatibilityMode){
-                        console.log('skiping ' + name)
-                        return false
-                    }
-                }
-                return true
-            }
+        const classifier: TranslationFileContext = {
+            arg,
+            compatibilityMode,
+            edDat,
+            note2Codes: {},
         }
 
 
@@ -537,7 +746,7 @@ export const trans = async (ev, arg) => {
 
 
             for(const i in fileList){
-                if(!checkVaildTransFile(fileList[i])){
+                if(classifyTranslationFile(fileList[i], classifier) === null){
                     continue
                 }
                 const iPath = path.join(edir, fileList[i])
@@ -685,241 +894,17 @@ export const trans = async (ev, arg) => {
         }
 
 
-        for (const i in fileList) {
-            typeOfFile = ''
-            if(!checkVaildTransFile(fileList[i])){
-                continue
-            }
-            const iPath = path.join(edir, fileList[i])
-            const fileRead = (fs.readFileSync(iPath, 'utf-8'))
-            let output = ''
-            let transIt = false
-            let folkt = false
-            let typeofit = 0
-
-
-            if(typeOfFile == '' && globalThis.settings.fastEztrans){
-                if(!useOldWay){
-                    const readed = fileRead.split('\n')
-                    let resultArray:string[] = []
-                    for(const s of readed){
-                        resultArray.push(translateMemorys[s])
-                    }
-                    console.log('applied new')
-                    output += encodeSp(decodeURIp(resultArray.join('\n')))
-                    setProgressBar(workedFileLength + output.length, fullFileLength)
-                }
-                else{
-                    let reads = fileRead.split('\n')
-                    let a = ''
-                    let l = 0
-                    let chunks = []
-                    while(reads.length > 0){
-                        const d = reads[0]
-                        if(l + d.length > readLen){
-                            l = 0
-                            chunks.push(encodeURIp(a))
-                            a = ''
-                        }
-                        l += d.length
-                        a += d + '\n'
-                        reads.shift()
-                    }
-                    
-
-                    chunks.push(encodeURIp(a))
-                    for(const v in chunks){
-                        let ouput = ''
-                        let temps = ''
-                        try {
-                            temps = await translator.translate(chunks[v])
-                        } catch (error) {
-                            console.log('err-crash')
-                            if (await translator.isCrash()) {
-                                return
-                            }
-                            temps = chunks[v]
-                        }
-                        const chunkLen = chunks[v].split('\n').length
-                        const tempLen = temps.split('\n').length
-                        const isLine = (chunkLen !== tempLen)
-                        const hangule = (temps == chunks[v]) && ((!globalThis.settings.DoNotTransHangul) || (!hanguls.test(temps)))
-                        if(hangule || isLine){
-                            console.log(`err-line ${chunkLen} | ${tempLen}`)
-                            const r = chunks[v].split('\n')
-                            let r2 = []
-                            for (const a in r) {
-                                const readLine = r[a]
-                                try {
-                                    const tr = await translator.translate((readLine))
-                                    r2.push(tr)
-                                } catch (error) {
-                                    if (await translator.isCrash()) {
-                                        return
-                                    }
-                                    r2.push(readLine)
-                                }
-                            }
-                            ouput = r2.join('\n')
-                        }
-                        else{
-                            ouput = temps
-                        }
-                        output += encodeSp(decodeURIp(ouput))
-                        setProgressBar(workedFileLength + output.length, fullFileLength)
-                    }
-                }
-            }
-            else{
-                const read = fileRead.split('\n')
-                for (const v in read) {
-                    try {
-                        setProgressBar(workedFileLength + output.length, fullFileLength)
-                        const readLine = read[v];
-                        switch (typeOfFile){
-                            case '':
-                                const ouput = await translator.translate((readLine))
-                                const d = encodeSp(ouput) + '\n'
-                                output += d
-                                break
-                            case 'src':
-                                if(readLine.startsWith('D_TEXT ')){
-                                    let rl = readLine.split(' ')
-                                    if(rl.length > 3){
-                                        while(rl.length > 3){
-                                            rl[1] = rl[1]+' '+rl[2]
-                                            rl.splice(2)
-                                        }
-                                    }
-                                    if(rl.length == 3 && isNaN(parseInt(rl[2]))){
-                                        console.log(rl.join(' '))
-                                        rl[1] = rl[1]+' '+rl[2]
-                                        rl.splice(2)
-                                    }
-                                    const ouput = await translator.translate((rl[1]))
-                                    rl[1] = encodeSp(ouput, true)
-                                    output += rl.join(' ') + '\n'
-                                }
-                                else{
-                                    output += readLine + '\n'
-                                }
-                                break
-                            case 'note':
-                                let fi = ''
-                                let rl = readLine
-                                if(!transIt){
-                                    let startAble = false
-                                    for(const vv in translateable){
-                                        if (readLine.replaceAll(' ','').startsWith(translateable[vv])){
-                                            startAble = true
-                                            fi = translateable[vv]
-                                            folkt = translateableOne.includes(fi)
-                                            console.log(`${fi} | ${folkt}`)
-                                            break
-                                        }
-                                    }
-                                    if(startAble){
-                                        transIt = true
-                                        rl = rl.substring(fi.length, rl.length)
-                                    }
-                                    else{
-                                        output += rl + '\n'
-                                        break
-                                    }
-                                }
-                                if(transIt){
-                                    if(rl.includes('>') || (folkt && rl.includes(' '))){
-                                        transIt = false
-                                        let keyString = '>'
-                                        if((folkt && rl.includes(' '))){
-                                            keyString = ' '
-                                        }
-                                        let vax = '>\n'
-                                        vax = rl.substring(rl.indexOf(keyString)) + '\n'
-    
-                                        
-                                        rl = rl.substring(0, rl.indexOf(keyString))
-                                        const ouput = await translator.translate((rl))
-                                        try{
-                                            output += fi + encodeSp(ouput, true) + vax
-                                        }
-                                        catch{
-                                            output += fi + rl + vax
-                                            if (await translator.isCrash()){
-                                                return
-                                            }
-                                        }
-                                    }
-                                    else{
-                                        const ouput = await translator.translate((rl))
-                                        try{
-                                            output += fi + encodeSp(ouput, true) + '\n'
-                                        }
-                                        catch{
-                                            output += fi + rl + '\n'
-                                            if (await translator.isCrash()){
-                                                return
-                                            }
-                                        }
-                                    }
-                                }
-                                else{
-                                    output += rl + '\n'
-                                }
-                                break
-                            case 'note2':
-                                if(transIt){
-                                    if(eed[v] == 408){
-                                        let run = true
-                                        if(readLine.startsWith('\\>')){
-                                            typeofit = 1
-                                        }
-                                        else if(typeofit == 1){
-                                            run = false
-                                            transIt = false
-                                        }
-                                        if(run){
-                                            const ouput = await translator.translate((readLine))
-                                            try{
-                                                output += encodeSp(ouput, true) + '\n'
-                                            }
-                                            catch{
-                                                output += readLine + '\n'
-                                                if (await translator.isCrash()){
-                                                    return
-                                                }
-                                            }
-                                        }
-                                    }
-                                    else{
-                                        transIt = false
-                                    }
-                                }
-                                if(!transIt){
-                                    if(note2able.includes(readLine) && eed[v] == 108){
-                                        transIt = true
-                                        typeofit = 0
-                                    }
-                                    output += readLine + '\n'
-                                }
-                                break
-                        }
-                    } catch (error) {
-                        console.log(read[v])
-                        console.log('err')
-                        if (await translator.isCrash()) {
-                            return
-                        }
-                        output += read[v] + '\n'
-                    }
-                }
-            }
-            worked_files += 1
-            workedFileLength += output.length
-            fs.writeFileSync(iPath, output, 'utf-8')
-            // globalThis.mwindow.webContents.send('loading', worked_files / max_files * 100);
-            await sleep(0)
-        }
+        const aborted = await translateFiles(
+            fileList,
+            edir,
+            translator,
+            classifier,
+            useOldWay,
+            readLen,
+            translateMemorys,
+            fullFileLength,
+        )
+        if (aborted) return
         if(usePreProcess){
             await postProcessTranslate(edir)
         }
@@ -930,7 +915,7 @@ export const trans = async (ev, arg) => {
         translator.KillLs()
         globalThis.mwindow.webContents.send('alert', {
             icon: 'error',
-            message: JSON.stringify(err, Object.getOwnPropertyNames(err))
+            message: publicErrorMessage(err)
         });
     }
     globalThis.mwindow.webContents.send('worked', 0);

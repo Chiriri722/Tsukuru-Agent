@@ -1,13 +1,15 @@
 # Task Plan: Tsukuru Extractor Headless CLI 개조 (a.k.a Tsukuru agent)
 
+> **Historical implementation record:** 이 문서는 초기 개조부터 이어진 작업 이력입니다. 현재 후속 단계와 Exit Gate는 `New-task-plan.md`를 기준으로 관리합니다.
+
 ## Goal
 Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을 UI 없는 서비스 계층(`RpgMakerService`/`WolfService`)으로 분리하고, `tsukuru-agent run --request <file|->` 형식의 Headless CLI(verify/extract/patch/apply/recover)를 manifest 기반 안전성과 함께 제공한다. 기존 GUI는 동일 서비스를 호출하는 adapter로 유지한다.
 
 ## 원본 계획서
-`C:\Users\White\Documents\GitHub\Tsukuru_agent\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`
+`<legacy-repo>\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`
 
 ## 대상 소스
-`C:\Users\White\Documents\GitHub\Tsukuru_agent\tsukuru_extractor-2.3.0 source\tsukuru_extractor-2.3.0\`
+`<legacy-repo>\tsukuru_extractor-2.3.0 source\tsukuru_extractor-2.3.0\`
 
 ## Phases
 - [x] Phase 1: 계획·환경 설정 및 기준(baseline) 확보
@@ -53,11 +55,11 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] Phase 9: 프로파일·호환성
   - `standard`: renderer.ts 기본값 확인 결과 GUI는 모든 확장 플래그 off → standard = 확장 플래그 없음(기본 추출만). `full`: ext_note+ext_src+ext_javascript+ext_plugin+exJson 활성화(플러그인·스크립트·노트·추가 JSON). `advanced`: options 객체를 RpgExtractOptions/Wolf config로 그대로 전달(의미 기반 옵션) + force 보존
   - 기존 Extract/Backup/Completed/.extracteddata/TXT 형식 호환 확인: 스모크 3종이 기존 산출물 형식(.extracteddata zlib+iconv / wolf msgpack+zlib / TXT 줄 매핑)으로 round-trip 검증. standard 변경으로 CLI extract entries 45→43(노트 off, GUI 기본과 동일 동작)
-- [~] Phase 10: 테스트 (부분 완료)
-  - 실제 MV/MZ 프로젝트·Wolf 프로젝트 fixture 확보 — **미해결(Key Question 3)**: 현재 합성 fixture(rpgmv-basic 정적 JSON + 스크립트 생성 .mps 바이너리)로 커버, 실제 프로젝트 확보 시 round-trip 확장 필요
+- [x] Phase 10: 테스트
+  - 합성 MV/MZ·Wolf fixture와 이후 tracked layered suite로 자동 회귀 범위를 고정했다. 실제 게임 binary는 저장소 밖 private corpus/manual release gate로 분리하며 test inventory의 미완료로 취급하지 않는다.
   - 포맷별 extract→patch→apply→verify round-trip: 스모크 4종으로 검증 완료
   - 오류 케이스: 경로 오류(E_PATH_NOT_FOUND), 기존 산출물(E_EXTRACT_EXISTS), 손상 manifest(E_MANIFEST_CORRUPT·파싱), stale hash(E_PATCH_HASH_MISMATCH+묵변경), 줄 수 변경(1→2줄 매핑 재생성), Wolf 바이트 불일치(skipped 수집), 출력 충돌(E_OUTPUT_CONFLICT) — 모두 smoke-cli에서 검증
-  - 명시적 TypeScript 컴파일·Node 테스트 명령 추가: `npm run compile`/`typecheck`/`test`(node --test 자동 탐색 4/4 통과)/`agent`. 잔여: 스모크의 node:test 형식 정식 전환(단언을 test() 블록으로 구조화)
+  - 명시적 TypeScript 컴파일·Node 테스트 명령 추가: `npm run compile`/`typecheck`/`test`(당시 node --test 자동 탐색 4/4 통과)/`agent`. 후속 hardening에서 smoke를 tracked `node:test` 계층으로 전환했다.
 - [x] Phase 11: 빌드·배포
   - electron-builder로 GUI 없는 headless Windows 실행 파일 별도 빌드: `electron-builder.cli.yml`(별도 구성: extraMetadata.main=src/cli/electronMain.js, asar, files에 CLI·core·js·LICENSE·NOTICE·THIRD-PARTY-NOTICES), `npm run build:cli`. CLI 실행기를 `src/cli/run.ts`(runAgent)로 분리하고 Node용 `main.ts`·Electron용 `electronMain.ts` thin 엔트리 구성
   - 배포 형태 결정: **zip**(dist-cli/tsukuru-agent-2.0.0-win.zip, 93.6MB) — nsis portable 래퍼는 래퍼 체인에서 stdout/stderr 유실로 CLI 파이프 사용 불가임을 실측(포터블 exe 빌드 후 폐기). 압축 해제형 exe는 실측으로 stdout JSON·exit code 정상(실제 프로젝트 verify ok, 32,248 entries)
@@ -71,10 +73,10 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 5. `format: auto` 판별 규칙: MV/MZ(data/*.json+www 구조) vs Wolf(Data.wolf/.mps) 감지 순서 확정 필요.
 
 ## Decisions Made
-- 계획 문서 위치: 프로젝트 루트(`C:\Users\White\Documents\GitHub\Tsukuru_agent\`)에 생성 — 실제 작업 대상이 이 디렉터리이며 CWD(`_tmp\Output-game`)는 무관한 프로젝트이므로.
-- 저장소 이전(2026-08-03): 작업 결과물이 GitHub 저장소 [`Chiriri722/Tsukuru-Agent`](https://github.com/Chiriri722/Tsukuru-Agent)(로컬 `C:\Users\White\Documents\GitHub\Tsukuru Agent\Tsukuru Agent\`)로 이전·공개됨. 이 문서 내 기존 절대 경로(`...\Tsukuru_agent\work\...`)는 이전 당시 기록이며, 현재 앱 경로는 `<repo>\tsukuru-agent\`, 계획·분석 문서는 저장소 루트에 있음.
+- 계획 문서 위치: 당시 프로젝트 루트(`<legacy-repo>`)에 생성 — 실제 작업 대상이 이 디렉터리이며 CWD(`_tmp\Output-game`)는 무관한 프로젝트이므로.
+- 저장소 이전(2026-08-03): 작업 결과물이 GitHub 저장소 [`Chiriri722/Tsukuru-Agent`](https://github.com/Chiriri722/Tsukuru-Agent)(로컬 `<repo>`)로 이전·공개됨. 이 문서 내 기존 절대 경로는 `<legacy-repo>`로 비식별화했으며, 현재 앱 경로는 `<repo>\tsukuru-agent\`, 계획·분석 문서는 저장소 루트에 있음.
 - 분석 기준 커밋/버전: tsukuru_extractor 2.3.0 소스(압축 해제본)를 기준으로 함.
-- 작업 위치(2026-08-02 사용자 결정): **작업용 복사본** `C:\Users\White\Documents\GitHub\Tsukuru_agent\work\tsukuru-agent\`에서 진행. 원본 2.3.0 소스 트리는 참조용으로 보존(수정 금지).
+- 작업 위치(2026-08-02 사용자 결정): **작업용 복사본** `<legacy-repo>\work\tsukuru-agent\`에서 진행. 원본 2.3.0 소스 트리는 참조용으로 보존(수정 금지).
 - CLI 런타임: 계획서 지정대로 electron-builder headless exe를 최종 산출물로 하되, 개발·테스트는 순수 Node(컴파일된 JS) 진입점으로 수행.
 - TypeScript 버전: 5.5.4 고정(최신 7.0.2는 신규 네이티브 코드베이스라 구형 Electron 프로젝트에 위험). baseline `tsc --noEmit` 0 errors 확인.
 - 장시간 명령(npm install 등): 30초 셸 타임아웃 회피를 위해 Start-Process 백그라운드 + 로그 폴ling 패턴 사용.
@@ -111,7 +113,7 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - git push 원격 거부(GH001, pre-receive hook): `dist-cli/` 빌드 산출물 73개가 커밋에 포함(150MB exe > GitHub 100MB 제한, 93.6MB zip > 50MB 권장). 원인은 .gitignore에 `dist/`만 있고 `dist-cli/`가 누락된 것. `git reset --soft HEAD~2` → `git rm -r --cached dist-cli` → .gitignore 보강 → 단일 커밋(7e34c58)으로 재작성 후 push 성공. 부수 효과: 미푸시 상태에서 재작성되어, 이전 커밋 task_plan.md에 남아 있던 검증 프로젝트명이 **전체 이력에서 완전 제거**됨(git grep 패턴 파일 스캔 CLEAN 확인).
 
 ## Status
-**전 Phase 완료(1~9, 11) + Phase 10 부분 완료(2026-08-03)** — 실제 프로젝트 검증: standard extract 118txt/29,671 entries/6.0MB/4.4s, verify·patch(2건)·apply(118파일/3.3s) 통과, Completed 한글 반영·Backup 원본 보존·I:\ 원본 무손상 확인. full 프로파일: 123파일/32,248 entries(ext_plugins·ext_scripts·ext_javascript·ext_note 생성, verify ok). **Phase 11 완료**: headless exe(zip, 93.6MB) 빌드·실측(verify ok, stdout JSON·exit code 정상), THIRD-PARTY-NOTICES 26개 패키지. **잔여 선택 작업**: 스모크의 node:test 정식 전환, 번역 완료 후 실제 삽입(apply) 테스트(사용자 진행 예정), pkg/SEA 등 더 가벼운 단일 exe 대안 검토(nsis portable은 stdio 유실로 부적합 판정).
+**2026-08-03 당시 전 Phase 완료(1~11)** — 실제 프로젝트 검증: standard extract 118txt/29,671 entries/6.0MB/4.4s, verify·patch(2건)·apply(118파일/3.3s) 통과, Completed 한글 반영·Backup 원본 보존·I:\ 원본 무손상 확인. full 프로파일: 123파일/32,248 entries(ext_plugins·ext_scripts·ext_javascript·ext_note 생성, verify ok). **Phase 11 완료**: headless exe(zip, 93.6MB) 빌드·실측(verify ok, stdout JSON·exit code 정상), THIRD-PARTY-NOTICES 26개 패키지. 이후 v2.5 및 hardening 상태·외부 gate는 `New-task-plan.md`가 관리한다.
 
 
 ## v2.5 Research & Plan (2026-08-06)
@@ -123,7 +125,7 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] Phase 12: schema v2 및 ContainerAdapter/AsarContainer — 진단·선별 추출·provenance·CLI apply/repack 완료
 - [x] Phase 13: deep verify, round-trip dry-run, 점수·변형량·스크립트 피해도 — MV/MZ JSON·참조·manifest, Wolf 바이너리, Tyrano KS/TJS·인코딩 구조 검증과 CLI 점수 연동 완료
 - [x] Phase 14: nested MZ/ElectronForMZ, Tyrano, loose GDevelop 및 NW.js package.nw 실동작 파이프라인
-- [~] Phase 15: synthetic archive fixture와 외부 fixture 회귀 — synthetic 및 사용자 샘플 읽기 전용 회귀 완료, 실제 샘플 자동 주입/apply는 명시적 요청 전까지 보류
+- [x] Phase 15: synthetic archive fixture와 외부 fixture 회귀 — synthetic 및 사용자 샘플 읽기 전용 회귀에 이어 승인된 임시 복사본 apply·실행 probe까지 완료했다. 대표 gameplay는 별도 수동 release gate다.
 - [x] Phase 16: 문서·빌드·v2.5 배포 검증 — README·release note·라이선스 고지와 headless 배포 재빌드 검증 완료
 
 상세 계획: v2.5-validation-compatibility-plan.md
@@ -158,8 +160,9 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - [x] Phase 15: 실제 번역 팩 읽기 전용 검증, manifest 기반 번역 사전 자동 patch/apply, 오래된 manifest 복구, 두 전체 게임 복사본 실행 프로브까지 완료. 원본 세 팩 집계 SHA-256 불변.
 - [x] Phase 16: README·release note·third-party notices 갱신 및 headless zip 재빌드 검증 완료. 패키징된 app.asar에서 GDevelopService, adm-zip, THIRD-PARTY-NOTICES 포함 확인.
 - [x] Phase 17 P0~P2: 사전 21,021항목 중 20,476 안전 적용(미등록 466·빈 값 2·동일 값 77 제외), manifest 9,112항목 복구(8,940 hash 갱신), 실게임 복사본 두 개 5초 실행 및 잔류 프로세스 0 확인.
-- [ ] Phase 17 P3: 원본부터 존재하는 끊어진 RPG map reference와 번역으로 유입된 손상의 기준선 비교·severity 분리.
-- [ ] Phase 17 P4~P5: 컨테이너 사전 조립/트랜잭션 복구 강화 후 package lock·고지·결정적 ZIP 재현성 정리.
+- [x] Phase 17 P3: 원본부터 존재하는 끊어진 RPG map reference와 번역으로 유입된 손상의 기준선 비교·severity 분리.
+- [x] Phase 17 P4: 컨테이너 사전 조립/단일 transaction과 recover dry-run·충돌 정책 구현.
+- [x] Phase 17 P5: package lock·고지 점검과 결정적 CLI/NW.js ZIP의 최종 clean-build 재현성 증거 확정.
 
 ### Errors Encountered
 
@@ -171,7 +174,9 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - 실제 사용자 ASAR에는 물리 archive보다 큰 가짜 size/offset을 가진 18개 헤더 엔트리가 있어 기존 총 크기 제한이 오탐했다. 유효 offset 범위 검사와 selective extraction으로 정상 파일과 분리.
 - Windows PowerShell 5.1은 비ASCII 실행 파일 경로의 Authenticode 상태를 빈 값으로 반환할 수 있어 PowerShell 7을 우선 사용하고 공식 SignatureStatus enum 회귀를 추가.
 
-### Current verification commands
+### Historical verification commands (2026-08-11; superseded)
+
+아래 수치는 당시 기록이다. 현재 canonical gate와 최신 결과는 `New-task-plan.md`, `README.md`, `docs/release-checklist.md`를 따른다.
 
 - `npm run compile` 통과
 - `npm run typecheck -- --pretty false` 통과
@@ -180,3 +185,58 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
 - 빌드된 `tsukuru-agent.exe` smoke: stdout JSON parse 성공, verify 실패 exit code 1과 `E_VERIFY_FAILED` 계약 일치
 - `node -e "require('./test/v25-core.test.js')"`, `v25-cli`, `v25-schema-detect` 개별 실행도 통과
 - `node -e "require('./test/smoke-rpg.js')"`, `smoke-wolf`, `smoke-gui-adapter` 개별 실행도 통과
+
+### Phase 18 cross-platform portability closure (2026-08-25)
+
+- [x] Node 22 networkless Linux snapshot에서 ASAR prefix, cross-host diagnostics
+  redaction, public corpus key/value privacy, lowercase license, portable runtime
+  fixture, CLI snapshot 차이를 RED/GREEN으로 수정했다.
+- [x] GUI worker fixture가 kill 요청을 close 완료로 오인하던 경합을 실제
+  close 대기로 수정하고 Windows 4/4, Linux 반복 40/40으로 확인했다.
+- [x] Windows normal/fixed-order 365/365, Linux normal/fixed-order 361 pass·4
+  intentional skip·0 fail, 양 OS core coverage 90.36/72.21/96.88%를 확정했다.
+- [x] ASAR inspection hotspot을 103 lines/complexity 23에서 44/3으로
+  분해하고 ASAR core 51/51·agent workflow 21/21을 통과했다.
+- [x] 최신 CLI ZIP 146,849,315 bytes·SHA-256
+  `68decf43860673a99e03ff1cc74a695b1dcbf49699777489657741fbc6bbdd87`를
+  빌드하고 1,791-entry `ok/exit0,E_REQUEST_INVALID/exit1` package smoke를
+  통과했다.
+- [ ] clean committed checkout과 hosted Windows/Linux CI에서 같은 matrix를
+  재현한다.
+
+### Phase 19 install-script policy and exact clean candidate (2026-08-25)
+
+- [x] npm 11 clean install이 표시한 `electron-winstaller@5.4.0` pending
+  lifecycle hook을 RED/GREEN supply-chain 계약으로 재현하고, 사용하지 않는
+  Squirrel peer script를 `allowScripts`에서 명시적으로 deny했다.
+- [x] clean offline install 뒤 `npm install-scripts ls --json` pending 0,
+  production/full online audit 모두 0건을 확인했다.
+- [x] 현재 소스와 byte-identical한 disposable clean Git candidate에서
+  normal/fixed-order 366/366, Electron smoke, benchmark 6/6, CLI package
+  success/failure smoke, GUI portable·NSIS build와 숨김 GUI 기동을 통과했다.
+- [x] CLI ZIP 두 빌드는 146,849,326 bytes·SHA-256
+  `3c9b3494bcdbbde2567ddaa6bc29ffb13f848b659c3649ac221f962d4e0997e1`로
+  byte-identical했고 clean-source checksum/manifest/SPDX SBOM도 반복 생성이
+  동일했다.
+- [ ] disposable synthetic commit을 최종 canonical commit 증거로 간주하지
+  않는다. 사용자 승인 커밋의 clean checkout, hosted CI, 대표 gameplay,
+  실제 directory-form `package.nw`, signing/publication은 별도 gate다.
+
+### Phase 20 GUI hardening 화해와 최종 실게임 검증 (2026-08-28)
+
+- [x] 후발 GUI 디자인·보안 계획 T001–T035를 현재 코드와 대조하고 모든
+  구현 태스크를 계약 테스트와 실제 Electron smoke로 확인했다.
+- [x] npm 11 호환 corpus catalog/output 전달과 중복 warning 요약을
+  RED/GREEN으로 추가했다.
+- [x] `.extracteddata`를 번역된 게임 파일 변형량에서 제외해 실게임
+  deep verify가 `System.json` 1파일/19바이트만 보고하도록 수정했다.
+- [x] normal/fixed-order 395/395, inventory 58/388, core coverage
+  89.86/72.24/94.20, benchmark 6/6, audit 0, Electron smoke를 통과했다.
+- [x] GUI portable/NSIS를 빌드·기동하고, CLI ZIP 두 빌드가
+  146,850,322 bytes·SHA-256
+  `abc6bdc87327f9be47f987f3e963b696104d7c09c06d9995fc2be9cb02e7fee2`로
+  byte-identical함을 확인했다.
+- [x] packaged CLI로 승인 RPG MV 159,532 mappings를 score 94, 보호 피해 0,
+  invalid/issues 0으로 검증하고 원본 5,868파일·핵심 hash 불변을 확인했다.
+- [ ] canonical commit clean checkout, hosted CI, 대표 gameplay와 GUI
+  feel-check, signing/publication은 별도 gate다.

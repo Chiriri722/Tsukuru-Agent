@@ -18,19 +18,17 @@ function hexToByte(hex:string){
     return Buffer.from(hex, "hex")[0]
 }
 
-function VerifyFakeHeader(filePath:string){
-    if(!fs.existsSync(filePath)){
-        throw "file dosen't exist"
+function verifyEncryptedHeader(file:Buffer){
+    if (file.length < HEADER_MV.length) {
+        throw new Error('Invalid RPG Maker encrypted file header: the file is too short')
     }
-    const file = (fs.readFileSync(filePath))
     for (let index = 0; index < HEADER_MV.length; index++)
     {
-        if (file[index] != hexToByte(HEADER_MV[index]))
+        if (file[index] !== hexToByte(HEADER_MV[index]))
         {
-            return false;
+            throw new Error('Invalid RPG Maker encrypted file header')
         }
     }
-    return true
 }
 
 
@@ -70,7 +68,9 @@ export async function Decrypt(filePath:string, saveDir:string, key:string){
     {
         return
     }
-    let file = ((await fs.promises.readFile(filePath)).slice(16))
+    const encryptedFile = await fs.promises.readFile(filePath)
+    verifyEncryptedHeader(encryptedFile)
+    let file = encryptedFile.slice(HEADER_MV.length)
     const keys = splitString(key, 2)
     for (let index = 0; index < keys.length; index++)
     {

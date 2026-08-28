@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".build/app",
+    "noEmitOnError": true,
+    "sourceMap": false
+  },
+  "include": [
+    "globals.d.ts",
+    "main.ts",
+    "main_update.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    ".build",
+    "dist",
+    "dist-cli",
+    "node_modules",
+    "test"
+  ]
+}

@@ -1,14 +1,11 @@
 /**
  * 작업 Context: 기존 globalThis 전역 상태(mwindow 제외)를 대체한다.
- *
- * 설계 결정(계획서 §구현 방향): GUI/CLI 모두 프로세스당 한 번에 하나의 작업만
- * 실행하므로(기존 GUI도 'worked' 플래그로 직렬화), 깊은 난수 로직(extract.ts 등)을
- * 모두 매개변수화하는 대신 명시적 Context 홀더를 사용한다.
- * - 로직 코드는 globalThis 대신 ctx()를 통해 상태에 접근한다.
- * - GUI adapter(Phase 8)와 CLI 진입점(Phase 6)이 작업 시작 전 setActiveContext()를 호출한다.
- * - 향후 동시 작업이 필요해지면 매개변수 전달로 단계적 이전 가능하다.
+ * 깊은 legacy 함수는 ctx() 호환 경계를 사용하지만 서비스는 withOperationContext로
+ * 범위를 명시한다. AsyncLocalStorage가 중첩·병렬 작업의 상태를 서로 격리한다.
  */
+import { AsyncLocalStorage } from 'async_hooks';
 import { ProgressSink, Logger } from './types';
+import { createOperationRuntime, OperationRuntime } from './operationRuntime';
 
 /** datas.ts의 settings와 동형(느슨한 인덱스 시그니처 유지). */
 export interface RpgSettings {
@@ -54,9 +51,7 @@ export interface WolfState {
     keyvalue?: unknown;
 }
 
-export interface OperationContext {
-    progress: ProgressSink;
-    logger: Logger;
+export interface OperationContext extends OperationRuntime {
     rpg: RpgState;
     wolf: WolfState;
 }
@@ -84,30 +79,32 @@ export function createOperationContext(
     progress: ProgressSink,
     logger: Logger,
     init?: { rpg?: RpgState; wolf?: WolfState },
+    suppliedRuntime?: OperationRuntime,
 ): OperationContext {
+    const runtime = suppliedRuntime ?? createOperationRuntime({ progress, logger });
     return {
-        progress,
-        logger,
+        ...runtime,
         rpg: init?.rpg ?? createRpgState(),
         wolf: init?.wolf ?? createWolfState(),
     };
 }
 
-let activeContext: OperationContext | null = null;
+const operationContextStorage = new AsyncLocalStorage<OperationContext>();
 
-/** 작업 시작 전에 호출. null이면 해제. */
-export function setActiveContext(context: OperationContext | null): void {
-    activeContext = context;
+/** callback의 동기·비동기 수명에만 context를 연결하고 종료 시 부모 상태를 복원한다. */
+export function withOperationContext<T>(context: OperationContext, callback: () => T): T {
+    return operationContextStorage.run(context, callback);
 }
 
 export function hasActiveContext(): boolean {
-    return activeContext !== null;
+    return operationContextStorage.getStore() !== undefined;
 }
 
 /** 현재 작업 Context. 미설정 상태에서 로직이 실행되면 즉시 실패시킨다. */
 export function ctx(): OperationContext {
-    if (activeContext === null) {
-        throw new Error('Operation context is not set. GUI adapter 또는 CLI가 작업 시작 전에 setActiveContext()를 호출해야 합니다.');
+    const context = operationContextStorage.getStore();
+    if (!context) {
+        throw new Error('Operation context is not set. 서비스 경계가 withOperationContext()로 작업을 실행해야 합니다.');
     }
-    return activeContext;
+    return context;
 }
