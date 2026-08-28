@@ -23,6 +23,7 @@ function collectVersionIssues(surfaces) {
   const issues = [];
   const pkg = surfaces.packageJson;
   const expectedReleaseTitle = `# Tsukuru Agent v${pkg.version} compatibility update`;
+  const normalizedChangelog = surfaces.changelog.replace(/\r\n?/g, '\n');
 
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version)) {
     issues.push(`package.json version is not valid SemVer: ${pkg.version}`);
@@ -33,7 +34,7 @@ function collectVersionIssues(surfaces) {
   if (!surfaces.releaseNotes.startsWith(expectedReleaseTitle)) {
     issues.push(`release notes must start with: ${expectedReleaseTitle}`);
   }
-  if (!surfaces.changelog.includes(`<!-- current-version:start -->\n## [${pkg.version}] - Unreleased\n<!-- current-version:end -->`)) {
+  if (!normalizedChangelog.includes(`<!-- current-version:start -->\n## [${pkg.version}] - Unreleased\n<!-- current-version:end -->`)) {
     issues.push(`CHANGELOG.md current version must mirror package.json version ${pkg.version}`);
   }
   if (!/^artifactName: tsukuru-agent-\$\{version\}-\$\{os\}\.\$\{ext\}$/m.test(surfaces.cliBuilder)) {

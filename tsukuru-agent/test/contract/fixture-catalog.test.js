@@ -8,6 +8,13 @@ const appRoot = path.resolve(__dirname, '..', '..');
 const repoRoot = path.resolve(appRoot, '..');
 const catalogPath = path.join(repoRoot, 'fixtures', 'catalog.json');
 
+function hashFixtureBytes(filePath, bytes) {
+  const canonicalBytes = path.extname(filePath).toLowerCase() === '.json'
+    ? Buffer.from(bytes.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8')
+    : bytes;
+  return crypto.createHash('sha256').update(canonicalBytes).digest('hex');
+}
+
 function hashTree(root) {
   const records = [];
   const visit = (directory) => {
@@ -16,7 +23,7 @@ function hashTree(root) {
       if (entry.isDirectory()) visit(fullPath);
       else {
         const relative = path.relative(root, fullPath).split(path.sep).join('/');
-        const hash = crypto.createHash('sha256').update(fs.readFileSync(fullPath)).digest('hex');
+        const hash = hashFixtureBytes(fullPath, fs.readFileSync(fullPath));
         records.push(`${relative}\0${hash}`);
       }
     }
@@ -26,6 +33,11 @@ function hashTree(root) {
 }
 
 test('fixture catalog covers every supported engine and wrapper with deterministic recipes', () => {
+  assert.equal(
+    hashFixtureBytes('fixture.json', Buffer.from('{\r\n  "ok": true\r\n}\r\n')),
+    hashFixtureBytes('fixture.json', Buffer.from('{\n  "ok": true\n}\n')),
+    'text fixture hashes must not depend on checkout line endings',
+  );
   assert.equal(fs.existsSync(catalogPath), true, 'fixtures/catalog.json must exist');
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
   assert.equal(catalog.schemaVersion, 1);

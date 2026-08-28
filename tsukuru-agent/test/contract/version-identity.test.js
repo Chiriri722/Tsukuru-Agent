@@ -82,6 +82,11 @@ test('check:version validates the checked-in version surfaces', () => {
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.trim(), 'version identity OK: tsukuru-agent@2.5.0');
+
+  const { collectVersionIssues, readVersionSurfaces } = require('../../scripts/check-version.js');
+  const crlfSurfaces = readVersionSurfaces(appRoot);
+  crlfSurfaces.changelog = crlfSurfaces.changelog.replace(/\r?\n/g, '\r\n');
+  assert.deepEqual(collectVersionIssues(crlfSurfaces), [], 'CRLF checkout must preserve version identity');
 });
 
 test('version policy reports drift without mutating files', () => {

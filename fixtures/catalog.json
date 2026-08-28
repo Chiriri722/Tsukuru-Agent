@@ -8,7 +8,7 @@
       "wrapper": "directory",
       "kind": "tracked-directory",
       "path": "fixtures/rpgmv-basic",
-      "sha256": "981f40c7e716a638d6871e56cf673efddfbf9bd7a8e1a56fa90c1b447b505604",
+      "sha256": "ec3853d099bf494053dc37cad10444a126e426559c1c9fe651704f04a98fd64b",
       "testFile": "tsukuru-agent/test/e2e/cli-operations.test.js",
       "recipe": "test('CLI operations preserve stdout, exit-code, and round-trip contracts')",
       "coverage": ["detect", "extract", "patch", "verify", "apply"]
