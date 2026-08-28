@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "format": "rpgmv",
+  "artifacts": [],
+  "stats": {
+    "entries": 43,
+    "score": 75,
+    "files": 4,
+    "invalidEntries": 0,
+    "tokenErrors": 0,
+    "encodingWarnings": 0
+  },
+  "warnings": [],
+  "error": null,
+  "container": {
+    "type": "directory",
+    "path": null,
+    "root": "www",
+    "confidence": 0.65,
+    "invalidEntryCount": 0
+  },
+  "engine": {
+    "type": "rpgmv",
+    "wrapper": null,
+    "features": [],
+    "confidence": 0.65
+  },
+  "validation": {
+    "profile": "rpgmv",
+    "ok": true,
+    "filesChecked": 4,
+    "entriesChecked": 43,
+    "validEntries": 43,
+    "invalidEntries": 0,
+    "encodingCounts": {
+      "utf8": 4,
+      "shiftJis": 0,
+      "unknown": 0
+    },
+    "encodingWarnings": 0,
+    "tokenErrors": 0,
+    "issues": []
+  },
+  "scores": {
+    "total": 75,
+    "extractionCoverage": 100,
+    "mappingIntegrity": 100,
+    "reinsertionValidity": 50,
+    "protectedScriptIntegrity": 50,
+    "containerIntegrity": 100,
+    "risk": "medium"
+  },
+  "change": {
+    "filesChanged": 0,
+    "bytesChanged": 0,
+    "textBytesChanged": 0,
+    "protectedFilesChanged": 0,
+    "protectedScriptDamage": 0
+  }
+}

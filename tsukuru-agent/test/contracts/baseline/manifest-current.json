@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "format": "rpgmv",
+  "createdAt": "<TIMESTAMP>",
+  "entries": [
+    {
+      "id": "Actors.json#comment_0",
+      "sourceFile": "Backup/Actors.json",
+      "dataPath": "comment_0",
+      "extractFile": "Actors.txt",
+      "lineStart": 0,
+      "lineEnd": 1,
+      "hash": "73be087e93080f9e436892b7d182df66394bc79dbf5df119d9357df61b1ebbfb",
+      "encoding": "utf8",
+      "nullTerminated": false,
+      "mv": {
+        "qpath": "",
+        "conf": {
+          "isComment": true
+        },
+        "endLine": 1,
+        "originFile": "Actors.json"
+      }
+    },
+    {
+      "id": "Actors.json#1.name",
+      "sourceFile": "Backup/Actors.json",
+      "dataPath": "1.name",
+      "extractFile": "Actors.txt",
+      "lineStart": 1,
+      "lineEnd": 2,
+      "hash": "cb0991f69e0a4e835f7360396e77b4391da97bfc744cbf20703c5ac8e919caa7",
+      "encoding": "utf8",
+      "nullTerminated": false,
+      "mv": {
+        "qpath": "",
+        "endLine": 2,
+        "originFile": "Actors.json"
+      }
+    }
+  ]
+}
