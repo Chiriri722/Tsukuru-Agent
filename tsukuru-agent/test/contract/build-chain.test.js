@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const childProcess = require('node:child_process');
 
@@ -158,6 +159,26 @@ test('compile leaves tracked runtime sources unchanged and stages required files
   };
   visit(stageRoot);
   assert.deepEqual(forbidden, []);
+
+  const { copyStagedFile } = require('../../scripts/prepare-build.js');
+  assert.equal(typeof copyStagedFile, 'function');
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-build-eol-'));
+  try {
+    const sourceJson = path.join(fixtureRoot, 'source.json');
+    const stagedJson = path.join(fixtureRoot, 'staged', 'source.json');
+    fs.writeFileSync(sourceJson, '{\r\n  "ok": true\r\n}\r\n');
+    copyStagedFile(sourceJson, stagedJson);
+    assert.equal(fs.readFileSync(stagedJson, 'utf8'), '{\n  "ok": true\n}\n');
+
+    const sourceBinary = path.join(fixtureRoot, 'source.png');
+    const stagedBinary = path.join(fixtureRoot, 'staged', 'source.png');
+    const binaryBytes = Buffer.from([0x00, 0x0d, 0x0a, 0xff]);
+    fs.writeFileSync(sourceBinary, binaryBytes);
+    copyStagedFile(sourceBinary, stagedBinary);
+    assert.deepEqual(fs.readFileSync(stagedBinary), binaryBytes);
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test('targeted staging writes the package entry point for each product', () => {

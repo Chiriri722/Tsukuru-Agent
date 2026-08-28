@@ -6,6 +6,8 @@ const appRoot = path.resolve(__dirname, '..');
 const stageRoot = path.join(appRoot, '.build', 'app');
 const buildConfig = path.join(appRoot, 'tsconfig.build.json');
 const tscPath = require.resolve('typescript/bin/tsc');
+const STAGED_TEXT_EXTENSIONS = new Set(['.css', '.html', '.js', '.json', '.md']);
+const STAGED_TEXT_BASENAMES = new Set(['LICENSE', 'THIRD-PARTY-NOTICES']);
 
 function isGeneratedSourceJavaScript(filePath) {
   if (path.extname(filePath).toLowerCase() !== '.js') return false;
@@ -15,6 +17,17 @@ function isGeneratedSourceJavaScript(filePath) {
 function shouldCopyStaticFile(filePath) {
   if (/\.(?:ts|tsx|scss|map)$/i.test(filePath)) return false;
   return !isGeneratedSourceJavaScript(filePath);
+}
+
+function copyStagedFile(sourcePath, targetPath) {
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  const extension = path.extname(sourcePath).toLowerCase();
+  if (STAGED_TEXT_EXTENSIONS.has(extension) || STAGED_TEXT_BASENAMES.has(path.basename(sourcePath))) {
+    const canonicalText = fs.readFileSync(sourcePath, 'utf8').replace(/\r\n?/g, '\n');
+    fs.writeFileSync(targetPath, canonicalText, 'utf8');
+    return;
+  }
+  fs.copyFileSync(sourcePath, targetPath);
 }
 
 function copyStaticTree(sourceRoot, targetRoot) {
@@ -30,8 +43,7 @@ function copyStaticTree(sourceRoot, targetRoot) {
       continue;
     }
     if (!entry.isFile() || !shouldCopyStaticFile(sourcePath)) continue;
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(sourcePath, targetPath);
+    copyStagedFile(sourcePath, targetPath);
   }
 }
 
@@ -57,9 +69,11 @@ function prepareBuild(target) {
   copyStaticTree(path.join(appRoot, 'src'), path.join(stageRoot, 'src'));
   copyStaticTree(path.join(appRoot, 'res'), path.join(stageRoot, 'res'));
   for (const name of ['LICENSE', 'NOTICE.md', 'THIRD-PARTY-NOTICES', 'version.json']) {
-    fs.copyFileSync(path.join(appRoot, name), path.join(stageRoot, name));
+    copyStagedFile(path.join(appRoot, name), path.join(stageRoot, name));
   }
   writeStagedPackage(target);
 }
 
-prepareBuild(process.argv[2] || 'gui');
+if (require.main === module) prepareBuild(process.argv[2] || 'gui');
+
+module.exports = { copyStagedFile, copyStaticTree, prepareBuild, shouldCopyStaticFile };
