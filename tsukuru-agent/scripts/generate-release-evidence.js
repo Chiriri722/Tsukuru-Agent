@@ -19,18 +19,35 @@ function parseArgs(argv) {
   return { outputDir, artifacts, allowDirty };
 }
 
-function runGit(args, failureMessage) {
-  const result = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', shell: false, windowsHide: true });
+function runGit(args, failureMessage, root = ROOT) {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', shell: false, windowsHide: true });
   if (result.status !== 0) throw new Error(failureMessage);
   return result.stdout.trim();
 }
 
-function gitSource(allowDirty) {
-  const commit = runGit(['rev-parse', 'HEAD'], 'Unable to resolve source commit');
-  const commitDate = runGit(['show', '-s', '--format=%cI', 'HEAD'], 'Unable to resolve source commit date');
-  const dirty = runGit(['status', '--porcelain=v1', '--untracked-files=all'], 'Unable to inspect source tree').length > 0;
+function listDirtyPaths(root = ROOT) {
+  const tracked = runGit(
+    ['diff', '--ignore-cr-at-eol', '--name-only', 'HEAD', '--'],
+    'Unable to inspect tracked source files',
+    root,
+  ).split(/\r?\n/).filter(Boolean);
+  const untracked = runGit(
+    ['ls-files', '--others', '--exclude-standard'],
+    'Unable to inspect untracked source files',
+    root,
+  ).split(/\r?\n/).filter(Boolean);
+  return [...new Set([...tracked, ...untracked])].sort();
+}
+
+function gitSource(allowDirty, root = ROOT) {
+  const commit = runGit(['rev-parse', 'HEAD'], 'Unable to resolve source commit', root);
+  const commitDate = runGit(['show', '-s', '--format=%cI', 'HEAD'], 'Unable to resolve source commit date', root);
+  const dirtyPaths = listDirtyPaths(root);
+  const dirty = dirtyPaths.length > 0;
   if (dirty && !allowDirty) {
-    throw new Error('Release evidence requires a clean source tree (append allow-dirty for non-release testing only)');
+    const preview = dirtyPaths.slice(0, 20).join(', ');
+    const remainder = dirtyPaths.length > 20 ? ` (+${dirtyPaths.length - 20} more)` : '';
+    throw new Error(`Release evidence requires a clean source tree: ${preview}${remainder} (append allow-dirty for non-release testing only)`);
   }
   return { commit, commitDate, dirty };
 }
@@ -110,4 +127,4 @@ try {
   process.exitCode = 1;
 }
 
-module.exports = { main };
+module.exports = { gitSource, listDirtyPaths, main };

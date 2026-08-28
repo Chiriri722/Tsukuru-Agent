@@ -153,6 +153,33 @@ test('supply-chain drift, notices, and release evidence are executable policy ga
 test('release evidence is deterministic and binds artifacts to source and an SPDX SBOM', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-release-evidence-'));
   try {
+    const evidenceApi = require('../../scripts/generate-release-evidence.js');
+    const gitRoot = path.join(tempRoot, 'source-repository');
+    fs.mkdirSync(gitRoot);
+    const git = (...args) => {
+      const result = spawnSync('git', args, { cwd: gitRoot, encoding: 'utf8', shell: false });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+    };
+    git('init');
+    git('config', 'user.name', 'Tsukuru Agent Test');
+    git('config', 'user.email', 'test@example.invalid');
+    git('config', 'core.autocrlf', 'false');
+    const trackedFile = path.join(gitRoot, 'tracked.txt');
+    fs.writeFileSync(trackedFile, 'committed\n');
+    git('add', 'tracked.txt');
+    git('commit', '-m', 'fixture');
+
+    fs.writeFileSync(trackedFile, 'committed\r\n');
+    assert.equal(evidenceApi.gitSource(false, gitRoot).dirty, false,
+      'line-ending-only build rewrites must preserve clean-source evidence');
+    fs.writeFileSync(trackedFile, 'changed\r\n');
+    assert.throws(() => evidenceApi.gitSource(false, gitRoot), /tracked\.txt/,
+      'semantic tracked changes must block clean-source evidence');
+    fs.writeFileSync(trackedFile, 'committed\n');
+    fs.writeFileSync(path.join(gitRoot, 'untracked.txt'), 'untracked\n');
+    assert.throws(() => evidenceApi.gitSource(false, gitRoot), /untracked\.txt/,
+      'untracked files must block clean-source evidence');
+
     const artifact = path.join(tempRoot, 'tsukuru-agent-test.zip');
     fs.writeFileSync(artifact, 'deterministic release artifact\n');
     const outputs = [path.join(tempRoot, 'first'), path.join(tempRoot, 'second')];
