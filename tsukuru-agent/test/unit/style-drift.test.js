@@ -12,8 +12,19 @@ test('style drift checker is present', () => {
   assert.ok(api, 'scripts/check-style-drift.js is missing');
 });
 
-test('tracked CSS exactly matches its SCSS source', { skip: !api }, () => {
+test('tracked CSS exactly matches its SCSS source across checkout line endings', { skip: !api }, () => {
   assert.deepEqual(api.collectStyleDriftIssues(), []);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-style-eol-'));
+  try {
+    const scssPath = path.join(root, 'sample.scss');
+    const cssPath = path.join(root, 'sample.css');
+    fs.writeFileSync(scssPath, '.sample { color: red; }\n');
+    const crlfCss = api.compileStyle(scssPath).replace(/\r?\n/g, '\r\n');
+    fs.writeFileSync(cssPath, crlfCss);
+    assert.deepEqual(api.collectStyleDriftIssues([{ scssPath, cssPath }]), []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('style drift checker reports a stale generated CSS file', { skip: !api }, () => {

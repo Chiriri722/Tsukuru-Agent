@@ -16,6 +16,10 @@ function compileStyle(scssPath) {
   return `${sass.compile(scssPath, { style: 'expanded' }).css}\n`;
 }
 
+function normalizeLineEndings(text) {
+  return text.replace(/\r\n?/g, '\n');
+}
+
 function collectStyleDriftIssues(pairs = STYLE_PAIRS) {
   const issues = [];
   for (const { scssPath, cssPath } of pairs) {
@@ -25,7 +29,7 @@ function collectStyleDriftIssues(pairs = STYLE_PAIRS) {
     }
     const generated = compileStyle(scssPath);
     const tracked = fs.readFileSync(cssPath, 'utf8');
-    if (generated !== tracked) issues.push(cssPath);
+    if (normalizeLineEndings(generated) !== normalizeLineEndings(tracked)) issues.push(cssPath);
   }
   return issues.sort();
 }
@@ -48,4 +52,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { STYLE_PAIRS, checkStyleDrift, collectStyleDriftIssues, compileStyle };
+module.exports = { STYLE_PAIRS, checkStyleDrift, collectStyleDriftIssues, compileStyle, normalizeLineEndings };
