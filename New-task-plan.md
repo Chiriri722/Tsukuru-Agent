@@ -1,21 +1,39 @@
 ---
 plan_id: tsukuru-agent-post-v2.5-hardening
 status: in_progress
-current_phase: "Phase 9 로컬 자동 통합 완료 / 외부 릴리스 gate 대기"
-next_step: "사용자 승인 후 현재 통합 변경을 커밋·푸시해 hosted Windows CI package smoke와 clean-source release evidence를 확정하고, 승인된 실제 corpus의 수동 플레이테스트·서명·게시 gate를 별도로 수행한다."
+current_phase: "2026-09-13 Daybreak 개선 제안 검증·D21 계획 확정 완료; 구현 대기"
+next_step: "통합 작업트리의 D21-01 일반 RPG 사전 적용 rollback부터 명세·실패 회귀를 작성하고, D21-02 번역 lint와 D21-03 공개 전 출력 검증을 진행한다."
 repository: "Chiriri722/Tsukuru-Agent"
 baseline_branch: "main"
 baseline_commit: "17fa6e7108fca66eda5a436e19febc955c0acd9d"
 baseline_commit_date: "2026-08-12"
 target_path: "New-task-plan.md"
 created_at: "2026-08-15"
-last_updated: "2026-08-24"
+last_updated: "2026-09-13"
 ---
 
 # Tsukuru Agent 개선 작업 계획서
 
+## 현재 후속 단계 — D21 (2026-09-13)
+
+Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조했다.
+[검증 근거](docs/reviews/2026-09-13-daybreak-followup.md)와
+[실행 checklist](task_plan.md)의 D21-01~08이 이번 후속 작업의 기준이다.
+기존 Phase 0~20의 체크박스와 수치는 당시 증거로 유지한다.
+
+- 조사 완료: 합성 15개 사례, 관련 회귀 65/65, TypeScript build 통과.
+- 구현 대기: 일반 RPG 사전 적용 rollback → 공유 translation-lint →
+  공개 전 출력 검증 → 해시 충돌 집계 → 메시지 연속성/언어 잔존 →
+  AppleDouble 후보 정책 → 오류 문맥.
+- 9월 8일 patch-mapping 수정은 통합 작업트리에 남아 있고 main 미병합이다.
+  이번 번역 품질·적용 transaction backlog가 그 완료 기록을 대체하지 않는다.
+- 후속 구현은 정확한 checkout/미커밋 후보를 식별한 뒤 Spec-kit 명세와
+  해당 회귀를 먼저 작성한다. 구조 합격과 의미 감수·실게임 합격을 구분한다.
+
+> **2026-09-08 확인:** 이 파일의 본문은 main에 남은 계획·이력입니다. 통합 구현은 `chore/hardening-integration@80d2043`에 커밋되어 있으며 main에는 미병합입니다. 현재 검증과 후속 작업은 [작업 재개 안내](docs/current-state.md)를 기준으로 삼습니다. 본문에 남은 “커밋·푸시 미수행”은 당시 기록입니다.
+
 > **범위:** v2.5 이후의 안정화, 보안, 유지보수성, 테스트 신뢰성, 배포 재현성, 후속 호환성 확장  
-> **기존 문서와의 관계:** 루트의 `task_plan.md`와 `v2.5-validation-compatibility-plan.md`는 기존 개조·v2.5 구현 이력으로 보존한다. 이 문서는 이후 개선 작업의 단일 기준 문서다.  
+> **기존 문서와의 관계:** 루트의 `task_plan.md`와 `v2.5-validation-compatibility-plan.md`는 기존 개조·v2.5 구현 이력으로 보존한다. 이 문서는 이후 개선 작업의 목표·Exit Gate 기준이며, 현재 브랜치·검증·다음 행동은 `docs/current-state.md`에서 확인한다.
 > **검토 기준:** `main@17fa6e7108fca66eda5a436e19febc955c0acd9d`  
 > **검증 갱신:** 계획 초안은 GitHub 정적 검토로 작성했으나 2026-08-19 Phase 0 clean-room을 완료했다. 실행 결과는 `docs/baseline.md`, `findings.md`, `progress.md`에 기록한다.
 

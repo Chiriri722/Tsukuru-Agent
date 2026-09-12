@@ -1,6 +1,29 @@
 # Notes: Tsukuru Extractor 2.3.0 코드베이스 분석
 
-## Sources
+> **역사적 분석:** 원본 2.3.0과 v2.5 구현 당시 조사입니다. 아래 전역 상태·타입스크립트 설치·라이선스·미구현 항목을 최신 상태로 간주하지 마세요. 현재 브랜치 차이와 후속 작업은 [작업 재개 안내](docs/current-state.md)에 있습니다.
+
+## 2026-09-13 Daybreak 도구 개선 대조
+
+- 사용자가 지정한 보고서의 검사일은 2026-09-13이며, 실행 기준은 일반 경로의 main이다.
+  통합 작업트리의 같은 이름 함수와 대조하여 오래된 구현의 결함을 중복 등록하지 않았다.
+- 상세 근거: [Daybreak 후속 검증](docs/reviews/2026-09-13-daybreak-followup.md).
+  현재 backlog와 완료 조건: [task_plan.md](task_plan.md).
+- 직접 apply의 손상 Backup/없는 dataPath/비문자 대상은 통합에서 이미
+  E_MAPPING_CORRUPT로 차단되며 바이트가 보존된다. origin 파일/ID 진단은 보완 대상이다.
+- 사전 patch 다음의 apply 실패는 별도 경계다. 합성 CLI에서 오류 반환·Completed 없음에도
+  Extract/Actors.txt와 Extract/manifest.json 변경이 남았다. 전체 transaction을 D21-01로 우선한다.
+- 제어코드/빈 direct patch/U+FFFD/언어 잔존/101·401 괄호 손상은 현재 통과하며
+  순수 의미/문장 이동은 구조·hash만으로 자동 증명할 수 없다.
+- 조사 15개 사례, TypeScript build와 기존 관련 회귀 65/65를 확인했다.
+  조사 중 위험 입력의 성공을 제품 안전성 합격으로 표시하지 않는다.
+- 로그·합성 probe·source hash: 통합 앱의 ignored
+  `tmp/daybreak-review-2026-09-13/`. 실제 게임과 원 보고서는 수정하지 않았다.
+- 조사 오류: graph text search의 불충분한 결과는 확인된 소스/테스트의 제한된 검색으로
+  보완했다. probe의 최초 fixture 상대 위치 오류는 상위 저장소 경로로 바로잡은 뒤 재실행했다.
+  이 실패는 도구 결함 재현 결과에 포함하지 않았다.
+- 이번에는 문서/계획만 갱신했다. 구현, main 병합, 새 Linear 이슈나 Sentry 조회는 수행하지 않았다.
+
+## Sources (초기 분석 이력)
 
 ### Source 1: 원본 계획서
 - 경로: `C:\Users\White\Documents\GitHub\Tsukuru_agent\Tsukuru Extractor Headless CLI 개조 계획 (a.k.a Tsukuru agent).md`

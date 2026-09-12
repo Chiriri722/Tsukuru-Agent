@@ -1,10 +1,10 @@
 # Task Plan: GUI 디자인 개선 · 렌더러 보안 하드닝 (001-gui-design-hardening)
 
 - 작성일: 2026-08-28
-- 대상 레포: `C:\Users\White\Documents\GitHub\Tsukuru Agent\Tsukuru Agent`
+- 대상 레포: `C:\Users\White\Documents\GitHub\Tsukuru Agent` (2026-09-08 경로 정리)
   (branch `main`, HEAD `4b0741f`. 코드 작업트리 clean — `git status --porcelain` 은
   이 계획서 폴더 `?? specs/` 만 보고한다)
-- 상태: **계획 수립 완료 / 구현 미착수** (T001–T035 전부 미시작)
+- 상태: **main 기준 과거 계획**. 작성 당시 T001–T035는 미시작이었다. 후속 통합 브랜치에는 구현·계획 화해 기록이 있으므로 신규 작업으로 재착수하기 전에 [현재 상태](../../docs/current-state.md)를 확인한다.
 - 코드베이스 메모리 프로젝트: `tsukuru-agent-design-audit-20260828` (1420 nodes / 3595 edges, mode=moderate)
 - 디자인 기준: `C:\Users\White\.kiro\skills\` 의 `emil-design-eng`, `animate`,
   `find-animation-opportunities` (Emil Kowalski 디자인 엔지니어링 철학)

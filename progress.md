@@ -2,9 +2,39 @@
 
 ## Current Phase
 
-Phase 18.6 — dependency, external-binary, and release supply-chain evidence is
-next. Phase 18.5 versioned contracts, explicit runtime, and cancellation passed
-every gate.
+2026-09-08: repository relocation and branch-aware review are complete. The
+main checkout remains at `8c7d773`; integrated implementation is committed in
+`chore/hardening-integration@80d2043`. Main passes 78 local / 61 tracked tests;
+integration passes `npm run verify` and 395 actual tests. Review R1 still permits
+a malformed v1 mapping to corrupt a patch workspace. See
+[current state](docs/current-state.md) and [review](docs/reviews/2026-09-08.md).
+The dated records below describe their original checkpoints, including earlier
+uncommitted work; they are not the current branch/commit status.
+
+## Review and relocation (2026-09-08)
+
+- Moved the repository from the duplicate inner directory to
+  `C:\Users\White\Documents\GitHub\Tsukuru Agent`; repaired all four linked
+  worktrees and verified unchanged HEAD and pre-existing worktree changes.
+- Added `docs/README.md`, `docs/current-state.md`, and
+  `docs/reviews/2026-09-08.md` to separate current facts, navigation, and review
+  evidence. Updated README operation/test counts and NOTICE link, and marked
+  historical plan/analysis documents with their branch and date scope.
+- Main typecheck and compile passed with no tracked code drift. Main local
+  tests passed 78/78; the four tracked files passed 61/61 separately. Integration
+  `npm run verify` passed 395/395 plus version/style/complexity/generated/
+  inventory/supply-chain checks using existing dependencies.
+- Sandbox `spawn EPERM` prevented the first test attempts. Approved execution
+  outside the sandbox completed the suites; this is separate from code failure.
+- Reproduced main's intermediate-junction write and partial patch persistence;
+  integration blocked or rolled back the same cases. Both branches still accept
+  a v1 manifest missing lineStart and corrupt the extraction workspace. The
+  integrated request dispatcher also reproduced that successful-but-invalid
+  patch after a real synthetic extraction. Review R1 is the next code change.
+- Pre-document-change merge simulation of the two committed tips had no
+  conflicts. No production code edit, actual merge, commit, or push was made.
+- Full local logs and synthetic reproductions are under the application
+  directories' ignored `tmp/review-2026-09-08/`. No user game files were used.
 
 ## Completed
 

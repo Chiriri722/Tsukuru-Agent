@@ -1,16 +1,18 @@
 # Tsukuru Agent
 
+> **작업 재개 안내 (2026-09-08):** 이 경로는 이전 구현의 `main`입니다. 후속 hardening 구현은 별도 `chore/hardening-integration` worktree에 있습니다. [현재 상태·경로·다음 작업](docs/current-state.md), [코드 리뷰](docs/reviews/2026-09-08.md), [내부 문서 안내](docs/README.md)를 먼저 확인하세요.
+
 RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스트 추출·패치·적용을 자동화하는 **Headless CLI**입니다. Electron `app.asar`와 NW.js `package.nw` 작업본도 원본 보존 방식으로 처리합니다.
 [Tsukuru Extractor](https://github.com/gramedcart/tsukuru_extractor) 2.3.0(GPLv3)의 추출·적용 로직을 UI 비의존 서비스 계층으로 리팩터링하고, 에이전트·CI 환경에서 호출할 수 있는 JSON 요청/응답 CLI를 추가했습니다. 기존 Electron GUI도 동일한 서비스 계층 위에서 동작합니다.
 
-> **English**: Headless CLI for RPG Maker MV/MZ, Wolf RPG, TyranoScript, and conservative GDevelop translation workflows — verify / extract / patch / apply game text via JSON requests, including safe Electron ASAR and NW.js package.nw staging. Refactored from Tsukuru Extractor 2.3.0 (GPLv3, see [NOTICE.md](NOTICE.md)).
+> **English**: Headless CLI for RPG Maker MV/MZ, Wolf RPG, TyranoScript, and conservative GDevelop translation workflows — verify / extract / patch / apply / recover game text via JSON requests, including safe Electron ASAR and NW.js package.nw staging. Refactored from Tsukuru Extractor 2.3.0 (GPLv3, see [NOTICE.md](tsukuru-agent/NOTICE.md)).
 
 ## 주요 기능
 
-- **4개 작업**: `verify` · `extract` · `patch` · `apply`
+- **5개 작업**: `verify` · `extract` · `patch` · `apply` · `recover`
 - **포맷 자동 판별**: RPG Maker MV/MZ(data/*.json), Wolf RPG(.mps, Data.wolf), TyranoScript(data/scenario/*.ks), GDevelop(gdjs runtime + data.js)
-- **안전한 번역 워크플로**: `Extract/manifest.json`(안정 ID·원문 SHA-256·줄 매핑·오프셋) 기반 `patch` — 해시 불일치·중복 ID·매핑 손상 시 **아무것도 변경하지 않음**
-- **원자적 쓰기**: 임시 디렉터리/파일에서 완료·검증한 뒤 교체
+- **manifest 기반 번역 워크플로**: 안정 ID·원문 SHA-256·줄 매핑·오프셋을 사용하며 해시 불일치와 중복 ID를 쓰기 전에 검사합니다. main의 정션·불완전한 매핑 검증 한계는 [코드 리뷰 R1/R2](docs/reviews/2026-09-08.md)를 참고하세요.
+- **파일별 원자적 쓰기**: 임시 파일을 교체합니다. main의 여러 파일 patch 실패 복구 한계와 통합 브랜치의 보완은 [코드 리뷰 R3](docs/reviews/2026-09-08.md)에 기록되어 있습니다.
 - **원본 보존**: MV/MZ는 `Completed`로 출력하고 Wolf/Tyrano/GDevelop 및 ASAR/NW.js는 별도 게임 복사본에만 적용
 - **에이전트 친화적**: stdout은 최종 결과 JSON 전용, 모든 로그는 stderr
 - **기존 GUI 산출물과 호환**: `Extract` · `Backup` · `Completed` · `.extracteddata` · TXT 형식 유지
@@ -161,8 +163,11 @@ tsukuru-agent/          애플리케이션 (CLI + GUI + 서비스 계층)
   test/                 스모크·회귀 테스트 (node:test)
 fixtures/               합성 테스트 fixture
 task_plan.md, notes.md  개조 계획·코드 분석 문서 (작업 이력)
+docs/README.md         내부 문서의 읽는 순서
+docs/current-state.md  브랜치·경로·검증·다음 작업
+docs/reviews/          날짜별 코드 리뷰
 v2.5-release-notes.md   v2.5 호환성 변경과 알려진 한계
-NOTICE.md               GPLv3 수정 고지
+tsukuru-agent/NOTICE.md GPLv3 수정 고지
 ```
 
 ## 개발 명령
@@ -170,13 +175,13 @@ NOTICE.md               GPLv3 수정 고지
 ```powershell
 npm run compile     # tsc emit
 npm run typecheck   # tsc --noEmit
-npm test            # node:test (10개 테스트 파일)
+npm test            # node:test (현재 로컬 10개, Git 추적 4개 파일)
 npm run agent -- run --request request.json
 ```
 
 ## 테스트
 
-`npm test`는 10개 테스트 파일에서 현재 78개 검사를 실행합니다:
+2026-09-08의 main 검증은 **로컬 10개 파일 78/78**, **Git 추적 4개 파일 61/61**입니다. 아래 목록 중 smoke 4개 및 `v25-tyrano.test.js`, `v25-compat.test.js`는 ignored 로컬 파일이므로 새 clone에는 포함되지 않습니다. 먼저 `npm run compile`을 실행해야 합니다. 통합 브랜치는 이 파일들을 추적되는 테스트 구조로 옮겼으며, 별도 검증 결과는 [작업 재개 안내](docs/current-state.md)에 있습니다.
 
 - `test/smoke-rpg.js` — MV/MZ extract→번역→apply round-trip (합성 fixture)
 - `test/smoke-wolf.js` — 합성 .mps 바이너리 extract→apply round-trip (오프셋·널 종료 검증)
@@ -200,4 +205,4 @@ npm run agent -- run --request request.json
 ## 라이선스 · 크레딧
 
 - 원저작물: **Tsukuru Extractor (mvextractor)** 2.3.0 — Sziya / [gramedcart](https://github.com/gramedcart/tsukuru_extractor), GPLv3
-- 이 저장소는 원저작물의 수정본으로 **GPLv3**로 배포됩니다 ([LICENSE](LICENSE), [NOTICE.md](NOTICE.md) 참조)
+- 이 저장소는 원저작물의 수정본으로 **GPLv3**로 배포됩니다 ([LICENSE](LICENSE), [NOTICE.md](tsukuru-agent/NOTICE.md) 참조)
