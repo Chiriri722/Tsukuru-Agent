@@ -110,7 +110,7 @@ test('repository drift checks are executable and agree with the documented test 
     encoding: 'utf8',
   });
   assert.equal(inventory.status, 0, inventory.stderr || inventory.stdout);
-  assert.match(inventory.stdout, /test inventory OK: 58 files, 388 tests/);
+  assert.match(inventory.stdout, /test inventory OK: 61 files, 426 tests/);
 
   const generated = spawnSync(process.execPath, ['scripts/check-generated-drift.js'], {
     cwd: appRoot,

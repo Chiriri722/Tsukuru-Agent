@@ -28,6 +28,22 @@ Defaults remain `format: "auto"`, `profile: "standard"`, `options: {}`, and `pat
 
 ## Cancellation and warnings
 
+RPG results may add `translationQuality` in either version. Its `mechanical`
+status covers source-bound control/placeholder/blank/U+FFFD checks; it is separate
+from structural `validation`. `language` and `context` can require review, and
+`semantics` remains `not-run`. Diagnostics contain at most 100 relative file/ID
+records with total and omitted counts. No game text is returned.
+`E_TRANSLATION_LINT` aborts mutation on introduced damage. Empty dictionary
+values still mean skip; a newly blank direct/manual translation is rejected.
+Unchanged original text, including original defects, can be preserved.
+
+External-message expansion uses the original `ExternMessage.csv`, now also
+preserved under Backup during extraction. Older packs may use their original
+CSV beside Extract. A pack without either source cannot validate expanded
+references: restore its original CSV or preserve the original reference.
+Mutable `.extracteddata.originText` and recovered manifest hashes do not prove
+the CSV source or semantic alignment.
+
 CLI `SIGINT`/`SIGTERM` and the GUI cancel action abort the active operation through an `AbortSignal`. User cancellation reports `E_OPERATION_CANCELLED`; an expired `operationTimeoutMs` reports `E_OPERATION_TIMEOUT`. Transactional staging prevents either path from publishing a partial final output.
 
 For v2 consumers, read `warningDetails[].code` for automation and retain `warnings[]` for display. A warning without a specialized mapping is represented as `W_LEGACY_MESSAGE`, so migration does not discard existing text.

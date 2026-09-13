@@ -7,6 +7,7 @@ import type { ElectronRuntimeInspection } from './runtimeDiagnostics';
 import type { StructuralValidationReport } from './validator';
 import { validateContract } from './contracts/schemaRegistry';
 import type { ResourceLimits } from './resourcePolicy';
+import type { TranslationQualityReport } from './translationLint';
 
 export const REQUEST_SCHEMA_VERSION = 2;
 export const SUPPORTED_REQUEST_SCHEMA_VERSIONS = [1, 2] as const;
@@ -171,6 +172,7 @@ export interface AgentResult {
     change?: ResultChange;
     runtime?: ElectronRuntimeInspection;
     validation?: StructuralValidationReport;
+    translationQuality?: TranslationQualityReport;
 }
 
 export function emptyResult(schemaVersion: 1 | 2 = 1): AgentResult {

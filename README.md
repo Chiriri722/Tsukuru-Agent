@@ -27,6 +27,9 @@ RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스�
 
 ## CLI 빠른 시작
 
+유지보수 작업은 [Spec-kit·플러그인 워크플로](docs/development-workflow.md)와
+[진행 중인 명세](specs/003-translation-validation/spec.md)에서 이어갑니다.
+
 요구 사항: Node.js 22.x 또는 24.x, npm 10.x 또는 11.x
 
 개발 환경에서는 `npm install`로 의존성 변경을 반영할 수 있습니다. CI와 릴리스 검증에서는 반드시 `npm ci`를 사용해 추적된 lockfile을 그대로 재현합니다.
@@ -216,7 +219,7 @@ npm ci              # CI·릴리스: lockfile 그대로 재현
 npm run compile     # TypeScript와 정적 자산 → .build/app staging
 npm run styles      # SCSS → 배포 CSS 재생성
 npm run typecheck   # tsc --noEmit
-npm test            # node:test (58개 추적 테스트 파일)
+npm test            # node:test (61개 추적 테스트 파일)
 npm run test:electron # Windows 실제 sandbox preload/IPC smoke
 npm run verify      # version + typecheck + style/complexity/test/generated/inventory/supply-chain drift
 npm audit --omit=dev # 릴리스용 프로덕션 의존성 감사
@@ -230,7 +233,7 @@ npm run agent -- run --request request.json
 
 ## 테스트
 
-`npm test`는 58개 테스트 파일에서 현재 388개 검사를 실행합니다. 이 inventory 수치는 top-level `test(...)` 선언 기준이며, nested subtest를 포함한 Node 최종 집계는 현재 395개입니다. 테스트는 책임별 디렉터리로 나뉘며 `test/helpers/`에는 공유 fixture·snapshot·INV-01~06 추적표만 둡니다. `npm run test:coverage`는 같은 suite의 전체 내장 coverage를 측정하고, `npm run test:coverage:core`는 안정화된 schema/path/transaction 경계에 core coverage 하한선 line 70%, branch 50%, function 85%를 적용합니다. `npm run test:order`는 고정 seed로 파일 순서를 섞어 재현 가능한 순서 의존성 검사를 수행합니다. Windows CI의 `npm run test:electron`은 실제 Electron에서 sandbox preload와 양방향 IPC뿐 아니라 RPG/Wolf 추출·적용 요청, 설정 저장·닫기, 화면 전환을 추가 검증합니다:
+`npm test`는 61개 테스트 파일에서 현재 426개 검사를 실행합니다. 이 inventory 수치는 top-level `test(...)` 선언 기준이며 nested subtest는 실행 결과에서 별도로 집계됩니다. 테스트는 책임별 디렉터리로 나뉘며 `test/helpers/`에는 공유 fixture·snapshot·INV-01~06 추적표만 둡니다. `npm run test:coverage`는 같은 suite의 전체 내장 coverage를 측정하고, `npm run test:coverage:core`는 안정화된 schema/path/transaction 경계에 core coverage 하한선 line 70%, branch 50%, function 85%를 적용합니다. `npm run test:order`는 고정 seed로 파일 순서를 섞어 재현 가능한 순서 의존성 검사를 수행합니다. Windows CI의 `npm run test:electron`은 실제 Electron에서 sandbox preload와 양방향 IPC뿐 아니라 RPG/Wolf 추출·적용 요청, 설정 저장·닫기, 화면 전환을 추가 검증합니다:
 
 - `test/contract/build-chain.test.js` — staging compile, target metadata, output 정리 allowlist, 패키지 입력 격리
 - `test/contract/ci-contract.test.js` — 지원 런타임, CI workflow, 계층 구조, 문서 inventory, generated/package drift 계약
@@ -257,6 +260,7 @@ npm run agent -- run --request request.json
 - `test/integration/electron-preload.test.js` — 실행된 preload allowlist·이벤트 격리와 IPC sender/payload/path/URL 정책
 - `test/integration/gui-adapter.test.js` — GUI apply adapter의 legacy IPC 진행률·알림 계약
 - `test/integration/manifest-recovery.test.js` — 빈 값·중복 ID·대형 mapping manifest 복구 경계
+- `test/integration/patch-mappings.test.js` — 누락 좌표·미수정 이웃 중첩·경로 별칭 거부, 실패 시 바이트 보존, v1 읽기 호환
 - `test/integration/project-convert.test.js` — 프로젝트 변환의 확장자 없는 파일 보존, 경로 경계, 원자적 rollback
 - `test/integration/rpg-smoke.test.js` — MV/MZ extract→번역→apply 합성 round-trip과 custom output conflict·atomic force 교체
 - `test/integration/runtime.test.js` — Electron fuse, PE 내장 ASAR 해시, Authenticode, 비ASCII 경로, opt-in launch probe
@@ -287,6 +291,8 @@ npm run agent -- run --request request.json
 - `test/unit/schema-detect.test.js` — v1/v2 schema 및 nested engine detection
 - `test/unit/style-drift.test.js` — SCSS/CSS 바이트 동기와 stale 생성본 검출
 - `test/unit/test-temp.test.js` — 테스트 전용 임시 루트의 경계 검증과 완전 제거
+- `test/integration/rpg-translation-validation.test.js` — 사전·GUI 저장 rollback, 원문 제어코드 lint, 최종 JSON/YAML/plugin/CSV 검증, 충돌 집계와 읽기 전용 품질 진단
+- `test/unit/translation-lint.test.js` — 토큰·자리표시자와 진단 상한, 이벤트/페이지/indent 경계, 의미 검사 한계
 - `test/unit/translator-pipeline.test.js` — 번역 provider 별칭·대상 파일 경계·메모리 기반 줄 배치 회귀
 - `test/unit/validator-policy.test.js` — 검증 점수·이슈 severity registry·결정적 정렬·엔진별 보호 경로 정책
 - `test/unit/workspace-transaction.test.js` — 성공 전 최종 경로 비노출, force backup, rollback, 실패 commit 복구

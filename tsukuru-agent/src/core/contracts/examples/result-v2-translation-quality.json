@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "ok": true,
+  "format": "rpgmv",
+  "artifacts": [],
+  "stats": {},
+  "warnings": [],
+  "warningDetails": [],
+  "error": null,
+  "translationQuality": {
+    "mechanical": "pass",
+    "language": "needs-review",
+    "context": "not-run",
+    "semantics": "not-run",
+    "entriesChecked": 1,
+    "sourcePreserved": 0,
+    "issueCount": 1,
+    "omittedCount": 0,
+    "issues": [{ "code": "RPG_TRANSLATION_JAPANESE", "severity": "warning", "file": "Actors.json", "entryId": "Actors.json#1.name" }]
+  }
+}

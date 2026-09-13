@@ -16,7 +16,7 @@ import { ErrorCodes, OperationError } from '../../core/types';
 import { diffFileMaps, isProtectedPath, snapshotDirectory } from '../../core/validator';
 import { WorkspaceTransaction } from '../../core/workspaceTransaction';
 import { GDevelopService } from '../../js/gdevelop/GDevelopService';
-import { RpgMakerService } from '../../js/rpgmv/RpgMakerService';
+import { RpgMakerService, assertRpgApplyOutputSafe } from '../../js/rpgmv/RpgMakerService';
 import { TyranoService } from '../../js/tyrano/TyranoService';
 import { WolfService } from '../../js/wolf/WolfService';
 import { extractionWorkspacePath, gdevelopProjectRoot, tyranoProjectRoot } from '../enginePaths';
@@ -26,7 +26,9 @@ import { buildOperationContext } from '../operationContext';
 import { applyPatches, PatchOutcome } from '../patcher';
 import { isWithinPath, pathsOverlap } from '../workspacePathPolicy';
 import { OperationRuntime, throwIfOperationAborted } from '../../core/operationRuntime';
-import { removePathBestEffortSync } from '../../core/atomic';
+import { makeStagingDir, removePathBestEffortSync } from '../../core/atomic';
+import { resolveContainedPathWithoutLinks } from '../../core/pathSafety';
+import { attachTranslationQuality } from './translationQuality';
 
 function cleanupTemporaryPath(target: string, label: string, result?: AgentResult): void {
     const error = removePathBestEffortSync(target, { recursive: true, force: true });
@@ -151,7 +153,7 @@ function copyApplyArtifacts(workingData: string, stagingData: string): void {
         if (!fs.existsSync(source)) {
             throw new OperationError(
                 ErrorCodes.PATH_NOT_FOUND,
-                `ASAR 작업본에 apply 필수 산출물이 없습니다: ${name}`,
+                `RPG 작업본에 apply 필수 산출물이 없습니다: ${name}`,
                 { source },
             );
         }
@@ -486,6 +488,7 @@ async function applyAsarEngine(
         useYaml: request.options.useYaml === true,
     });
     const completed = path.join(dataDir, 'Completed');
+    attachTranslationQuality(result, report.translationQuality);
     overlayDirectory(path.join(completed, 'data'), dataDir);
     overlayDirectory(path.join(completed, 'js'), path.join(engineRoot, 'js'));
     for (const artifact of ['Extract', 'Backup', 'Completed', '.extracteddata']) {
@@ -494,7 +497,7 @@ async function applyAsarEngine(
     return {
         appliedFiles: report.appliedFiles.length,
         elapsedMs: report.elapsedMs,
-        validation: undefined,
+        validation: report.validation,
         approvedProtectedPaths: new Set<string>(),
         dictionaryOutcome,
     };
@@ -767,16 +770,9 @@ async function applyLooseRpg(request: AgentRequest, detected: DetectedProject, r
     const translationDirectory = typeof request.options.translationDirectory === 'string'
         ? request.options.translationDirectory
         : undefined;
-    let dictionary: TranslationDictionaryOutcome | undefined;
-    let dictionaryPatch: PatchOutcome | undefined;
     if (translationDirectory) {
-        const outcome = applyRpgTranslationDirectory(
-            extractionWorkspacePath(detected),
-            translationDirectory,
-            result,
-        );
-        dictionary = outcome.dictionary;
-        dictionaryPatch = outcome.patch;
+        await applyLooseRpgDictionary(request, detected, result, runtime, translationDirectory);
+        return;
     }
     const completed = request.outputPath ?? path.join(detected.dataDir, 'Completed');
     const report = await new RpgMakerService(buildOperationContext(runtime)).apply({
@@ -788,14 +784,84 @@ async function applyLooseRpg(request: AgentRequest, detected: DetectedProject, r
         isComment: request.options.isComment === true,
         useYaml: request.options.useYaml === true,
     });
+    attachTranslationQuality(result, report.translationQuality);
     result.artifacts = [completed];
+    result.validation = report.validation;
     result.stats = {
         files: report.appliedFiles.length,
         elapsedMs: Math.round(report.elapsedMs),
-        ...(dictionary && dictionaryPatch
-            ? { patched: dictionaryPatch.patched, dictionary: dictionary.stats }
-            : {}),
     };
+}
+
+function rpgDictionarySourceState(dataDir: string): string {
+    const hash = crypto.createHash('sha256');
+    const visit = (file: string, label: string): void => {
+        if (!fs.existsSync(file)) { hash.update(JSON.stringify([label, 'absent'])); return; }
+        const stat = fs.lstatSync(file);
+        if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, 'RPG 사전 입력이 일반 파일/디렉터리가 아닙니다');
+        }
+        hash.update(JSON.stringify([label, stat.isDirectory() ? 'directory' : sha256File(file)]));
+        if (stat.isDirectory()) for (const child of fs.readdirSync(file).sort()) visit(path.join(file, child), `${label}/${child}`);
+    };
+    for (const name of ['Extract', 'Backup', '.extracteddata', 'System.json', 'ExternMessage.csv', 'Extract_img', 'Extract_audio']) {
+        const resolved = resolveContainedPathWithoutLinks(dataDir, name);
+        if (!resolved.ok) throw new OperationError(ErrorCodes.SOURCE_CHANGED, 'RPG 사전 입력 경로가 안전하지 않습니다');
+        visit(resolved.path, name);
+    }
+    const plugin = resolveContainedPathWithoutLinks(path.dirname(dataDir), 'js/plugins.js');
+    if (!plugin.ok) throw new OperationError(ErrorCodes.SOURCE_CHANGED, 'RPG plugins 원본 경로가 안전하지 않습니다');
+    visit(plugin.path, 'js/plugins.js');
+    return hash.digest('hex');
+}
+
+async function applyLooseRpgDictionary(
+    request: AgentRequest, detected: DetectedProject, result: AgentResult,
+    runtime: OperationRuntime, translationDirectory: string,
+): Promise<void> {
+    const dataDir = path.resolve(detected.dataDir);
+    const completed = path.resolve(request.outputPath ?? path.join(dataDir, 'Completed'));
+    assertRpgApplyOutputSafe(dataDir, completed);
+    const transaction = new WorkspaceTransaction({ outputPath: completed, force: request.options.force === true, signal: runtime.signal });
+    let workingRoot: string | undefined;
+    try {
+        const sourceState = rpgDictionarySourceState(dataDir);
+        workingRoot = makeStagingDir(dataDir, '.tsukuru-dictionary');
+        // Keep the parent name: asset encryption distinguishes MV's www from MZ.
+        const gameRoot = path.join(workingRoot, path.basename(path.dirname(dataDir)));
+        const stagedData = path.join(gameRoot, path.basename(dataDir));
+        fs.mkdirSync(stagedData, { recursive: true });
+        copyApplyArtifacts(dataDir, stagedData);
+        for (const name of ['System.json', 'ExternMessage.csv', 'Extract_img', 'Extract_audio']) {
+            const source = path.join(dataDir, name);
+            if (fs.existsSync(source)) copyTreeWithoutLinks(source, path.join(stagedData, name));
+        }
+        const plugin = resolveContainedPathWithoutLinks(path.dirname(dataDir), path.join('js', 'plugins.js'));
+        if (!plugin.ok) throw new OperationError(ErrorCodes.MAPPING_CORRUPT, 'RPG plugins.js 원본 경로가 안전하지 않습니다');
+        if (fs.existsSync(plugin.path)) copyTreeWithoutLinks(plugin.path, path.join(gameRoot, 'js', 'plugins.js'));
+        const outcome = applyRpgTranslationDirectory(path.join(stagedData, 'Extract'), translationDirectory, result);
+        const report = await new RpgMakerService(buildOperationContext(runtime)).apply({
+            dir: stagedData, outputDir: transaction.stagingPath, force: true,
+            autoline: request.options.autoline === true,
+            isComment: request.options.isComment === true,
+            useYaml: request.options.useYaml === true,
+        });
+        throwIfOperationAborted(runtime, 'rpg-dictionary-commit');
+        if (sourceState !== rpgDictionarySourceState(dataDir)) {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, '사전 적용 중 원본 또는 작업본이 변경되었습니다');
+        }
+        transaction.commit(['Extract', '.extracteddata'].map(name => ({
+            staged: path.join(stagedData, name), target: path.join(dataDir, name),
+        })));
+        attachTranslationQuality(result, report.translationQuality);
+        result.artifacts = [completed];
+        result.validation = report.validation;
+        result.stats = { files: report.appliedFiles.length, elapsedMs: Math.round(report.elapsedMs),
+            patched: outcome.patch.patched, dictionary: outcome.dictionary.stats };
+    } finally {
+        transaction.dispose();
+        if (workingRoot) cleanupTemporaryPath(workingRoot, 'RPG 사전 작업 경로', result);
+    }
 }
 
 async function applyLooseWolf(request: AgentRequest, detected: DetectedProject, result: AgentResult, runtime: OperationRuntime): Promise<void> {

@@ -17,6 +17,9 @@ import { DetectedProject } from '../../formatDetect';
 import { resolveExtractArtifactPath } from '../../patcher';
 import { writeHumanSummary } from '../../presenter';
 import { emptyChange, publicScores, structuralIssueMessage } from './common';
+import { loadRpgApplyPlan } from '../../../js/rpgmv/applyPlan';
+import { planRpgTranslations } from '../../../js/rpgmv/translation';
+import { inspectTranslations, addTranslationIssue, translationQualitySummary } from '../../../core/translationLint';
 
 type EngineAdapter = ReturnType<typeof selectEngineAdapter>;
 type VerificationChange = ReturnType<typeof emptyChange>;
@@ -130,6 +133,22 @@ export async function verifyManifestProject(
         issues.push(...validation.issues.map(structuralIssueMessage));
     }
     const validationIssueEnd = issues.length;
+    const qualityWarnings: string[] = [];
+    if (engine.family === 'rpgmaker' && manifest) {
+        try {
+            result.translationQuality = planRpgTranslations(loadRpgApplyPlan(detected.dataDir)).quality;
+            if (result.translationQuality.mechanical === 'fail') issues.push('번역 무결성 검사에 실패했습니다');
+            const summary = translationQualitySummary(result.translationQuality);
+            if (summary) qualityWarnings.push(summary);
+        } catch (error) {
+            const quality = inspectTranslations([]);
+            addTranslationIssue(quality, { code: 'RPG_TRANSLATION_SOURCE_UNAVAILABLE', severity: 'error', file: 'Backup',
+                reason: error instanceof OperationError ? error.code : 'E_INTERNAL' });
+            quality.mechanical = 'not-run';
+            result.translationQuality = quality;
+            issues.push('번역 검사에 필요한 원문 또는 매핑을 확인할 수 없습니다');
+        }
+    }
     const { change, performed: comparisonPerformed } = compareOutputProject(request, issues);
     const blockingValidationIssues = result.validation?.issues
         .filter((issue) => issue.severity !== 'warning')
@@ -164,7 +183,7 @@ export async function verifyManifestProject(
         ],
     });
     result.ok = blockingIssues.length === 0 && scores.ok;
-    result.warnings = issues;
+    result.warnings = [...issues, ...qualityWarnings];
     result.scores = publicScores(scores);
     result.change = change;
     result.stats = {

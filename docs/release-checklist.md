@@ -113,9 +113,9 @@ strong local clean-candidate evidence, but the disposable synthetic commit is
 not the canonical user-repository commit and does not replace hosted CI,
 representative gameplay, signing, or publication approval.
 
-### Current integration checkpoint (2026-08-28)
+### Historical integration checkpoint (2026-08-28)
 
-The current source passed normal and fixed-order execution at 395/395. The
+The source at that checkpoint passed normal and fixed-order execution at 395/395. The
 tracked inventory is 58 files/388 top-level checks; core coverage is 89.86%
 lines, 72.24% branches, and 94.20% functions. All six performance cases,
 full npm audit, install-script policy, generated/style/inventory/supply-chain
@@ -132,6 +132,11 @@ Package verification accepted 1,791 entries and both success/exit 0 and
 failure/exit 1 contracts. Two release-evidence generations were byte-identical,
 but correctly record `sourceTreeDirty:true`; final clean canonical evidence is
 therefore still open.
+
+The later patch-mapping maintenance record is
+[002-safe-patch-workflow verification](../specs/002-safe-patch-workflow/verification.md).
+Its source checks do not replace the historical package evidence or complete
+the outstanding clean-source, hosted CI, gameplay and release gates.
 
 The packaged CLI also deep-verified the authorized RPG MV copy at score 94 with
 159,532 valid mappings, one changed file/19 text bytes, and zero protected

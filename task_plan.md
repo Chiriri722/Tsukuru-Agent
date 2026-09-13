@@ -1,8 +1,73 @@
 # Task Plan: Tsukuru Extractor Headless CLI 개조 (a.k.a Tsukuru agent)
 
-> **Historical implementation record:** 이 문서는 초기 개조부터 이어진 작업 이력입니다. 현재 후속 단계와 Exit Gate는 `New-task-plan.md`를 기준으로 관리합니다.
+> **현재 계획 + 구현 이력:** 맨 위 D21 계획은 2026-09-13 검증을 반영합니다. 아래 초기 개조 이력은 보존하며, 장기 단계와 Exit Gate는 `New-task-plan.md`에 연결합니다.
 
-## Goal
+## 현재 계획 — Daybreak 후속 검증 (2026-09-13)
+
+**P0–P2 구현·검증 진행 중.** 별도 [003 명세](specs/003-translation-validation/spec.md),
+[작업표](specs/003-translation-validation/tasks.md), [검증 기록](specs/003-translation-validation/verification.md)을 사용한다.
+현재 D21 전용·품질 계약 회귀 36/36과 TypeScript 검사를 통과했다. 독립 후보 리뷰·전체 필수 검증·실제 작업팩 검사·브랜치 정리는 남아 있다.
+아래 완료 표시는 최종 수락 단계에서 갱신한다.
+실행 근거와 원 제안 7개의 대조표는
+[Daybreak 후속 검증](docs/reviews/2026-09-13-daybreak-followup.md)에 있다.
+기존 구현·릴리스 이력은 아래에 보존하고, 장기 단계는
+[New-task-plan.md](New-task-plan.md)의 최신 상태와 연결한다.
+
+### 확인된 기준선
+
+- 보고서는 main `8c7d773`의 78개 로컬 테스트를 기준으로 했다.
+  후속 구현 대상은 `chore/hardening-integration@80d2043` + 9월 8일 미커밋 수정이다.
+  일반 경로의 main에는 이 구현이 아직 병합되지 않았다.
+- 통합의 Backup JSON/없는 dataPath/비문자 대상은 이미 치명 오류이며,
+  합성 3개 사례에서 작업본 바이트 보존을 확인했다. 같은 차단을 다시 구현하지 않는다.
+- 제어코드 변경·이중 escape·빈 direct patch·U+FFFD·언어 잔존·101/401 괄호 불연속은
+  통과했다. 해시 충돌 2개는 첫 ID만 보고하지만 그 실패에서는 쓰지 않는다.
+- 추가 발견: 일반 RPG 사전 patch 이후 Backup 검사에서 apply가 실패하면
+  Completed는 없지만 Extract/Actors.txt와 Extract/manifest.json의 선행 변경은 남는다.
+- 조사 15개 사례 + 관련 기존 회귀 65/65 + TypeScript build 통과.
+  실제 게임 품질이나 전체 suite를 이번에 재인증한 결과는 아니다.
+
+### 우선 구현 작업과 완료 조건
+
+- [ ] **D21-01 / P0 — 일반 RPG 사전 적용 전체 rollback.**
+  사전 patch→재삽입→검증을 staging/transaction으로 묶는다.
+  후속 오류·취소·출력 교체 실패에도 기존 작업본/출력/원본·Backup이 보존되어야 한다.
+- [ ] **D21-02 / P0 — 공유 translation-lint.**
+  원문 ID·Backup 출처를 대조하고 제어코드/자리표시자·새 빈 값/U+FFFD 손상을
+  patch와 모든 RPG apply 진입점에서 검사한다. 정상 escape·플러그인 인수·의도한
+  빈 값/원문 보존 정책을 회귀로 고정한다. 검사 불가를 성공으로 표시하지 않는다.
+- [ ] **D21-03 / P0 — 최종 출력 공개 전 검사.**
+  Backup+staged Completed 병합본을 구조 검사하고 실제 적용값·허용 dataPath 밖
+  변경을 대조한다. 원본부터 있던 참조 warning은 유지하고 새 손상은 commit 전에 차단한다.
+- [ ] **D21-04 / P1 — 사전 해시 충돌 일괄 진단.**
+  전체 충돌 수·파일·ID를 모으되 상세 상한/생략 수를 둔다.
+  기존 skip 통계·오류 계약과 충돌 시 무변경을 유지한다.
+- [ ] **D21-05 / P1 — 101/401 메시지 연속성·언어 잔존.**
+  이벤트/페이지/블록 경계를 지키며 여러 줄 괄호를 검사한다.
+  인명·크레딧·의도한 따옴표 변경은 예외 근거를 남기고 의미 품질은 needs-review로 구분한다.
+- [ ] **D21-06 / P1 — AppleDouble 후보 제외 정책.**
+  사전 로더의 기존 제외를 유지하고 RPG JSON/YAML 등 파싱 후보에 일관되게 적용한다.
+  archive 원본·provenance/hash·파일 수/크기 제한은 무조건 필터링하지 않는다.
+- [ ] **D21-07 / P2 — 치명 오류의 파일/ID 문맥 보완.**
+  parseBackup/setRpgDataPath 차단을 유지하면서 알 수 있는 파일·bucket·entry/dataPath를
+  반환한다. 없는 ID를 만들거나 개인 경로/번역 전문을 노출하지 않는다.
+- [ ] **D21-08 — 단계별 회귀 및 최종 수락.**
+  원 제안 6의 fixture를 각 작업보다 먼저 RED로 추가한다.
+  “제어코드 일치·일본어 0인데 의미만 다른 ID로 이동”은 자동 판별 한계 대조군으로 남긴다.
+  구현 후 verify/order/benchmark와 영향받는 GUI·패키지 검증을 통과한다.
+
+**실행 순서:** D21-01 → D21-02 → D21-03 → D21-04 → D21-05 → D21-06 → D21-07.
+D21-08의 테스트는 마지막에 몰아서 작성하지 않고 각 단계에 포함한다.
+구현 시작 시 공식 Spec-kit으로 별도 명세/설계를 구체화하고 기존 002 완료 기록을 보존한다.
+후보 폴더 자동 발견은 읽기 전용 목록과 사용자가 선택한 후보의 명시적 전달부터 검토하며,
+파일명만으로 최종본을 자동 선택·승격하지 않는다.
+
+**완료 해석:** 구조 검증·토큰 보존·언어 잔존·의미 감수·실게임 실행은 서로 다른 결과다.
+recover는 현재 해시/매핑을 재구축하므로 잘못 정렬된 번역을 복구했다는 증거가 아니다.
+원문 ID 재정렬·언어 감수·실게임 복사본 확인 없이 “한글 패치 배포 완료”로 표시하지 않는다.
+
+## Goal (초기 개조 이력)
+
 Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을 UI 없는 서비스 계층(`RpgMakerService`/`WolfService`)으로 분리하고, `tsukuru-agent run --request <file|->` 형식의 Headless CLI(verify/extract/patch/apply/recover)를 manifest 기반 안전성과 함께 제공한다. 기존 GUI는 동일 서비스를 호출하는 adapter로 유지한다.
 
 ## 원본 계획서

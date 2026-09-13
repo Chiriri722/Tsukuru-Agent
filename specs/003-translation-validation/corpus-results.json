@@ -1,0 +1,475 @@
+{
+  "generatedAt": "2026-09-13T08:32:08.984Z",
+  "records": [
+    {
+      "id": "workspace-01",
+      "area": "root",
+      "entries": 55216,
+      "files": 812,
+      "sourceSha256": "2dcb2ca1c4f24e679f5ce529714a0e600cb339c8075050fb431623e0d954cffb",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 29783,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": false,
+        "issueCount": 1
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "pass",
+        "semantics": "not-run",
+        "entriesChecked": 28465,
+        "sourcePreserved": 28465,
+        "issueCount": 4342,
+        "omittedCount": 4242,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 2,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-02",
+      "area": "root",
+      "entries": 50354,
+      "files": 1221,
+      "sourceSha256": "6077e6ec55fc5daee9dd65ea7b49663e11700fadfc84a44689a87d7e93e01f50",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 31106,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 0
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 34306,
+        "sourcePreserved": 34306,
+        "issueCount": 32349,
+        "omittedCount": 32249,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 1,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-03",
+      "area": "root",
+      "entries": 31162,
+      "files": 71,
+      "sourceSha256": "c7c15fbe241e15dfe3473af864ba88c92068dad312195a09ea030cac97a707c7",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 25288,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 5
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 22138,
+        "sourcePreserved": 22138,
+        "issueCount": 22039,
+        "omittedCount": 21939,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 6,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-04",
+      "area": "root",
+      "entries": 50788,
+      "files": 223,
+      "sourceSha256": "125dc914dabff28d34030f6e7c7a3a58d65cf38b7d27060e333a8b77fbaa2d43",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 30670,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 44
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 33195,
+        "sourcePreserved": 33195,
+        "issueCount": 1837,
+        "omittedCount": 1737,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 45,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-05",
+      "area": "root",
+      "entries": 159532,
+      "files": 1401,
+      "sourceSha256": "a39a624a0c642c1674abcb6a3eb1afcad92d3541ed8806713dee903e029d2355",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 127392,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 0
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 109625,
+        "sourcePreserved": 109625,
+        "issueCount": 75208,
+        "omittedCount": 75108,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 1,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-06",
+      "area": "root",
+      "entries": 23171,
+      "files": 60,
+      "sourceSha256": "db48f4fce6ff03ba440e7b63eba9f69ad56a8726b47d755eacecf06e246792f8",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 15023,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 0
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 15052,
+        "sourcePreserved": 15052,
+        "issueCount": 12164,
+        "omittedCount": 12064,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 1,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-07",
+      "area": "validation",
+      "entries": 17206,
+      "files": 90,
+      "sourceSha256": "e5f8cc7945e486c55a4a7414406ef30685d30788cb429cf51b11ce928f59479d",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 11129,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": false,
+        "issueCount": 9836
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 11615,
+        "sourcePreserved": 1779,
+        "issueCount": 268,
+        "omittedCount": 168,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 5,
+          "RPG_MESSAGE_QUOTE_STYLE": 95
+        }
+      },
+      "warningCount": 9837,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-08",
+      "status": "not-run",
+      "reason": "no complete Extract/Backup/mapping workspace at selected directory"
+    },
+    {
+      "id": "workspace-09",
+      "area": "validation",
+      "entries": 22439,
+      "files": 86,
+      "sourceSha256": "8fe14573ededea3525fe4f86a0327bd4f24abd20cc4eae7bb082995cd5fe664a",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 12671,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 3
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 15560,
+        "sourcePreserved": 15560,
+        "issueCount": 15373,
+        "omittedCount": 15273,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 4,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-10",
+      "area": "validation",
+      "entries": 13679,
+      "files": 26,
+      "sourceSha256": "670955ff6a6f075de2f1f6262d9087c7cee13d177ba7be672687617004de70b2",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 7931,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 0
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 8763,
+        "sourcePreserved": 8763,
+        "issueCount": 8557,
+        "omittedCount": 8457,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 1,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-11",
+      "area": "validation",
+      "entries": 31162,
+      "files": 98,
+      "sourceSha256": "47e68f9bf989913b7daaec56b099d6c0e0a49562e5dbfe634a0bf6290178f754",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 19298,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": false,
+        "issueCount": 22830
+      },
+      "quality": {
+        "mechanical": "fail",
+        "language": "pass",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 22138,
+        "sourcePreserved": 79,
+        "issueCount": 1511,
+        "omittedCount": 1411,
+        "first100Codes": {
+          "RPG_TRANSLATION_CONTROL_MISMATCH": 100
+        }
+      },
+      "warningCount": 22832,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-12",
+      "area": "validation",
+      "entries": 9112,
+      "files": 26,
+      "sourceSha256": "03cacc2008d28460680b55f00d5ae350b0598e7ef4f8e1689fb0c0ad62924dab",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 6869,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": false,
+        "issueCount": 8940
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 6075,
+        "sourcePreserved": 1,
+        "issueCount": 27,
+        "omittedCount": 0,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 24,
+          "RPG_MESSAGE_QUOTES": 3
+        }
+      },
+      "warningCount": 8941,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-13",
+      "area": "validation",
+      "entries": 14077,
+      "files": 122,
+      "sourceSha256": "19a165d0ecb8760fdcebb3121f41b797eb664ec0d853c27f62548fa23d362fd6",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 0,
+      "processError": null,
+      "durationMs": 9094,
+      "ok": true,
+      "errorCode": null,
+      "structural": {
+        "ok": true,
+        "issueCount": 1
+      },
+      "quality": {
+        "mechanical": "pass",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 9327,
+        "sourcePreserved": 9327,
+        "issueCount": 9266,
+        "omittedCount": 9166,
+        "first100Codes": {
+          "RPG_TRANSLATION_JAPANESE": 100
+        }
+      },
+      "warningCount": 2,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-14",
+      "area": "validation",
+      "entries": 15051,
+      "files": 23,
+      "sourceSha256": "1bc247c444e6cf8d8fba66a7a02622575226760649a44091542deb78b9549a72",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 11237,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": true,
+        "issueCount": 0
+      },
+      "quality": {
+        "mechanical": "fail",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 10452,
+        "sourcePreserved": 261,
+        "issueCount": 329,
+        "omittedCount": 229,
+        "first100Codes": {
+          "RPG_TRANSLATION_CONTROL_MISMATCH": 1,
+          "RPG_TRANSLATION_JAPANESE": 99
+        }
+      },
+      "warningCount": 2,
+      "playtest": "not-run"
+    },
+    {
+      "id": "workspace-15",
+      "area": "validation",
+      "entries": 29671,
+      "files": 314,
+      "sourceSha256": "d8edfa82c2b674fbc16fa5c489d09764d1f96732d4b9511886d6c8eacdce52f0",
+      "originalUnchanged": true,
+      "copyUnchanged": true,
+      "exitCode": 1,
+      "processError": null,
+      "durationMs": 20275,
+      "ok": false,
+      "errorCode": "E_VERIFY_FAILED",
+      "structural": {
+        "ok": false,
+        "issueCount": 9968
+      },
+      "quality": {
+        "mechanical": "fail",
+        "language": "needs-review",
+        "context": "needs-review",
+        "semantics": "not-run",
+        "entriesChecked": 20611,
+        "sourcePreserved": 11377,
+        "issueCount": 11902,
+        "omittedCount": 11802,
+        "first100Codes": {
+          "RPG_TRANSLATION_CONTROL_MISMATCH": 100
+        }
+      },
+      "warningCount": 9970,
+      "playtest": "not-run"
+    }
+  ]
+}

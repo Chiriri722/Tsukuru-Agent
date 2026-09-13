@@ -7,6 +7,7 @@ import { DetectedProject } from '../formatDetect';
 import { patchWorkspacePath } from '../enginePaths';
 import { selectEngineAdapter } from '../engineRegistry';
 import { applyPatches } from '../patcher';
+import { attachTranslationQuality } from './translationQuality';
 
 /** manifest ID·hash 검증 후 추출 작업본만 수정하고 줄 매핑을 재생성한다. */
 export async function handlePatch(
@@ -47,6 +48,7 @@ export async function handlePatch(
         throw new OperationError(ErrorCodes.PATCH_EMPTY, '적용 가능한 번역 사전 항목이 없습니다');
     }
     const outcome = applyPatches(patchExtractDir, engine.patchFormat, patches);
+    attachTranslationQuality(result, outcome.translationQuality);
     result.ok = true;
     result.artifacts = [path.join(patchExtractDir, MANIFEST_FILE)];
     result.stats = {

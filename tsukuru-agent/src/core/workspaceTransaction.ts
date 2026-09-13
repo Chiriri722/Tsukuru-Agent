@@ -4,6 +4,7 @@ import path from 'path';
 import { ErrorCodes, OperationError } from './types';
 import { throwIfSignalAborted } from './operationRuntime';
 import { findLinkedPathComponent } from './pathSafety';
+import { ArtifactReplacement, replaceArtifactPathsSync } from './atomic';
 
 export interface WorkspaceTransactionOptions {
     outputPath: string;
@@ -73,7 +74,7 @@ export class WorkspaceTransaction {
         fs.mkdirSync(this.stagingPath);
     }
 
-    commit(): void {
+    commit(additionalArtifacts: ArtifactReplacement[] = []): void {
         if (this.state !== 'active') {
             throw new OperationError(ErrorCodes.INTERNAL, `workspace transaction is not active: ${this.state}`);
         }
@@ -83,6 +84,19 @@ export class WorkspaceTransaction {
         }
         throwIfSignalAborted(this.signal, 'transaction-commit');
         assertReplaceableOutput(this.outputPath, this.force);
+        if (additionalArtifacts.length > 0) {
+            try {
+                replaceArtifactPathsSync([
+                    ...additionalArtifacts,
+                    { staged: this.stagingPath, target: this.outputPath },
+                ]);
+                this.state = 'committed';
+            } catch (error) {
+                this.state = 'failed';
+                throw error;
+            }
+            return;
+        }
         const hadOutput = fs.existsSync(this.outputPath);
         if (hadOutput) fs.renameSync(this.outputPath, this.backupPath);
         try {

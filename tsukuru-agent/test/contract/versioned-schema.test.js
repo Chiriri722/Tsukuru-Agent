@@ -54,6 +54,19 @@ test('publishes every versioned machine contract through one immutable registry'
   }
 });
 
+test('translation quality is additive in v1/v2 and validates bounded diagnostics independently of structural success', () => {
+  const quality = { mechanical: 'pass', language: 'needs-review', context: 'not-run', semantics: 'not-run',
+    entriesChecked: 1, sourcePreserved: 0, issueCount: 1, omittedCount: 0,
+    issues: [{ code: 'RPG_TRANSLATION_JAPANESE', severity: 'warning', file: 'Actors.json', entryId: 'Actors.json#1.name' }] };
+  for (const version of [1, 2]) {
+    const result = { ...emptyResult(version), translationQuality: quality };
+    assert.equal(validateContract('result', version, result).ok, true);
+    assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, semantics: 'pass' } }).ok, false);
+    assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, unknown: true } }).ok, false);
+    assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, issues: Array(101).fill(quality.issues[0]) } }).ok, false);
+  }
+});
+
 test('keeps v1 unknown options but rejects them in v2', () => {
   const legacy = validateRequest(request({ schemaVersion: 1, options: { legacyExtension: true } }));
   assert.equal(legacy.options.legacyExtension, true);

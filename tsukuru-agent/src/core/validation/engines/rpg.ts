@@ -42,7 +42,7 @@ interface RpgParsedWorkspace {
 function discoverRpgJsonWorkspace(root: string, issues: StructuralIssue[]): RpgJsonWorkspace {
     const rootEntries = fs.readdirSync(root, { withFileTypes: true });
     const rootJsonFiles = rootEntries
-        .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.json'))
+        .filter((entry) => entry.isFile() && !entry.name.startsWith('._') && entry.name.toLowerCase().endsWith('.json'))
         .map((entry) => entry.name)
         .sort();
     const backupRoot = path.join(root, 'Backup');
@@ -71,7 +71,7 @@ function discoverRpgJsonWorkspace(root: string, issues: StructuralIssue[]): RpgJ
     const jsonFiles = jsonRoot === root
         ? rootJsonFiles
         : backupEntries
-            .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.json'))
+            .filter((entry) => entry.isFile() && !entry.name.startsWith('._') && entry.name.toLowerCase().endsWith('.json'))
             .map((entry) => entry.name)
             .sort();
     return { backupRoot, backupIsDirectory, jsonRoot, jsonFiles };
@@ -113,11 +113,11 @@ function parseRpgJsonWorkspace(
                     }
                 }
             }
-        } catch (error) {
+        } catch {
             encodingCounts.unknown++;
             issues.push({
                 code: 'RPG_JSON_PARSE_ERROR', severity: 'critical', file,
-                message: `RPG JSON 파싱에 실패했습니다: ${String(error)}`,
+                message: 'RPG JSON 파일을 UTF-8 JSON으로 읽거나 파싱할 수 없습니다',
             });
         }
     }

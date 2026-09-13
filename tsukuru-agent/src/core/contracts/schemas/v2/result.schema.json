@@ -13,9 +13,38 @@
     "stats": { "type": "object", "additionalProperties": true },
     "warnings": { "type": "array", "items": { "type": "string" } },
     "warningDetails": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "translationQuality": { "$ref": "#/$defs/translationQuality" },
     "error": { "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
   },
   "$defs": {
+    "translationQuality": {
+      "type": "object",
+      "required": ["mechanical", "language", "context", "semantics", "entriesChecked", "sourcePreserved", "issueCount", "omittedCount", "issues"],
+      "additionalProperties": false,
+      "properties": {
+        "mechanical": { "enum": ["pass", "fail", "not-run"] },
+        "language": { "enum": ["pass", "needs-review", "not-run"] },
+        "context": { "enum": ["pass", "needs-review", "not-run"] },
+        "semantics": { "const": "not-run" },
+        "entriesChecked": { "type": "integer", "minimum": 0 },
+        "sourcePreserved": { "type": "integer", "minimum": 0 },
+        "issueCount": { "type": "integer", "minimum": 0 },
+        "omittedCount": { "type": "integer", "minimum": 0 },
+        "issues": {
+          "type": "array", "maxItems": 100,
+          "items": {
+            "type": "object", "required": ["code", "severity", "file"], "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string", "pattern": "^RPG_[A-Z0-9_]+$" },
+              "severity": { "enum": ["error", "warning", "info"] },
+              "file": { "type": "string", "maxLength": 320 },
+              "entryId": { "type": "string", "maxLength": 320 },
+              "reason": { "type": "string", "maxLength": 320 }
+            }
+          }
+        }
+      }
+    },
     "warning": {
       "type": "object",
       "required": ["code", "message"],

@@ -17,10 +17,14 @@ import { DetectedFormat } from '../core/schema';
 import { readExtractManifest } from '../core/contracts/manifestContract';
 import { resolveContainedPathWithoutLinks } from '../core/pathSafety';
 import * as edTool from '../js/rpgmv/edtool';
+import { loadRpgApplyPlan } from '../js/rpgmv/applyPlan';
+import { planRpgTranslations } from '../js/rpgmv/translation';
+import { assertTranslationQuality, diagnosticLabel, TranslationQualityReport } from '../core/translationLint';
 
 export interface PatchOutcome {
     patched: number;
     files: number;
+    translationQuality?: TranslationQualityReport;
 }
 
 export function resolveExtractArtifactPath(extractDir: string, relativePath: unknown): string {
@@ -38,6 +42,71 @@ export function resolveExtractArtifactPath(extractDir: string, relativePath: unk
         throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `안전하지 않은 추출 파일 경로입니다: ${String(relativePath)}`);
     }
     return resolution.path;
+}
+
+/** Compare existing targets as the filesystem sees them, including Windows aliases. */
+function patchFileIdentity(extractDir: string, relativePath: string): string | undefined {
+    if (process.platform === 'win32' && /^[\\/]{2}[?.][\\/]/.test(relativePath)) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `추출 파일의 장치 경로는 지원하지 않습니다: ${relativePath}`);
+    }
+    const target = path.resolve(extractDir, relativePath);
+    const relative = path.relative(path.resolve(extractDir), target);
+    // Untouched legacy entries may describe paths outside this workspace. Do not probe them.
+    if (!relative || relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) return undefined;
+    const safeTarget = resolveExtractArtifactPath(extractDir, relative);
+    // realpath preserves distinct Unicode names while resolving existing case/short-name aliases.
+    return fs.existsSync(safeTarget) ? fs.realpathSync.native(safeTarget) : safeTarget;
+}
+
+/** Every entry in an affected file participates in the later line-delta walk. */
+function validateAffectedMappings(
+    extractDir: string,
+    entries: ManifestEntry[],
+    affectedFiles: Set<string>,
+    readLines: (file: string) => string[],
+): Map<string, ManifestEntry[]> {
+    if (affectedFiles.size === 0) return new Map();
+    const identities = new Map<string, string | undefined>();
+    const identityOf = (file: string): string | undefined => {
+        if (!identities.has(file)) identities.set(file, patchFileIdentity(extractDir, file));
+        return identities.get(file);
+    };
+    const affectedTargets = new Map<string, string>();
+    for (const file of affectedFiles) {
+        readLines(file);
+        const identity = identityOf(file)!;
+        const previous = affectedTargets.get(identity);
+        if (previous !== undefined && previous !== file) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `같은 추출 파일의 경로 표기가 다릅니다: ${previous}, ${file}`);
+        }
+        affectedTargets.set(identity, file);
+    }
+    const byFile = new Map<string, ManifestEntry[]>();
+    for (const entry of entries) {
+        const identity = identityOf(entry.extractFile);
+        const file = identity === undefined ? undefined : affectedTargets.get(identity);
+        if (file === undefined) continue;
+        if (entry.extractFile !== file) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `같은 추출 파일의 경로 표기가 다릅니다: ${file}, ${entry.extractFile}`);
+        }
+        const lines = readLines(file);
+        if (!Number.isInteger(entry.lineStart) || !Number.isInteger(entry.lineEnd)
+            || entry.lineStart < 0 || entry.lineEnd > lines.length || entry.lineStart >= entry.lineEnd) {
+            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `줄 매핑이 손상되었습니다: ${entry.id} (${entry.lineStart}..${entry.lineEnd} / ${lines.length}줄)`);
+        }
+        const group = byFile.get(file) ?? [];
+        group.push(entry);
+        byFile.set(file, group);
+    }
+    for (const [file, group] of byFile) {
+        group.sort((left, right) => left.lineStart - right.lineStart);
+        for (let index = 1; index < group.length; index++) {
+            if (group[index].lineStart < group[index - 1].lineEnd) {
+                throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `manifest 줄 매핑이 겹칩니다: ${file}`);
+            }
+        }
+    }
+    return byFile;
 }
 
 /** extractDir(Extract/ 또는 _Extract/) 안의 작업본에 patches를 적용한다. */
@@ -90,17 +159,35 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
         }
         return fileLines.get(rel)!;
     };
-    for (const p of patches) {
+    const affectedEntries = validateAffectedMappings(
+        extractDir,
+        manifest.entries,
+        new Set(patches.map((patch) => byId.get(patch.id)!.extractFile)),
+        readLines,
+    );
+    const hashConflicts: { id: string; file: string }[] = [];
+    let totalConflicts = 0;
+    const orderedPatches = [...patches].sort((left, right) => {
+        const a = `${byId.get(left.id)!.extractFile}\0${left.id}`;
+        const b = `${byId.get(right.id)!.extractFile}\0${right.id}`;
+        return a < b ? -1 : a > b ? 1 : 0;
+    });
+    for (const p of orderedPatches) {
         const e = byId.get(p.id)!;
         const lines = readLines(e.extractFile);
-        if (e.lineStart < 0 || e.lineEnd > lines.length || e.lineStart >= e.lineEnd) {
-            throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `줄 매핑이 손상되었습니다: ${p.id} (${e.lineStart}..${e.lineEnd} / ${lines.length}줄)`);
-        }
         const current = lines.slice(e.lineStart, e.lineEnd).join('\n');
         if (sha256Text(current) !== p.expectedHash) {
-            throw new OperationError(ErrorCodes.PATCH_HASH_MISMATCH, `원문 해시가 일치하지 않습니다: ${p.id}`, { id: p.id });
+            totalConflicts++;
+            if (hashConflicts.length < 100) hashConflicts.push({ id: diagnosticLabel(p.id), file: diagnosticLabel(e.extractFile) });
         }
     }
+    if (totalConflicts) throw new OperationError(ErrorCodes.PATCH_HASH_MISMATCH, '원문 해시가 일치하지 않습니다', {
+        id: hashConflicts[0].id, totalConflicts, conflicts: hashConflicts, omittedCount: totalConflicts - hashConflicts.length,
+    });
+    const quality = format === 'rpgmv'
+        ? planRpgTranslations(loadRpgApplyPlan(path.dirname(extractDir)), {}, new Map(patches.map(p => [p.id, p.text]))).quality
+        : undefined;
+    if (quality) assertTranslationQuality(quality);
     const byFile = new Map<string, { p: PatchEntry; e: ManifestEntry }[]>();
     for (const p of patches) {
         const e = byId.get(p.id)!;
@@ -108,15 +195,6 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
         arr.push({ p, e });
         byFile.set(e.extractFile, arr);
     }
-    for (const [file, arr] of byFile) {
-        const sorted = arr.slice().sort((a, b) => a.e.lineStart - b.e.lineStart);
-        for (let i = 1; i < sorted.length; i++) {
-            if (sorted[i].e.lineStart < sorted[i - 1].e.lineEnd) {
-                throw new OperationError(ErrorCodes.MAPPING_CORRUPT, `patch 범위가 겹칩니다: ${file}`);
-            }
-        }
-    }
-
     // 4. 작업본 수정(파일별 lineStart 내림차순 스플라이스로 앞쪽 줄 번호 보존)
     for (const [file, arr] of byFile) {
         const lines = readLines(file);
@@ -127,7 +205,7 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
 
     // 5. manifest 줄 매핑·해시 재생성(파일별 delta walk)
     for (const [file, arr] of byFile) {
-        const fileEntries = manifest.entries.filter((e) => e.extractFile === file).sort((a, b) => a.lineStart - b.lineStart);
+        const fileEntries = affectedEntries.get(file)!;
         const patchById = new Map(arr.map((x) => [x.e.id, x.p.text.split('\n')]));
         let delta = 0;
         for (const e of fileEntries) {
@@ -157,7 +235,7 @@ export function applyPatches(extractDir: string, format: DetectedFormat, patches
     }
     writes.push({ file: manifestPath, data: JSON.stringify(manifest, null, 2) });
     atomicWriteFilesSync(writes);
-    return { patched: patches.length, files: byFile.size };
+    return { patched: patches.length, files: byFile.size, ...(quality ? { translationQuality: quality } : {}) };
 }
 
 /** .extracteddata의 줄 매핑을 갱신된 manifest 기준으로 재생성한다. */

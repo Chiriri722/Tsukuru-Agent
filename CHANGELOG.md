@@ -9,6 +9,12 @@ synchronized from `tsukuru-agent/package.json` with `npm run sync:version`.
 
 ### Added
 
+- Source-bound RPG translation diagnostics for control codes, placeholders,
+  new blank text and replacement characters, with separate language/context
+  review and an explicit unverified semantic status. Read-only `verify` keeps
+  structural findings separate from translation integrity.
+- Bounded, deterministic reporting of every stale dictionary hash conflict.
+
 - Headless JSON CLI operations: `verify`, `extract`, `patch`, `apply`, and
   `recover`.
 - Structural validation scores and human-readable terminal summaries for RPG
@@ -36,6 +42,18 @@ synchronized from `tsukuru-agent/package.json` with `npm run sync:version`.
 
 ### Security
 
+- Publish loose RPG dictionary changes and final output as one rollback group.
+  Validate emitted JSON, YAML, plugin and external-message values before any
+  CLI/GUI publication, including legacy instant apply. Protect edited media
+  folders from output replacement and preserve concurrent workspace changes.
+- Ignore AppleDouble RPG parser candidates while retaining source files. Omit
+  game-text excerpts from fatal Backup parse errors and identify verified
+  relative entry locations when available.
+
+- Reject missing or invalid coordinates and overlapping mappings for every
+  entry in a patched file, including unchanged neighbors. Reject alternative
+  path spellings for the same target before mutation. Legacy v1 diagnostic
+  reads remain compatible; rejected patches preserve all workspace bytes.
 - Hardened BrowserWindow, preload, IPC, navigation, URL, local-path, child
   process, archive, and external-binary boundaries.
 - Reject manifest workspace paths that traverse symbolic links or junctions,

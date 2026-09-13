@@ -249,7 +249,10 @@ test('RPG patch keeps text, manifest and .extracteddata apply-ready as one set',
             expectedHash: entry.hash,
             text: translated,
         }]);
-        assert.deepEqual(outcome, { patched: 1, files: 1 });
+        assert.equal(outcome.patched, 1);
+        assert.equal(outcome.files, 1);
+        assert.equal(outcome.translationQuality.mechanical, 'pass');
+        assert.equal(outcome.translationQuality.semantics, 'not-run');
         const after = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
         const patchedEntry = after.entries.find((candidate) => candidate.id === entry.id);
         assert.strictEqual(patchedEntry.lineEnd - patchedEntry.lineStart, 2);

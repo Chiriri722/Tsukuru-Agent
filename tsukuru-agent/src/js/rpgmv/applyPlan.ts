@@ -143,10 +143,10 @@ function parseBackup(backupRoot: string, fileName: string): unknown {
     if (source.charCodeAt(0) === 0xFEFF) source = source.substring(1);
     try {
         return JSON.parse(source);
-    } catch (error) {
+    } catch {
         throw corrupt('RPG Backup JSON 파싱에 실패했습니다', {
             fileName,
-            cause: error instanceof Error ? error.message : String(error),
+            cause: 'JSON_PARSE_ERROR',
         });
     }
 }
@@ -389,7 +389,7 @@ export function loadRpgApplyPlan(dataDir: string): RpgApplyPlan {
     };
 }
 
-export function setRpgDataPath(target: unknown, dataPath: string, value: string): void {
+export function readRpgDataPath(target: unknown, dataPath: string): string {
     const segments = validateDataPath(dataPath).split('.');
     let current: any = target;
     for (let index = 0; index < segments.length; index++) {
@@ -410,9 +410,18 @@ export function setRpgDataPath(target: unknown, dataPath: string, value: string)
             if (typeof current[segment] !== 'string') {
                 throw corrupt('RPG Backup의 번역 대상이 문자열이 아닙니다', { dataPath });
             }
-            current[segment] = value;
+            return current[segment];
         } else {
             current = current[segment];
         }
     }
+    throw corrupt('RPG data path가 비어 있습니다');
+}
+
+export function setRpgDataPath(target: unknown, dataPath: string, value: string): void {
+    readRpgDataPath(target, dataPath);
+    const segments = dataPath.split('.');
+    let current: any = target;
+    for (const segment of segments.slice(0, -1)) current = current[segment];
+    current[segments[segments.length - 1]] = value;
 }

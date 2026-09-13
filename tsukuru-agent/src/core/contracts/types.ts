@@ -29,3 +29,4 @@ export type {
 } from '../manifest';
 
 export type { ContainerProvenance } from '../container/provenance';
+export type { TranslationQualityReport, TranslationIssue, QualityStatus } from '../translationLint';

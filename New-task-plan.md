@@ -1,21 +1,38 @@
 ---
 plan_id: tsukuru-agent-post-v2.5-hardening
 status: in_progress
-current_phase: "실제 RPG Maker MV 표본 결함 수정 및 복사본 기반 end-to-end 검증 완료, 전체 로컬 gate 재검증 진행"
-next_step: "전체 verify·고정 순서·coverage·benchmark를 재실행하고, clean integrated commit·hosted CI·수동 플레이테스트를 외부 release gate로 유지한다."
+current_phase: "2026-09-13 D21 P0–P2 구현, 최종 수락 검증 진행 중"
+next_step: "독립 후보 리뷰와 전체 검증, 안내서 기반 실제 작업팩 검사 후 기존 브랜치를 보존·통합·정리한다."
 repository: "Chiriri722/Tsukuru-Agent"
 baseline_branch: "main"
 baseline_commit: "17fa6e7108fca66eda5a436e19febc955c0acd9d"
 baseline_commit_date: "2026-08-12"
 target_path: "New-task-plan.md"
 created_at: "2026-08-15"
-last_updated: "2026-08-25"
+last_updated: "2026-09-13"
 ---
 
 # Tsukuru Agent 개선 작업 계획서
 
+## 현재 후속 단계 — D21 (2026-09-13)
+
+Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조했다.
+[검증 근거](docs/reviews/2026-09-13-daybreak-followup.md)와
+[실행 checklist](task_plan.md)의 D21-01~08이 이번 후속 작업의 기준이다.
+기존 Phase 0~20의 체크박스와 수치는 당시 증거로 유지한다.
+
+- 조사 완료: 합성 15개 사례, 관련 회귀 65/65, TypeScript build 통과.
+- 구현 후 검증 중: 일반 RPG 사전 적용 rollback → 공유 translation-lint →
+  공개 전 출력 검증 → 해시 충돌 집계 → 메시지 연속성/언어 잔존 →
+  AppleDouble 후보 정책 → 오류 문맥.
+- 9월 8일 patch-mapping 수정은 통합 작업트리에 남아 있고 main 미병합이다.
+  이번 번역 품질·적용 transaction backlog가 그 완료 기록을 대체하지 않는다.
+- [003 명세와 작업표](specs/003-translation-validation/tasks.md)에 단계별 RED와 구현을 기록했다.
+  독립 리뷰·필수 gate·실제 작업팩 검사·브랜치 정리를 최종 수락 조건으로 유지한다.
+  구조 합격과 의미 감수·실게임 합격을 구분한다.
+
 > **범위:** v2.5 이후의 안정화, 보안, 유지보수성, 테스트 신뢰성, 배포 재현성, 후속 호환성 확장
-> **기존 문서와의 관계:** 루트의 `task_plan.md`와 `v2.5-validation-compatibility-plan.md`는 기존 개조·v2.5 구현 이력으로 보존한다. 이 문서는 이후 개선 작업의 단일 기준 문서다.
+> **기존 문서와의 관계:** 이 문서는 장기 단계와 Exit Gate를 관리한다. 현재 D21의 검증된 실행 checklist는 `task_plan.md` 맨 위에 있으며, 그 아래와 `v2.5-validation-compatibility-plan.md`의 초기 개조·v2.5 이력은 보존한다.
 > **검토 기준:** `main@17fa6e7108fca66eda5a436e19febc955c0acd9d`
 > **검증 갱신:** 계획 초안은 GitHub 정적 검토로 작성했으나 2026-08-19 Phase 0 clean-room을 완료했다. 실행 결과는 `docs/baseline.md`, `findings.md`, `progress.md`에 기록한다.
 

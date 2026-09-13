@@ -21,6 +21,10 @@ import { WorkspaceTransaction } from '../../core/workspaceTransaction';
 import { throwIfSignalAborted } from '../../core/operationRuntime';
 import { resolveContainedPathWithoutLinks } from '../../core/pathSafety';
 import { loadRpgApplyPlan, setRpgDataPath } from './applyPlan';
+import { planRpgTranslations, rpgEntryContext } from './translation';
+import { assertTranslationQuality, translationQualitySummary, TranslationQualityReport } from '../../core/translationLint';
+import { StructuralValidationReport } from '../../core/validation/types';
+import { validateRpgOutput, publishLegacyRpgOutput, canPreserveRpgPluginSource } from './outputValidation';
 
 export interface RpgExtractOptions {
     /** data 폼더의 평문 경로. */
@@ -60,10 +64,8 @@ export interface RpgOperationReport {
     elapsedMs: number;
     manifestPath?: string;
     manifestEntries?: number;
-}
-
-function getBinarySize(str: string): number {
-    return Buffer.byteLength(str, 'utf8');
+    translationQuality?: TranslationQualityReport;
+    validation?: StructuralValidationReport;
 }
 
 function serializeRpgData(data: unknown): string {
@@ -79,19 +81,22 @@ function pathContains(parent: string, child: string): boolean {
     return relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
-function assertRpgApplyOutputSafe(dataDir: string, outputDir: string): void {
+export function assertRpgApplyOutputSafe(dataDir: string, outputDir: string): void {
     const dataRoot = path.resolve(dataDir);
     const outputRoot = path.resolve(outputDir);
     const protectedArtifacts = [
         path.join(dataRoot, 'Extract'),
         path.join(dataRoot, 'Backup'),
         path.join(dataRoot, '.extracteddata'),
+        path.join(dataRoot, 'Extract_img'),
+        path.join(dataRoot, 'Extract_audio'),
+        ...['js', 'img', 'audio', 'fonts', 'movies', 'icon', 'save'].map(name => path.join(path.dirname(dataRoot), name)),
     ];
     if (pathContains(outputRoot, dataRoot)
         || protectedArtifacts.some((artifact) => pathContains(artifact, outputRoot))) {
         throw new OperationError(
             ErrorCodes.OUTPUT_CONFLICT,
-            'RPG 출력 경로는 원본 data 또는 Extract/Backup/.extracteddata와 겹칠 수 없습니다',
+            'RPG 출력 경로는 원본 data·runtime·media 또는 추출 작업 파일과 겹칠 수 없습니다',
             { dataDir: dataRoot, outputDir: outputRoot },
         );
     }
@@ -186,7 +191,7 @@ function assertRpgTemporaryInputsSafe(
         reserve('ExternMsgcsv.json', 'ExternMessage.csv');
     }
     for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-        if (!entry.name.endsWith('.json.yaml')) continue;
+        if (entry.name.startsWith('._') || !entry.name.endsWith('.json.yaml')) continue;
         reserve(path.parse(entry.name).name, entry.name);
     }
 }
@@ -222,43 +227,24 @@ function resolveRpgPluginSource(dataDir: string): string {
 
 type RpgApplyPlan = ReturnType<typeof loadRpgApplyPlan>;
 
-async function applyRpgTextMappings(plan: RpgApplyPlan, arg: RpgApplyOptions): Promise<void> {
-    const maxFiles = plan.buckets.length;
-    let workedFiles = 0;
-    for (const bucket of plan.buckets) {
+async function applyRpgTextMappings(plan: RpgApplyPlan, arg: RpgApplyOptions): Promise<ReturnType<typeof planRpgTranslations>> {
+    const planned = planRpgTranslations(plan, arg);
+    const { translations, quality } = planned;
+    assertTranslationQuality(quality);
+    for (let index = 0; index < translations.length; index++) {
         throwIfSignalAborted(ctx().signal, 'rpg-apply-file');
-        for (const entry of bucket.entries) {
-            let output = '';
-            let autoline = false;
-            let autolineSize = 0;
-            const entryConfig = entry.conf;
-            if (entryConfig !== undefined) {
-                if (entryConfig.isComment === true) continue;
-                if (arg.autoline && entryConfig.type == 'event' && entryConfig.code == 401) {
-                    autoline = true;
-                    autolineSize = entryConfig.face ? 80 : 60;
-                }
-                if (arg.isComment) continue;
-            }
-            for (let lineIndex = entry.start; lineIndex < entry.end; lineIndex++) {
-                let currentLine = bucket.lines[lineIndex];
-                if (autoline && getBinarySize(currentLine) > autolineSize) {
-                    const words = currentLine.split(' ');
-                    if (words.length > 1) {
-                        const splitAt = Math.max(0, Math.floor(words.length / 2) - 1);
-                        words[splitAt] = `\n${words[splitAt]}`;
-                    }
-                    currentLine = words.join(' ');
-                }
-                output += currentLine;
-                if (lineIndex !== entry.end - 1) output += '\n';
-            }
-            setRpgDataPath(plan.backups.get(entry.originFile), entry.dataPath, output);
+        const { entry, bucket, text } = translations[index];
+        try { setRpgDataPath(plan.backups.get(entry.originFile), entry.dataPath, text); }
+        catch (error) {
+            if (error instanceof OperationError) throw new OperationError(error.code, error.message, rpgEntryContext(bucket, entry));
+            throw error;
         }
-        workedFiles += 1;
-        ctx().progress.set(workedFiles / maxFiles * 100);
-        await sleep(0);
+        if (translations[index + 1]?.bucket !== bucket) {
+            ctx().progress.set((index + 1) / translations.length * 100);
+            await sleep(0);
+        }
     }
+    return planned;
 }
 
 function writeRpgPluginOutput(
@@ -281,7 +267,8 @@ function writeRpgPluginOutput(
     const canPreserveSource = unchanged
         && path.basename(plan.dataRoot).toLowerCase() === 'data'
         && fs.existsSync(source)
-        && fs.lstatSync(source).isFile();
+        && fs.lstatSync(source).isFile()
+        && canPreserveRpgPluginSource(fs.readFileSync(source, 'utf8'), compactJson, plan);
     if (canPreserveSource) fs.copyFileSync(source, output);
     else fs.writeFileSync(output, pluginScript, 'utf8');
     return output;
@@ -416,7 +403,7 @@ export class RpgMakerService {
             }
         }
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            if (!entry.name.endsWith('.json.yaml')) continue;
+            if (entry.name.startsWith('._') || !entry.name.endsWith('.json.yaml')) continue;
             const yamlPath = resolveRpgApplyChild(dir, entry.name, 'RPG YAML 입력');
             try {
                 const jsonName = path.parse(entry.name).name;
@@ -434,7 +421,7 @@ export class RpgMakerService {
 
         const fileList = [
             ...fs.readdirSync(dir, { withFileTypes: true })
-                .filter((entry) => entry.isFile() && path.extname(entry.name) === '.json')
+                .filter((entry) => entry.isFile() && !entry.name.startsWith('._') && path.extname(entry.name) === '.json')
                 .map((entry) => entry.name),
             ...virtualJsonInputs.keys(),
         ].sort((left, right) => Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')));
@@ -454,6 +441,9 @@ export class RpgMakerService {
         let jT = 0;
         let manifestEntries = 0;
         try {
+        if (arg.exJson && fs.existsSync(externMessagePath)) {
+            fs.copyFileSync(externMessagePath, path.join(stagingBackup, 'ExternMessage.csv'));
+        }
         ExtTool.init_extract(arg);
         for (const fileName of fileList) {
             throwIfSignalAborted(ctx().signal, 'rpg-extract-file');
@@ -563,29 +553,33 @@ export class RpgMakerService {
         }
         // 모든 매핑·경로·Backup·manifest 검사는 출력 transaction을 만들기 전에 끝낸다.
         const plan = loadRpgApplyPlan(dir);
-        const originalBackupHashes = new Map(
-            Array.from(plan.backups, ([fileName, data]) => [fileName, sha256Text(serializeRpgData(data))]),
-        );
+        const originals = new Map(Array.from(plan.backups, ([fileName, data]) => [fileName, serializeRpgData(data)]));
+        const originalBackupHashes = new Map(Array.from(originals, ([fileName, data]) => [fileName, sha256Text(data)]));
         const completedFinal = path.resolve(arg.outputDir ?? path.join(dir, 'Completed'));
         if (!arg.instantapply) assertRpgApplyOutputSafe(dir, completedFinal);
-        await applyRpgTextMappings(plan, arg);
+        const translated = await applyRpgTextMappings(plan, arg);
+        report.translationQuality = translated.quality;
+        const qualityWarning = translationQualitySummary(translated.quality);
+        if (qualityWarning) ctx().logger.warn(qualityWarning);
 
-        // instantapply(legacy)만 원본 위치에 직접 쓰고, 나머지는 공통 transaction으로 전환한다.
+        // Both CLI and legacy GUI serialize and validate in isolation before publishing.
         const transaction = arg.instantapply
             ? null
             : new WorkspaceTransaction({ outputPath: completedFinal, force: arg.force ?? true, signal: ctx().signal });
-        const completedRoot = transaction?.stagingPath ?? completedFinal;
+        const completedRoot = transaction?.stagingPath ?? makeStagingDir(dir, '.tsukuru-instant-apply');
         try {
-        if (!arg.instantapply) {
-            fs.mkdirSync(path.join(completedRoot, 'data'));
-            fs.mkdirSync(path.join(completedRoot, 'js'));
-        }
-        await writeRpgApplyOutputs(plan, arg, completedRoot, originalBackupHashes, report);
+        fs.mkdirSync(path.join(completedRoot, 'data'));
+        fs.mkdirSync(path.join(completedRoot, 'js'));
+        await writeRpgApplyOutputs(plan, { ...arg, instantapply: false }, completedRoot, originalBackupHashes, report);
 
-        await ExtTool.EncryptDir(dir, 'img', arg.instantapply ?? false, completedRoot);
-        await ExtTool.EncryptDir(dir, 'audio', arg.instantapply ?? false, completedRoot);
+        await ExtTool.EncryptDir(dir, 'img', false, completedRoot);
+        await ExtTool.EncryptDir(dir, 'audio', false, completedRoot);
+        report.validation = validateRpgOutput(plan, completedRoot, originals, translated.translations, arg.useYaml === true);
         throwIfSignalAborted(ctx().signal, 'rpg-apply-commit');
-        transaction?.commit();
+        if (arg.instantapply) {
+            const installed = publishLegacyRpgOutput(plan, completedRoot, arg.useYaml === true);
+            report.appliedFiles = report.appliedFiles.map(file => installed.get(file)!);
+        } else transaction!.commit();
         if (transaction) {
             report.appliedFiles = report.appliedFiles.map((file) => (
                 path.join(completedFinal, path.relative(completedRoot, file))
@@ -595,6 +589,7 @@ export class RpgMakerService {
         return report;
         } finally {
             transaction?.dispose();
+            if (!transaction) removePathBestEffortSync(completedRoot, { recursive: true, force: true });
         }
         });
     }

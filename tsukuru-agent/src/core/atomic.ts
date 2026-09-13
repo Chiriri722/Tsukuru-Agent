@@ -124,7 +124,7 @@ export function atomicWriteFileSync(file: string, data: string | Buffer): void {
 
 interface StagedArtifactReplacement {
     name: string;
-    staged: string;
+    staged?: string;
     target: string;
     backup: string;
     hadOriginal: boolean;
@@ -200,11 +200,63 @@ export function replaceArtifactGroupSync(
         entries.push({ name, staged, target, backup, hadOriginal, installed: false });
     }
 
+    installArtifactReplacements(entries);
+}
+
+export type ArtifactReplacement = { staged: string; target: string } | { remove: true; target: string };
+
+/** Stage each artifact on its target volume, then install the whole set or restore it. */
+export function replaceArtifactPathsSync(replacements: ArtifactReplacement[]): void {
+    const transactionId = `${process.pid}-${crypto.randomUUID()}`;
+    const entries: StagedArtifactReplacement[] = [];
+    const identities: string[] = [];
+    for (const [index, replacement] of replacements.entries()) {
+        const staged = 'staged' in replacement ? path.resolve(replacement.staged) : undefined;
+        const target = path.resolve(replacement.target);
+        for (const candidate of staged ? [staged, target] : [target]) {
+            const parent = path.dirname(candidate);
+            if (candidate === parent || findLinkedPathComponent(candidate)) {
+                throw new Error('artifact path is a filesystem root or crosses a symbolic link/junction');
+            }
+            if (!fs.lstatSync(parent).isDirectory()) throw new Error('artifact parent is not a directory');
+            const identity = fs.existsSync(candidate)
+                ? fs.realpathSync.native(candidate)
+                : path.join(fs.realpathSync.native(parent), path.basename(candidate));
+            identities.push(process.platform === 'win32' ? identity.toLowerCase() : identity);
+        }
+        if (staged) {
+            const stagedStat = fs.lstatSync(staged);
+            if (!stagedStat.isFile() && !stagedStat.isDirectory()) throw new Error('staged artifact is not regular');
+        }
+        const hadOriginal = fs.existsSync(target);
+        if (hadOriginal) {
+            const stat = fs.lstatSync(target);
+            if (!stat.isFile() && !stat.isDirectory()) throw new Error('target artifact is not regular');
+        }
+        const name = path.basename(target);
+        const backup = path.join(path.dirname(target), `.${name}.old-${transactionId}-${index}`);
+        if (fs.existsSync(backup)) throw new Error('artifact backup already exists');
+        entries.push({ name, staged, target, backup, hadOriginal, installed: false });
+    }
+    const identitySet = new Set(identities);
+    if (identitySet.size !== identities.length) throw new Error('artifact paths are duplicated');
+    for (const identity of identities) {
+        let parent = path.dirname(identity);
+        while (parent !== path.dirname(parent)) {
+            if (identitySet.has(parent)) throw new Error('artifact staging and target paths must not overlap');
+            parent = path.dirname(parent);
+        }
+    }
+    installArtifactReplacements(entries);
+}
+
+function installArtifactReplacements(entries: StagedArtifactReplacement[]): void {
     try {
         for (const entry of entries) {
             if (entry.hadOriginal) fs.renameSync(entry.target, entry.backup);
         }
         for (const entry of entries) {
+            if (!entry.staged) continue;
             if (fs.existsSync(entry.target)) {
                 throw new Error(`artifact target appeared during replacement: ${entry.target}`);
             }
@@ -213,7 +265,7 @@ export function replaceArtifactGroupSync(
         }
     } catch (error) {
         for (const entry of entries.slice().reverse()) {
-            if (!entry.installed || !fs.existsSync(entry.target)) continue;
+            if (!entry.installed || !entry.staged || !fs.existsSync(entry.target)) continue;
             try {
                 if (!fs.existsSync(entry.staged)) fs.renameSync(entry.target, entry.staged);
                 else removeArtifactSync(entry.target);
