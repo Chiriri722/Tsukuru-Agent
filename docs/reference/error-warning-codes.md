@@ -37,6 +37,7 @@ code.
 
 | Code | Meaning | Typical response |
 |---|---|---|
+| `E_TRANSLATION_LINT` | Source-bound control codes, placeholders, blank text, or replacement characters are damaged | Inspect bounded `translationQuality.issues`; preserve original tokens before retrying |
 | `E_VERIFY_FAILED` | Structural, mapping, protected-file, or output verification failed | Inspect `validation.issues` and correct the workspace |
 | `E_CONTAINER_PROVENANCE_INVALID` | `.tsukuru-container.json` is missing, malformed, or inconsistent | Re-extract from the original container |
 | `E_RUNTIME_INTEGRITY` | Electron fuse, embedded ASAR hash, or runtime integrity policy blocks publication | Rebuild with the legitimate runtime; do not patch around it |
@@ -78,6 +79,7 @@ review degraded evidence or skipped work.
 |---|---|
 | `W_LEGACY_MESSAGE` | A legacy warning string has no more specific structured category |
 | `W_STRUCTURAL_VALIDATION` | Structural validation found a non-fatal issue or conservative score reduction |
+| `W_TRANSLATION_REVIEW` | Mechanical integrity passed but source retention, untranslated text, or message context needs human review; semantic and gameplay correctness remain unverified |
 | `W_TRANSLATION_ENTRY_SKIPPED` | A dictionary or patch candidate was skipped because it was empty, unchanged, unknown, stale, or comment-only |
 | `W_EXTRACTION_INCOMPLETE` | Extraction completed with a documented omission or unsupported subset |
 | `W_CONTAINER_DIAGNOSTIC` | Container metadata, wrapper layout, or experimental condition needs review |

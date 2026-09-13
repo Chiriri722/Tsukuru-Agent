@@ -79,12 +79,12 @@
     "exitCode": 0,
     "stderrHasProgress": true,
     "result": {
-      "keys": ["artifacts", "change", "container", "engine", "error", "format", "ok", "schemaVersion", "scores", "stats", "validation", "warningDetails", "warnings"],
+      "keys": ["artifacts", "change", "container", "engine", "error", "format", "ok", "schemaVersion", "scores", "stats", "translationQuality", "validation", "warningDetails", "warnings"],
       "ok": true,
       "format": "rpgmv",
       "artifactNames": [],
       "statKeys": ["encodingWarnings", "entries", "files", "invalidEntries", "performance", "resources", "score", "tokenErrors"],
-      "warnings": [],
+      "warnings": ["번역 메시지 문맥 감수가 필요합니다(진단 1개)"],
       "errorCode": null,
       "errorDetailKeys": []
     }
@@ -94,12 +94,12 @@
     "exitCode": 0,
     "stderrHasProgress": true,
     "result": {
-      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "translationQuality", "warningDetails", "warnings"],
       "ok": true,
       "format": "rpgmv",
       "artifactNames": ["manifest.json"],
       "statKeys": ["files", "patched", "performance", "resources"],
-      "warnings": [],
+      "warnings": ["번역 메시지 문맥 감수가 필요합니다(진단 1개)"],
       "errorCode": null,
       "errorDetailKeys": []
     }
@@ -116,7 +116,7 @@
       "statKeys": ["performance", "resources"],
       "warnings": [],
       "errorCode": "E_PATCH_HASH_MISMATCH",
-      "errorDetailKeys": ["id"]
+      "errorDetailKeys": ["conflicts", "id", "omittedCount", "totalConflicts"]
     }
   },
   "applySuccess": {
@@ -124,12 +124,12 @@
     "exitCode": 0,
     "stderrHasProgress": true,
     "result": {
-      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "warningDetails", "warnings"],
+      "keys": ["artifacts", "container", "engine", "error", "format", "ok", "schemaVersion", "stats", "translationQuality", "validation", "warningDetails", "warnings"],
       "ok": true,
       "format": "rpgmv",
       "artifactNames": ["Completed"],
       "statKeys": ["elapsedMs", "files", "performance", "resources"],
-      "warnings": [],
+      "warnings": ["번역 메시지 문맥 감수가 필요합니다(진단 1개)"],
       "errorCode": null,
       "errorDetailKeys": []
     }

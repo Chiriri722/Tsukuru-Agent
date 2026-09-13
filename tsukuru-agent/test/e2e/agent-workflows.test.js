@@ -78,7 +78,9 @@ test('deep verify quantifies non-protected output changes', async () => {
     const actors = [null, { id: 1, name: 'original', classId: 0 }];
     fs.writeFileSync(path.join(data, 'Actors.json'), JSON.stringify(actors));
     fs.writeFileSync(path.join(data, 'Backup', 'Actors.json'), JSON.stringify(actors));
-    fs.writeFileSync(path.join(data, '.extracteddata'), '{}');
+    require('../../.build/app/src/js/rpgmv/edtool.js').write(data, { main: {
+        'Actors.json': { data: { '0': { origin: 'Actors.json', val: '1.name', m: 1 } } },
+    } });
     fs.writeFileSync(path.join(data, 'Extract', 'Actors.txt'), 'original\n');
     fs.writeFileSync(path.join(data, 'Extract', 'manifest.json'), JSON.stringify({ schemaVersion: 1, format: 'rpgmv', entries: [{
         id: 'Actors.json#1.name', sourceFile: 'Backup/Actors.json', dataPath: '1.name', extractFile: 'Actors.txt',
@@ -112,7 +114,9 @@ test('verify publishes RPG JSON and manifest integrity in its validation report'
     const actors = [null, { id: 1, name: 'Alice', classId: 0 }];
     fs.writeFileSync(path.join(data, 'Actors.json'), JSON.stringify(actors));
     fs.writeFileSync(path.join(data, 'Backup', 'Actors.json'), JSON.stringify(actors));
-    fs.writeFileSync(path.join(data, '.extracteddata'), '{}');
+    require('../../.build/app/src/js/rpgmv/edtool.js').write(data, { main: {
+        'Actors.json': { data: { '0': { origin: 'Actors.json', val: '1.name', m: 1 } } },
+    } });
     fs.writeFileSync(path.join(data, 'Extract', 'Actors.txt'), 'Alice\n');
     fs.writeFileSync(path.join(data, 'Extract', 'manifest.json'), JSON.stringify({
         schemaVersion: 1, format: 'rpgmv', entries: [{
@@ -153,7 +157,9 @@ test('verify recognizes a portable RPG extraction pack with source JSON only in 
     fs.mkdirSync(path.join(pack, 'Extract'), { recursive: true });
     const actors = [null, { id: 1, name: 'Alice', classId: 0 }];
     fs.writeFileSync(path.join(pack, 'Backup', 'Actors.json'), JSON.stringify(actors));
-    fs.writeFileSync(path.join(pack, '.extracteddata'), '{}');
+    require('../../.build/app/src/js/rpgmv/edtool.js').write(pack, { main: {
+        'Actors.json': { data: { '0': { origin: 'Actors.json', val: '1.name', m: 1 } } },
+    } });
     fs.writeFileSync(path.join(pack, 'Extract', 'Actors.txt'), 'Alice\n');
     fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify({
         schemaVersion: 1, format: 'rpgmv', entries: [{
@@ -191,7 +197,9 @@ test('verify keeps RPG reference damage inherited from Backup as a non-blocking 
         { id: 2, name: 'Already missing', parentId: 0 },
     ];
     fs.writeFileSync(path.join(pack, 'Backup', 'MapInfos.json'), JSON.stringify(mapInfos));
-    fs.writeFileSync(path.join(pack, '.extracteddata'), '{}');
+    require('../../.build/app/src/js/rpgmv/edtool.js').write(pack, { main: {
+        'MapInfos.json': { data: { '0': { origin: 'MapInfos.json', val: '1.name', m: 1 } } },
+    } });
     fs.writeFileSync(path.join(pack, 'Extract', 'MapInfos.txt'), 'Start\n');
     fs.writeFileSync(path.join(pack, 'Extract', 'manifest.json'), JSON.stringify({
         schemaVersion: 1, format: 'rpgmv', entries: [{

@@ -1,6 +1,6 @@
 # Tsukuru Agent
 
-> **작업 재개 안내 (2026-09-08):** 이 경로는 이전 구현의 `main`입니다. 후속 hardening 구현은 별도 `chore/hardening-integration` worktree에 있습니다. [현재 상태·경로·다음 작업](docs/current-state.md), [코드 리뷰](docs/reviews/2026-09-08.md), [내부 문서 안내](docs/README.md)를 먼저 확인하세요.
+> **작업 재개 안내 (2026-09-13):** D21 번역 적용 무결성 개선을 반영했습니다. [현재 상태](docs/current-state.md), [Task Plan](task_plan.md), [검증 기록](specs/003-translation-validation/verification.md), [내부 문서 안내](docs/README.md)에서 구현과 검증 범위를 확인하세요.
 
 RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스트 추출·패치·적용을 자동화하는 **Headless CLI**입니다. Electron `app.asar`와 NW.js `package.nw` 작업본도 원본 보존 방식으로 처리합니다.
 [Tsukuru Extractor](https://github.com/gramedcart/tsukuru_extractor) 2.3.0(GPLv3)의 추출·적용 로직을 UI 비의존 서비스 계층으로 리팩터링하고, 에이전트·CI 환경에서 호출할 수 있는 JSON 요청/응답 CLI를 추가했습니다. 기존 Electron GUI도 동일한 서비스 계층 위에서 동작합니다.
@@ -11,8 +11,9 @@ RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스�
 
 - **5개 작업**: `verify` · `extract` · `patch` · `apply` · `recover`
 - **포맷 자동 판별**: RPG Maker MV/MZ(data/*.json), Wolf RPG(.mps, Data.wolf), TyranoScript(data/scenario/*.ks), GDevelop(gdjs runtime + data.js)
-- **manifest 기반 번역 워크플로**: 안정 ID·원문 SHA-256·줄 매핑·오프셋을 사용하며 해시 불일치와 중복 ID를 쓰기 전에 검사합니다. main의 정션·불완전한 매핑 검증 한계는 [코드 리뷰 R1/R2](docs/reviews/2026-09-08.md)를 참고하세요.
-- **파일별 원자적 쓰기**: 임시 파일을 교체합니다. main의 여러 파일 patch 실패 복구 한계와 통합 브랜치의 보완은 [코드 리뷰 R3](docs/reviews/2026-09-08.md)에 기록되어 있습니다.
+- **manifest 기반 번역 워크플로**: 안정 ID·원문 SHA-256·매핑 범위·경로를 쓰기 전에 검사합니다. 해시 충돌은 전체 수와 상한이 있는 파일·ID 목록으로 보고합니다.
+- **관련 산출물의 원자적 반영**: patch와 RPG 사전 적용을 staging에서 검증한 뒤 반영하며 후속 오류·취소·교체 실패 시 기존 작업본과 출력을 복구합니다.
+- **원문 기반 번역 검사**: 제어코드·자리표시자·새 빈 값·U+FFFD 손상을 차단하고 출력값과 허용 변경 경로를 재확인합니다. `translationQuality`는 기계적 무결성, 언어·메시지 문맥 감수, 미실행 의미 검증을 구분합니다.
 - **원본 보존**: MV/MZ는 `Completed`로 출력하고 Wolf/Tyrano/GDevelop 및 ASAR/NW.js는 별도 게임 복사본에만 적용
 - **에이전트 친화적**: stdout은 최종 결과 JSON 전용, 모든 로그는 stderr
 - **기존 GUI 산출물과 호환**: `Extract` · `Backup` · `Completed` · `.extracteddata` · TXT 형식 유지
