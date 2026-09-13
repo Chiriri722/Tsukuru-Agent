@@ -5,6 +5,16 @@ source commit, supported Node/npm versions, operating system, and every manual
 sample result. Automated checks and manual gameplay answer different questions
 and must remain separate in the release report.
 
+## Local D21 acceptance (2026-09-13)
+
+D21 passed normal and fixed-order tests at 433/433, all six benchmarks, Electron smoke,
+CLI build and package verification. Fourteen private workspaces returned eight successes
+and six correctly diagnosed failures; originals were preserved. Three affected cases were
+rechecked with the final source. See [exact scope and logs](../specs/003-translation-validation/verification.md).
+
+These maintenance checks do not close hosted CI, representative manual gameplay, packaged-GUI,
+signing or publication gates. Existing historical release measurements below retain their dates.
+
 ## Clear active blockers first
 
 - [x] Complete the current-major Electron 43.4.1 rung with

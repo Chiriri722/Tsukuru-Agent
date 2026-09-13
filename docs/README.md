@@ -6,7 +6,8 @@
 
 | 문서 | 용도 | 기준 |
 |---|---|---|
-| [Daybreak 후속 검증](reviews/2026-09-13-daybreak-followup.md) / [D21 계획](../task_plan.md) | 번역 품질·사전 적용 경계의 검증과 우선 작업 | 2026-09-13, 통합 코드 대조·합성 15개 사례 |
+| [D21 검증 결과](../specs/003-translation-validation/verification.md) / [D21 계획](../task_plan.md) | P0–P2 구현, 필수 검사, 실제 작업팩 결과 | 2026-09-13 수락 근거 |
+| [Daybreak 후속 검증](reviews/2026-09-13-daybreak-followup.md) | 원 제안 7개와 구현 전 상태 대조 | 2026-09-13, 합성 15개 사례 |
 | [작업 재개 안내](current-state.md) | 경로, 브랜치, 검증 결과, 다음 작업 | 2026-09-13, D21 수락 상태 |
 | [코드 리뷰](reviews/2026-09-08.md) | 우선순위, 재현 조건, 개선 방향 | main / hardening-integration 구분 |
 | [루트 README](../README.md) | 현재 main의 실행 방법과 기능 | main 구현 |
@@ -15,7 +16,7 @@
 | [진행 기록](../progress.md) / [조사 기록](../findings.md) | 당시 실행·재현·판단 이력 | 날짜별 기록 |
 | [초기 개조 계획](../task_plan.md) / [코드 분석](../notes.md) | 원본 GUI에서 CLI로 분리한 배경 | 역사 기록 |
 | [v2.5 계획](../v2.5-validation-compatibility-plan.md) / [릴리스 노트](../v2.5-release-notes.md) | 컨테이너·엔진 확장의 배경 | v2.5 당시 상태 |
-| [GUI 계획](../specs/001-gui-design-hardening/tasks.md) | main GUI 결함과 T001–T035 | main 기준 계획; 통합 브랜치에 후속 구현 존재 |
+| [GUI 계획](../specs/001-gui-design-hardening/tasks.md) | 당시 main GUI 결함과 T001–T035 | 2026-09-08 계획; 현재 수락 근거와 구분 |
 
 ## 구현과 운영 문서
 

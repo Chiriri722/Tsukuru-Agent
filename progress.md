@@ -2,9 +2,12 @@
 
 ## Current Phase
 
-D21 P0–P2 implementation and independent candidate review are complete.
-Focused checks pass 41/41. Fourteen private workspaces were inspected without
-changing source or copied artifacts. Full gates and branch integration are in progress.
+D21 implementation and independent review are complete. The final focused checks passed 41/41;
+normal and fixed-order suites passed 433/433, all six benchmarks and Electron/CLI package gates passed.
+The first full run exposed six stale test/documentation expectations; existing mapping serialization
+and explicit additive snapshots resolved them, with a 35/35 targeted rerun. Validator policy is unchanged.
+Fourteen private workspaces were checked without mutation, then three affected cases were rechecked.
+Three old worktrees are archived and removed. Main integration and final cleanup are next.
 Current evidence: [D21 verification](specs/003-translation-validation/verification.md).
 
 ## Review and relocation (2026-09-08)

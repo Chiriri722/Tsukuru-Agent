@@ -34,12 +34,12 @@ Independent test: multiple hashes, page/indent/message boundaries, sidecars, kno
 - [x] T014 [US3] Implement message/Japanese review diagnostics in tsukuru-agent/src/core/translationLint.ts and RPG context helpers.
 - [x] T015 [US3] Exclude AppleDouble parser candidates in tsukuru-agent/src/js/rpgmv/RpgMakerService.ts and src/core/validation/engines/rpg.ts.
 - [x] T016 [US3] Add relative origin/bucket/ID error context in tsukuru-agent/src/js/rpgmv/applyPlan.ts.
-- [ ] T017 [US3] Run adapted current CLI internal validator on private workspace copies; record sanitized results in verification.md.
+- [x] T017 [US3] Run adapted current CLI internal validator on private workspace copies; record sanitized results in verification.md.
 
 ## Phase 6: Final acceptance and integration
 - [x] T018 Complete one independent candidate review; confirm findings and record verification.md.
-- [ ] T019 Run required verify/order/benchmark/Electron and relevant package gates from tsukuru-agent/package.json.
-- [ ] T020 Update task_plan.md, New-task-plan.md, README.md, CHANGELOG.md and docs/release-checklist.md.
+- [x] T019 Run required verify/order/benchmark/Electron and relevant package gates from tsukuru-agent/package.json.
+- [x] T020 Update task_plan.md, New-task-plan.md, README.md, CHANGELOG.md and docs/release-checklist.md.
 - [ ] T021 Preserve/audit all worktrees, integrate main changes, commit and clean redundant branches; record exact revisions in verification.md.
 
 ## Dependencies & Execution Order

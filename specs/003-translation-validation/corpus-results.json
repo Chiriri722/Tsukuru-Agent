@@ -471,5 +471,48 @@
       "warningCount": 9970,
       "playtest": "not-run"
     }
-  ]
+  ],
+  "finalVerification": {
+    "generatedAt": "2026-09-13T09:04:03.834Z",
+    "sourceCommit": "dfba1bf04d689a4f34d8c23944e7c6ab818a79c9",
+    "records": [
+      {
+        "id": "workspace-01",
+        "exitCode": 1,
+        "processError": null,
+        "ok": false,
+        "structuralOk": false,
+        "mechanical": "pass",
+        "semantics": "not-run",
+        "sourceSha256": "2dcb2ca1c4f24e679f5ce529714a0e600cb339c8075050fb431623e0d954cffb",
+        "originalUnchanged": true,
+        "copyUnchanged": true,
+        "parserExcerptRedacted": true
+      },
+      {
+        "id": "workspace-06",
+        "exitCode": 0,
+        "processError": null,
+        "ok": true,
+        "structuralOk": true,
+        "mechanical": "pass",
+        "semantics": "not-run",
+        "sourceSha256": "db48f4fce6ff03ba440e7b63eba9f69ad56a8726b47d755eacecf06e246792f8",
+        "originalUnchanged": true,
+        "copyUnchanged": true
+      },
+      {
+        "id": "workspace-14",
+        "exitCode": 1,
+        "processError": null,
+        "ok": false,
+        "structuralOk": true,
+        "mechanical": "fail",
+        "semantics": "not-run",
+        "sourceSha256": "1bc247c444e6cf8d8fba66a7a02622575226760649a44091542deb78b9549a72",
+        "originalUnchanged": true,
+        "copyUnchanged": true
+      }
+    ]
+  }
 }

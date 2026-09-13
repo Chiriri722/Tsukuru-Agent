@@ -1,8 +1,8 @@
 ---
 plan_id: tsukuru-agent-post-v2.5-hardening
 status: in_progress
-current_phase: "2026-09-13 D21 P0–P2 구현, 최종 수락 검증 진행 중"
-next_step: "독립 후보 리뷰와 전체 검증, 안내서 기반 실제 작업팩 검사 후 기존 브랜치를 보존·통합·정리한다."
+current_phase: "2026-09-13 D21 구현·필수 검증 완료, 브랜치 통합 진행 중"
+next_step: "검증된 변경을 main에 통합하고 중복 작업 폴더를 정리한다. 작업팩 오류·의미 감수·실게임은 별도 후속 범위다."
 repository: "Chiriri722/Tsukuru-Agent"
 baseline_branch: "main"
 baseline_commit: "17fa6e7108fca66eda5a436e19febc955c0acd9d"
@@ -21,15 +21,12 @@ Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조�
 [실행 checklist](task_plan.md)의 D21-01~08이 이번 후속 작업의 기준이다.
 기존 Phase 0~20의 체크박스와 수치는 당시 증거로 유지한다.
 
-- 조사 완료: 합성 15개 사례, 관련 회귀 65/65, TypeScript build 통과.
-- 구현 후 검증 중: 일반 RPG 사전 적용 rollback → 공유 translation-lint →
-  공개 전 출력 검증 → 해시 충돌 집계 → 메시지 연속성/언어 잔존 →
-  AppleDouble 후보 정책 → 오류 문맥.
-- 9월 8일 patch-mapping 수정은 통합 작업트리에 남아 있고 main 미병합이다.
-  이번 번역 품질·적용 transaction backlog가 그 완료 기록을 대체하지 않는다.
-- [003 명세와 작업표](specs/003-translation-validation/tasks.md)에 단계별 RED와 구현을 기록했다.
-  독립 리뷰·필수 gate·실제 작업팩 검사·브랜치 정리를 최종 수락 조건으로 유지한다.
-  구조 합격과 의미 감수·실게임 합격을 구분한다.
+- D21-01~08 구현과 독립 조사·후보 리뷰를 완료했다. 확인된 후보 리뷰 4건도 재현 후 수정했다.
+- 일반·고정 순서 테스트 각각 433/433, 성능 6개, Electron 및 CLI 패키지 검증 통과.
+- 실제 작업팩 14개 검사: 8개 통과·6개 오류 검출. 최종 영향 사례 3개 재검증도 같은 결과와 원본 보존을 확인했다.
+- [003 검증 기록](specs/003-translation-validation/verification.md)에 RED/GREEN, 계약 갱신, 실제 데이터의 진단과 자동 검증 한계를 기록했다.
+- 9월 8일 patch-mapping 수정과 D21을 함께 통합한다. 기존 구현 이력과 아직 남은 릴리스 조건은 보존한다.
+- 구조·기계적 무결성 통과는 의미 감수·실게임 합격을 뜻하지 않는다.
 
 > **범위:** v2.5 이후의 안정화, 보안, 유지보수성, 테스트 신뢰성, 배포 재현성, 후속 호환성 확장
 > **기존 문서와의 관계:** 이 문서는 장기 단계와 Exit Gate를 관리한다. 현재 D21의 검증된 실행 checklist는 `task_plan.md` 맨 위에 있으며, 그 아래와 `v2.5-validation-compatibility-plan.md`의 초기 개조·v2.5 이력은 보존한다.

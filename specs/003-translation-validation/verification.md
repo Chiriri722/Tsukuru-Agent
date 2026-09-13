@@ -1,7 +1,10 @@
-# D21 verification — in progress
+# D21 verification
 
-Date: 2026-09-13. Implementation checkout: `chore/hardening-integration@80d2043` plus preserved earlier work.
-Canonical main: `5884d62` (latest commit is documentation). Not yet committed/merged/released.
+Date: 2026-09-13. Initial checkout: hardening integration at `80d2043` plus preserved earlier work.
+Implementation: workflow `34e876e`, RPG fixes `2118186`, main documentation merge `ecaf782`,
+contract/fixture alignment `251d41c`, package-smoke fixture `dfba1bf`.
+Final application source is unchanged by the later test/documentation alignment.
+Main fast-forward and final worktree cleanup follow this acceptance record. No release or push occurred.
 
 ## Boundary investigation
 
@@ -55,7 +58,7 @@ It confirmed four routes, all reproduced by the parent before corrections:
 - Unmapped malformed Backup files disclosed parser excerpts: sanitize the shared structural parser, retaining file/code/severity.
 
 The corresponding synthetic RED tests failed for the reported reasons. The first correction set
-passed 40/40 focused checks; final CSV equivalence and full gates follow below. The reviewer used
+passed 40/40 focused checks; the final CSV equivalence check brought this to 41/41, with no skips. The reviewer used
 the existing graph and local source after automatic approval review rejected reindexing; no work
 remained blocked by that rejection. No private data was shared with the reviewer.
 
@@ -96,13 +99,41 @@ Current build staging, canonical version policy and updated locked dependencies 
 those changes. Their original test logs, binary diffs and ignored lockfiles are separately preserved
 in the canonical checkout's ignored `tmp/d21-branch-archive`. No archive tag has been pushed.
 
-## Pending acceptance
+## Final acceptance
 
-- Final documentation and complete acceptance checks.
-- Review findings reproduced and corrected; final focused test result pending.
-- Full verify/order/benchmark/Electron and relevant package gates (not yet run for this feature).
-- Recheck affected private-corpus cases after final parser corrections.
-- Main documentation merge and removal of the now-preserved redundant worktrees.
+| Command / check | Result |
+| --- | --- |
+| Final focused candidate | 41/41 |
+| Contract / workflow alignment | 35/35 |
+| `npm run verify` | exit 0; 433/433, no skips; version/type/style/complexity/generated/inventory/supply-chain passed |
+| `npm run test:order` | exit 0; 433/433, no skips, seed 1414747474 |
+| `npm run benchmark:check` | exit 0; all six cases within baseline |
+| `npm run test:electron` | exit 0; sandbox/bridge/IPC/settings and RPG/Wolf GUI smoke |
+| `npm run build:cli` then `npm run verify:package` | exit 0; package contents and valid/invalid CLI contracts |
+| Final private-corpus recheck | workspace-01, workspace-06, workspace-14; expected failure/pass/failure and byte preservation |
+
+The first full run returned 427/433. Six failures were stale fixtures/contracts: four success
+fixtures wrote an invalid empty mapping, the CLI snapshot lacked additive diagnostics, and the
+error-code reference omitted the two new codes. The fixtures now use the existing mapping writer;
+snapshot/documentation changes preserve the stricter validator. The corresponding 35 checks and
+the full rerun passed. Runtime validation was not relaxed to accept invalid fixtures.
+
+Package verification exposed the same invalid empty-mapping fixture. A decoding assertion failed
+before correcting the fixture to use the existing writer; all 13 CI contract checks then passed.
+The actual packaged executable passed both success/exit 0 and missing-request/exit 1 checks,
+with 1,797 ASAR entries and 76 deterministic ZIP entries. ZIP SHA-256:
+be7fbdeea9ef47631212671e062b849e07cf89e880f1ed79a0eba2661629d083.
+
+The final recheck uses the current compiled CLI, original-source hashes and the existing verified
+copies. The JSON error keeps its code/file/severity but contains no parser excerpt; the successful
+case remains successful; the mechanically damaged case still fails despite a clean structure.
+The original 14-case results and the separate final three-case evidence are preserved together in
+`corpus-results.json`. No additional workspace was repaired or promoted.
+
+Three obsolete worktrees/branches were removed only after their tags, clean status and local
+archives were checked. The canonical checkout's 44 ignored generated/source-test files and old
+lockfile were separately copied and hash-verified before integration. Final main cleanup remains
+recorded below when completed.
 
 ## Quality interpretation
 
