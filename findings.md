@@ -1,5 +1,7 @@
 # Post-v2.5 Hardening Findings
 
+> 2026-09-08 review: [current findings and reproductions](docs/reviews/2026-09-08.md) distinguish main from the committed hardening integration branch. The baseline and dated entries below remain historical evidence. Current paths, verification, and next steps are in [current-state.md](docs/current-state.md).
+
 ## Scope
 
 - Proposal: `New-task-plan.md`

@@ -2,6 +2,38 @@
 
 ## Current Phase
 
+D21 P0–P2 implementation and independent candidate review are complete.
+Focused checks pass 41/41. Fourteen private workspaces were inspected without
+changing source or copied artifacts. Full gates and branch integration are in progress.
+Current evidence: [D21 verification](specs/003-translation-validation/verification.md).
+
+## Review and relocation (2026-09-08)
+
+- Moved the repository from the duplicate inner directory to
+  `C:\Users\White\Documents\GitHub\Tsukuru Agent`; repaired all four linked
+  worktrees and verified unchanged HEAD and pre-existing worktree changes.
+- Added `docs/README.md`, `docs/current-state.md`, and
+  `docs/reviews/2026-09-08.md` to separate current facts, navigation, and review
+  evidence. Updated README operation/test counts and NOTICE link, and marked
+  historical plan/analysis documents with their branch and date scope.
+- Main typecheck and compile passed with no tracked code drift. Main local
+  tests passed 78/78; the four tracked files passed 61/61 separately. Integration
+  `npm run verify` passed 395/395 plus version/style/complexity/generated/
+  inventory/supply-chain checks using existing dependencies.
+- Sandbox `spawn EPERM` prevented the first test attempts. Approved execution
+  outside the sandbox completed the suites; this is separate from code failure.
+- Reproduced main's intermediate-junction write and partial patch persistence;
+  integration blocked or rolled back the same cases. Both branches still accept
+  a v1 manifest missing lineStart and corrupt the extraction workspace. The
+  integrated request dispatcher also reproduced that successful-but-invalid
+  patch after a real synthetic extraction. Review R1 is the next code change.
+- Pre-document-change merge simulation of the two committed tips had no
+  conflicts. No production code edit, actual merge, commit, or push was made.
+- Full local logs and synthetic reproductions are under the application
+  directories' ignored `tmp/review-2026-09-08/`. No user game files were used.
+
+## Integration checkpoint (2026-08-28; historical)
+
 Local implementation, approved-copy validation, and integrated automated
 verification are complete. The latest `npm run verify` passed 395/395 actual
 Node tests with generated, inventory, version, and supply-chain drift at zero.

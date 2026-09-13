@@ -305,3 +305,14 @@ Electron GUI에 강결합된 Tsukuru Extractor 2.3.0의 추출·적용 로직을
   invalid/issues 0으로 검증하고 원본 5,868파일·핵심 hash 불변을 확인했다.
 - [ ] canonical commit clean checkout, hosted CI, 대표 gameplay와 GUI
   feel-check, signing/publication은 별도 gate다.
+
+### Phase 18 Errors Encountered
+
+- `agbrowse web-ai send`가 0.2.0의 ChatGPT surface preflight에서 `capability.unsupported`로 안전 중단됨. 정확한 기존 대화 URL과 Pro 모델을 화면에서 재검증한 뒤 일반 브라우저 입력으로 폴백했다. 전역 CLI 0.2.1 업데이트는 사용자 승인 없이 수행하지 않았다.
+- 일반 브라우저 입력의 최초 element ref가 화면 갱신으로 만료되어 전송되지 않음. 새 snapshot으로 입력창을 다시 식별한 뒤 전송했다.
+- Phase 18.5 초기 manifest v1 schema가 과거 최소 RPG/Wolf 엔트리에 v2 필드를 요구해 Wolf 진단과 경로 탈출의 기존 오류 코드를 가렸다. v1만 최소 필드로 완화하고 v2 strict 계약은 유지했다.
+- Phase 18.5 테스트 추가로 README/CI inventory가 35/175에서 일시적으로 뒤처졌다. 실제 전체 결과 39/198로 동기화하고 drift 검사까지 통과했다.
+
+### Phase 18 Status
+
+**과거 Phase 18 체크포인트:** 당시 47개 테스트 파일/242개 검사와 Electron/builder ladder, P3~P5 clean matrix를 추적했다. 이후 결과는 날짜별 기록으로 남아 있으며 이 문단을 현재 상태로 사용하지 않는다. 2026-09-08 대조 결과, 구현은 `chore/hardening-integration@80d2043`에 커밋되어 있고 58개 파일·388개 top-level 선언·395개 실행 검사가 통과한다. main 미병합 상태와 새 patch 매핑 결함은 [작업 재개 안내](docs/current-state.md)에 기록했다.
