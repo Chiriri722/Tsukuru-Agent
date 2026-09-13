@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep official Spec-kit asset hashes portable across checkouts.
+.specify/** text eol=lf
+.agents/skills/speckit-*/** text eol=lf

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "feature": "003-translation-validation",
+  "specKit": {
+    "version": "1.0.4",
+    "integration": "codex",
+    "script": "ps",
+    "skills": true
+  },
+  "codexSecurity": {
+    "workflow": "fix-finding",
+    "mode": "local-review"
+  },
+  "linear": {
+    "teamId": "cbf8d4f2-270d-4ee2-90b8-365997ee0038",
+    "teamKey": "DAV",
+    "projectId": "9dbbe028-24ab-4dbf-a20f-41e0f2af26bd",
+    "projectUrl": "https://linear.app/david-lee-722/project/tsukuru-agent-e05ff1b625ae",
+    "issues": {
+      "coordinates": "DAV-38",
+      "overlap": "DAV-39",
+      "aliases": "DAV-40",
+      "workflow": "DAV-41",
+      "translationValidation": "DAV-84"
+    }
+  },
+  "sentry": {
+    "baseUrl": "https://de.sentry.io",
+    "organization": "the-voltex-club",
+    "project": "tsukuru-agent",
+    "mode": "read-only",
+    "tokenEnvironment": "SENTRY_AUTH_TOKEN",
+    "verifiedAt": "2026-09-08",
+    "queryStatus": "authorized-read-success",
+    "lastQuery": {
+      "timeRange": "24h",
+      "environment": "prod",
+      "query": "is:unresolved",
+      "resultCount": 0
+    },
+    "previousStatus": "original-token-http-403"
+  }
+}

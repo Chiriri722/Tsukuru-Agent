@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "name": "github/spec-kit",
+  "version": "1.0.4",
+  "origin": "https://github.com/github/spec-kit/releases/tag/v1.0.4",
+  "license": "MIT",
+  "licenseText": ".specify/LICENSE.spec-kit",
+  "scope": "development-only",
+  "installedWith": "specify init --integration codex --integration-options=--skills --script ps",
+  "callSites": [
+    "docs/development-workflow.md",
+    ".agents/skills/speckit-implement/SKILL.md"
+  ],
+  "entries": [
+    {
+      "path": ".specify/scripts/powershell/check-prerequisites.ps1",
+      "size": 6631,
+      "sha256": "ef7fe740091441e5aeadccb8dc36b08d840f524513d79e2fcf258133ee6568b4"
+    },
+    {
+      "path": ".specify/scripts/powershell/common.ps1",
+      "size": 34308,
+      "sha256": "b7de830a085419f82d2469d0de3dde9157842006a95e1a2953b53e0d81b1afc8"
+    },
+    {
+      "path": ".specify/scripts/powershell/create-new-feature.ps1",
+      "size": 13555,
+      "sha256": "d520623a73edfd1848cfd51f897b152cc1217ca5a15e1f0d6f08c43f592d133e"
+    },
+    {
+      "path": ".specify/scripts/powershell/resolve-template.ps1",
+      "size": 889,
+      "sha256": "e49c565a09902e4ebd4b5a51c4e014d5067fdee5b1592f15cb44ef31f430d745"
+    },
+    {
+      "path": ".specify/scripts/powershell/setup-plan.ps1",
+      "size": 3054,
+      "sha256": "7b50538521ac35d56bcb12442b674136ca077be745a4b2e7411cbe65ccf3296f"
+    },
+    {
+      "path": ".specify/scripts/powershell/setup-tasks.ps1",
+      "size": 3892,
+      "sha256": "578c19c7fa196327c1c6791e3179accffab049fe62851961139d67bd699f336e"
+    },
+    {
+      "path": ".specify/templates/checklist-template.md",
+      "size": 2033,
+      "sha256": "70bbc48e884fab372ffb09e83e78ff983e28b69caebf8cd9964a02b6836683ac"
+    },
+    {
+      "path": ".specify/templates/constitution-template.md",
+      "size": 2346,
+      "sha256": "ce7549540fa45543cca797a150201d868e64495fdff39dc38246fb17bd4024b3"
+    },
+    {
+      "path": ".specify/templates/plan-template.md",
+      "size": 3682,
+      "sha256": "a828ad6206526574ab3fc99be6d0154588cb1c9774c5919d71b81ab5b2dbffa0"
+    },
+    {
+      "path": ".specify/templates/spec-template.md",
+      "size": 4556,
+      "sha256": "3945437fc35cd30a5b2bf7beea680337c3516826d3efa5a6b92c4a7eca1ba28e"
+    },
+    {
+      "path": ".specify/templates/tasks-template.md",
+      "size": 9171,
+      "sha256": "b0f527d41e546af0c31903e04f9b20965b6b497b573792198f663a64ce128863"
+    },
+    {
+      "path": ".specify/workflows/speckit/workflow.yml",
+      "size": 2216,
+      "sha256": "b9a2a3c3d1e5f022d0369be7c83802a656c64e2d95306a7870a1f59b90c0e307"
+    },
+    {
+      "path": ".specify/workflows/workflow-registry.json",
+      "size": 381,
+      "sha256": "779d3ff6d1852d4baf5beb2072041f89ff046666986d30b7d48253de1243203d"
+    },
+    {
+      "path": ".agents/skills/speckit-analyze/SKILL.md",
+      "size": 11665,
+      "sha256": "ce7dcd9deabee04a1a6df4726f2b905e894fdee2f68042c26e5e70f3756d0c7b"
+    },
+    {
+      "path": ".agents/skills/speckit-checklist/SKILL.md",
+      "size": 22287,
+      "sha256": "bfdefaa37c17b0e6a18ee828508d8878a98a79ba1f2ee92431751a743b645908"
+    },
+    {
+      "path": ".agents/skills/speckit-clarify/SKILL.md",
+      "size": 19222,
+      "sha256": "206d3fb47c302cd15502b83c1b5b5cf7a76c4581e4ec95d60110c8c00301a1f4"
+    },
+    {
+      "path": ".agents/skills/speckit-constitution/SKILL.md",
+      "size": 9969,
+      "sha256": "209db6bfae60611b524a370d4219df54083967be7c00c4e1d8b73345e440dc64"
+    },
+    {
+      "path": ".agents/skills/speckit-converge/SKILL.md",
+      "size": 12662,
+      "sha256": "ba96ee37f88358606465557f86ccc02641eb66c610f490b479467eb89c9f9611"
+    },
+    {
+      "path": ".agents/skills/speckit-implement/SKILL.md",
+      "size": 12713,
+      "sha256": "9352eef4200d6927f724ddcfb273bffc15ee516f0ca4116ca10b0a9ffbed8049"
+    },
+    {
+      "path": ".agents/skills/speckit-plan/SKILL.md",
+      "size": 7867,
+      "sha256": "c044492290b8addb0641172fe0a1e12f9c5dc6ec09a7c2f060e4db8f41a5fb24"
+    },
+    {
+      "path": ".agents/skills/speckit-specify/SKILL.md",
+      "size": 18268,
+      "sha256": "88d7fab201de66297f16b6c271a418a0f2c198d714456dfd707e623348ec47c1"
+    },
+    {
+      "path": ".agents/skills/speckit-tasks/SKILL.md",
+      "size": 10988,
+      "sha256": "94bc194d1737a2aabf604137959f9a72ae479f2dbd82f53c77983cd9274c0216"
+    },
+    {
+      "path": ".agents/skills/speckit-taskstoissues/SKILL.md",
+      "size": 7696,
+      "sha256": "58c3528552256f2fee98540f20fa07e5744eb814a180f4d96698533f783598f1"
+    }
+  ]
+}
