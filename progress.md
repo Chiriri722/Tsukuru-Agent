@@ -7,7 +7,9 @@ normal and fixed-order suites passed 433/433, all six benchmarks and Electron/CL
 The first full run exposed six stale test/documentation expectations; existing mapping serialization
 and explicit additive snapshots resolved them, with a 35/35 targeted rerun. Validator policy is unchanged.
 Fourteen private workspaces were checked without mutation, then three affected cases were rechecked.
-Three old worktrees are archived and removed. Main integration and final cleanup are next.
+Main was fast-forwarded to ae3e497; all four redundant worktrees/branches are now removed.
+The canonical checkout passed a clean offline install, both 433/433 suites, all six benchmarks,
+Electron and package verification. Original ignored files were moved intact to archives.
 Current evidence: [D21 verification](specs/003-translation-validation/verification.md).
 
 ## Review and relocation (2026-09-08)

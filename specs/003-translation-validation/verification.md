@@ -4,7 +4,8 @@ Date: 2026-09-13. Initial checkout: hardening integration at `80d2043` plus pres
 Implementation: workflow `34e876e`, RPG fixes `2118186`, main documentation merge `ecaf782`,
 contract/fixture alignment `251d41c`, package-smoke fixture `dfba1bf`.
 Final application source is unchanged by the later test/documentation alignment.
-Main fast-forward and final worktree cleanup follow this acceptance record. No release or push occurred.
+Main was fast-forwarded to acceptance commit ae3e497. Only the canonical main worktree remains.
+No release or push occurred.
 
 ## Boundary investigation
 
@@ -132,8 +133,27 @@ The original 14-case results and the separate final three-case evidence are pres
 
 Three obsolete worktrees/branches were removed only after their tags, clean status and local
 archives were checked. The canonical checkout's 44 ignored generated/source-test files and old
-lockfile were separately copied and hash-verified before integration. Final main cleanup remains
-recorded below when completed.
+lockfile were separately copied and hash-verified before integration. The 44 original files were
+then moved intact into main-displaced-files, retaining the verified copies as well.
+
+## Canonical checkout verification and preservation
+
+After fast-forward, `npm ci --offline --no-audit` installed the locked dependencies successfully.
+The canonical checkout repeated verify and fixed-order tests at 433/433, all six benchmarks,
+Electron smoke and package verification. The first fresh-install verify run passed 432 tests and
+skipped one optional Electron-fuse check because electron/path.txt was absent at test discovery;
+after Electron initialization, the final verify rerun passed all 433 without skips.
+Spec-kit prerequisites resolved feature 003 under the
+canonical path. Application/test sources match the accepted implementation; only final status
+documentation changed after those checks.
+
+Local logs: `tsukuru-agent/tmp/d21-main/`. Earlier full logs and private copies are retained under
+`tmp/d21-integration-evidence/tsukuru-agent-tmp/`; original repository temp assets and the historical
+GUI build are also preserved there. Old branch/ignored-source archives remain under
+`tmp/d21-branch-archive/`. The current CLI package is in `tsukuru-agent/dist-cli/` with unchanged
+ZIP SHA-256 after relocation. All four redundant worktrees/branches were removed after preservation.
+Automatic review rejected deletion of the 44 original files; reversible relocation succeeded.
+Final worktree removal waited for the canonical test launcher to exit.
 
 ## Quality interpretation
 

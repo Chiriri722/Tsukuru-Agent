@@ -3,7 +3,7 @@
 Read `CONTRIBUTING.md`, `.specify/memory/constitution.md`, and
 `docs/development-workflow.md` before maintenance changes. Select the intended
 feature explicitly; the current maintenance feature is
-`specs/003-translation-validation` on `chore/hardening-integration`.
+`specs/003-translation-validation`, integrated into `main`.
 
 Prefer codebase-memory-mcp graph tools for code discovery: `search_graph`,
 `trace_path`, `get_code_snippet`, `query_graph`, then `get_architecture`.

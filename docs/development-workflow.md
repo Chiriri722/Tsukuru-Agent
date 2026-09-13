@@ -1,6 +1,6 @@
 # 명세에서 검증까지
 
-현재 작업은 `chore/hardening-integration`의
+최근 완료한 유지보수 기준은 `main`에 통합한
 [003-translation-validation](../specs/003-translation-validation/spec.md)입니다.
 [계획](../specs/003-translation-validation/plan.md)과
 [체크리스트](../specs/003-translation-validation/tasks.md)에 구현·검증 상태를 남깁니다.
@@ -68,6 +68,7 @@ Codex가 이 저장소의 skills를 읽은 세션에서 `$speckit-specify`, `$sp
 | DAV-39 | 수정하지 않는 이웃까지 범위 중첩 차단 |
 | DAV-40 | 동일 파일의 별칭이 검증 그룹을 우회하지 않음 |
 | DAV-41 | 명세·리뷰·이슈·오류 조회 연결 상태 기록 |
+| DAV-84 | D21 번역 적용 rollback·원문 무결성·출력 검증·진단과 실제 작업팩 검사 |
 
 이슈에는 합성 재현과 검증 요약을 남깁니다. 로컬 검증, 커밋/병합, 배포 여부를
 구분하며 게임 텍스트·로컬 개인 경로·인증 정보를 첨부하지 않습니다.

@@ -4,7 +4,7 @@
 
 ## 현재 계획 — Daybreak 후속 검증 (2026-09-13)
 
-**P0–P2 구현·필수 검증 완료, 최종 브랜치 통합 진행 중.**
+**P0–P2 구현·검증·main 통합 완료.**
 [003 명세](specs/003-translation-validation/spec.md), [작업표](specs/003-translation-validation/tasks.md),
 [검증 기록](specs/003-translation-validation/verification.md)에 수락 근거를 남겼다.
 일반·고정 순서 테스트 각각 433/433, 성능 6개, Electron 및 CLI 패키지 검증을 통과했다.

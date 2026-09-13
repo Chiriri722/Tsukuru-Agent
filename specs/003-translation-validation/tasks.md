@@ -40,7 +40,7 @@ Independent test: multiple hashes, page/indent/message boundaries, sidecars, kno
 - [x] T018 Complete one independent candidate review; confirm findings and record verification.md.
 - [x] T019 Run required verify/order/benchmark/Electron and relevant package gates from tsukuru-agent/package.json.
 - [x] T020 Update task_plan.md, New-task-plan.md, README.md, CHANGELOG.md and docs/release-checklist.md.
-- [ ] T021 Preserve/audit all worktrees, integrate main changes, commit and clean redundant branches; record exact revisions in verification.md.
+- [x] T021 Preserve/audit all worktrees, integrate main changes, commit and clean redundant branches; record exact revisions in verification.md.
 
 ## Dependencies & Execution Order
 T001–T003 → US1 → US2 → US3 → final acceptance → branch integration/recheck.

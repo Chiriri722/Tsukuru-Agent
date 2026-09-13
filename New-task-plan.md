@@ -1,8 +1,8 @@
 ---
 plan_id: tsukuru-agent-post-v2.5-hardening
 status: in_progress
-current_phase: "2026-09-13 D21 구현·필수 검증 완료, 브랜치 통합 진행 중"
-next_step: "검증된 변경을 main에 통합하고 중복 작업 폴더를 정리한다. 작업팩 오류·의미 감수·실게임은 별도 후속 범위다."
+current_phase: "2026-09-13 D21 구현·검증·main 통합 완료"
+next_step: "실패 작업팩의 원문 대조·언어/의미 감수와 릴리스 체크리스트의 수동 확인을 별도 후속 범위로 진행한다."
 repository: "Chiriri722/Tsukuru-Agent"
 baseline_branch: "main"
 baseline_commit: "17fa6e7108fca66eda5a436e19febc955c0acd9d"
@@ -25,7 +25,7 @@ Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조�
 - 일반·고정 순서 테스트 각각 433/433, 성능 6개, Electron 및 CLI 패키지 검증 통과.
 - 실제 작업팩 14개 검사: 8개 통과·6개 오류 검출. 최종 영향 사례 3개 재검증도 같은 결과와 원본 보존을 확인했다.
 - [003 검증 기록](specs/003-translation-validation/verification.md)에 RED/GREEN, 계약 갱신, 실제 데이터의 진단과 자동 검증 한계를 기록했다.
-- 9월 8일 patch-mapping 수정과 D21을 함께 통합한다. 기존 구현 이력과 아직 남은 릴리스 조건은 보존한다.
+- 9월 8일 patch-mapping 수정과 D21을 main에 함께 통합했다. 기존 구현 이력과 아직 남은 릴리스 조건은 보존한다.
 - 구조·기계적 무결성 통과는 의미 감수·실게임 합격을 뜻하지 않는다.
 
 > **범위:** v2.5 이후의 안정화, 보안, 유지보수성, 테스트 신뢰성, 배포 재현성, 후속 호환성 확장
