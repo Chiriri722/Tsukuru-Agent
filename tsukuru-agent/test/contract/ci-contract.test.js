@@ -281,6 +281,8 @@ test('packaged smoke exercises bounded success and failure JSON contracts', () =
     assert.equal(request.operation, 'verify');
     assert.equal(fs.existsSync(path.join(request.projectPath, 'Backup', 'Actors.json')), true);
     assert.equal(fs.existsSync(path.join(request.projectPath, 'Extract', 'manifest.json')), true);
+    const mapping = require('../../.build/app/src/js/rpgmv/edtool.js').read(request.projectPath);
+    assert.equal(mapping.main['Actors.json'].data['0'].val, '1.name');
     return {
       status: 0,
       stdout: JSON.stringify({

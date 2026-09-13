@@ -83,7 +83,9 @@ function runPackagedSmoke(executablePath, dependencies = {}) {
     const sourceText = 'Alice';
     const actors = [null, { id: 1, name: sourceText, classId: 0 }];
     fs.writeFileSync(path.join(backupRoot, 'Actors.json'), JSON.stringify(actors));
-    fs.writeFileSync(path.join(packRoot, '.extracteddata'), '{}');
+    require('../.build/app/src/js/rpgmv/edtool.js').write(packRoot, { main: {
+      'Actors.json': { data: { '0': { origin: 'Actors.json', val: '1.name', m: 1 } } },
+    } });
     fs.writeFileSync(path.join(extractRoot, 'Actors.txt'), `${sourceText}\n`);
     fs.writeFileSync(path.join(extractRoot, 'manifest.json'), JSON.stringify({
       schemaVersion: 1,
