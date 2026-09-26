@@ -2,6 +2,14 @@
 
 ## Current Phase
 
+D22 (2026-09-23): additional Electron corpus, RPG option fix and repaired-workspace
+recheck are complete locally on main@a9690a6. RED 2/2 → GREEN 2/2; verify/order
+433/433 each, benchmark 6/6. Private logs and copies are in tsukuru-agent/tmp/d22.
+No game launch, new package, commit or publication. Next: launch-profile isolation.
+Details: [D22 verification](docs/reviews/2026-09-23-electron-corpus.md).
+
+## D21 acceptance history (2026-09-13)
+
 D21 implementation and independent review are complete. The final focused checks passed 41/41;
 normal and fixed-order suites passed 433/433, all six benchmarks and Electron/CLI package gates passed.
 The first full run exposed six stale test/documentation expectations; existing mapping serialization

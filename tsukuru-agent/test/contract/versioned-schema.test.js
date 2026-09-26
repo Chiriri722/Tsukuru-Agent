@@ -98,6 +98,15 @@ test('v2 discriminates options by operation and requested or detected format', (
     options: { experimentalGdevelopCodeStrings: true },
   }));
   assert.equal(codeApply.options.experimentalGdevelopCodeStrings, true);
+  for (const format of ['rpgmv', 'rpgmz', 'rpgmz-electron']) {
+    const options = { containerSourcePath: 'game', experimentalMalformedAsarRepack: true };
+    assert.equal(validateRequest(request({ operation: 'apply', format, options })).options.experimentalMalformedAsarRepack, true);
+    const auto = validateRequest(request({ operation: 'apply', options }));
+    assert.equal(validateResolvedRequest(auto, format), auto);
+    rejectsInvalid(() => validateRequest(request({ operation: 'apply', format,
+      options: { ...options, experimentalMalformedAsarRepack: 'true' } })));
+    rejectsInvalid(() => validateResolvedRequest(auto, 'wolf'));
+  }
   rejectsInvalid(() => validateRequest(request({
     operation: 'patch',
     options: { experimentalGdevelopCodeStrings: true },

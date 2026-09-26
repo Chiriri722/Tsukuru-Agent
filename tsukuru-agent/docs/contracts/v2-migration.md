@@ -26,6 +26,15 @@ The v2 request is a discriminated union over `operation` and the requested or de
 
 Defaults remain `format: "auto"`, `profile: "standard"`, `options: {}`, and `patches: []`. `launchTimeoutMs` requires `launchProbe: true`. `launchProbe` is implemented only for extracted Electron ASAR/NW.js container workspaces; loose directory apply rejects it with `E_NOT_IMPLEMENTED` before dictionary patching or output creation. Explicit `patches` and `translationDirectory` are mutually exclusive. An RPG container `apply` stages dictionary patching, engine apply, repack, and publication in one transaction. Recovery defaults to `dryRun: false` and `conflictPolicy: "backup-and-replace"`; `fail-if-present` rejects an existing manifest with `E_OUTPUT_CONFLICT`. `operationTimeoutMs` accepts 1–3,600,000 ms and applies to the complete operation.
 
+## ASAR repack compatibility
+
+The existing `experimentalMalformedAsarRepack` boolean is accepted by RPG MV/MZ
+`apply`, including an automatically detected RPG engine. It remains false by
+default and only enables rebuilding the valid entries of an ASAR container into
+a separate output. Source/provenance, protected-script and runtime integrity
+checks still apply. Earlier v2 RPG option discrimination incorrectly rejected
+this documented opt-in before dispatch; no request version or field meaning changed.
+
 ## Cancellation and warnings
 
 RPG results may add `translationQuality` in either version. Its `mechanical`

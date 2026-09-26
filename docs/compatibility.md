@@ -70,7 +70,7 @@ or preserve impossible entries.
 |---|---|---|
 | `experimentalNwDirectory` | `extract`, container `apply` | Directory-form `package.nw` with a deterministic source digest |
 | `experimentalNwAppendedZip` | `extract`, container `apply` | One unsigned, internally consistent PE-appended classic ZIP |
-| `experimentalMalformedAsarRepack` | container `apply` | Separate-copy ASAR rebuilt from valid metadata entries only |
+| `experimentalMalformedAsarRepack` | RPG/GDevelop container `apply` | Separate-copy ASAR rebuilt from valid metadata entries only |
 | `experimentalGdevelopCodeStrings` | GDevelop `extract`, `apply` | Direct static literals in generated indexed-object `setString`/`setBBText` calls |
 
 Experimental options are schema v2 options. They are never inferred from a
@@ -79,6 +79,10 @@ or transaction checks.
 
 ## Understand known gaps
 
+- The launch probe copies game files but inherits the user's Electron profile
+  environment. AppData save/profile isolation must be verified before launching
+  those games. The second real ElectronForMZ sample passed static round-trip
+  checks with no launch; see the [D22 report](reviews/2026-09-23-electron-corpus.md).
 - GDevelop custom extensions, hand-written event code, variables, templates,
   concatenations, identifiers, and resource paths are not automatically
   translated.

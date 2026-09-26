@@ -254,6 +254,7 @@
         "force": { "type": "boolean", "default": false },
         "translationDirectory": { "type": "string", "minLength": 1 },
         "containerSourcePath": { "type": "string", "minLength": 1 },
+        "experimentalMalformedAsarRepack": { "type": "boolean", "default": false },
         "launchProbe": { "type": "boolean", "default": false },
         "launchTimeoutMs": { "type": "integer", "minimum": 250, "maximum": 15000, "default": 3000 },
         "autoline": { "type": "boolean", "default": false },

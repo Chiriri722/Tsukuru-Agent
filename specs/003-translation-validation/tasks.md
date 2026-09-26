@@ -48,6 +48,16 @@ D21-08 tests accompany each step. No task is completed by a historical checkbox.
 Read-only source investigation can run alongside Spec-kit writing. Within US1/US2/US3,
 independent test commands may be batched after edits; shared source files are edited sequentially.
 
+## Phase 7: D22 real-sample follow-up (2026-09-23)
+Scope: the user-provided second Electron sample and reorganized/repaired workspaces.
+Keep original games, existing save backups and AppData profiles unchanged; no game launch.
+- [x] T022 Reproduce the RPG ASAR opt-in rejection in existing contract/workflow tests and correct only the missing engine-option declaration.
+- [x] T023 Verify an isolated Electron sample copy: extract, deep verify, default repack refusal and opt-in dictionary apply; compare archive payloads, wrapper and source hashes.
+- [x] T024 Locate prior workspace IDs, verify changed/new workspace copies, and retain unchanged historical results separately.
+- [x] T025 Run verify/order/benchmark and update sanitized corpus evidence, task plans and current-state documentation; record untested gameplay/profile-isolation follow-up explicitly.
+
+T022 → T023 → T024 → T025. This follow-up does not reopen D21 acceptance or authorize publishing private artifacts.
+
 ## Implementation Strategy
 Finish and validate US1 first, then extend to all P0/P1/P2 stories. The user authorized
 all stories and final branch/corpus work; the MVP milestone does not end this goal.

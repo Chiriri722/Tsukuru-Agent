@@ -1,20 +1,28 @@
 ---
 plan_id: tsukuru-agent-post-v2.5-hardening
 status: in_progress
-current_phase: "2026-09-13 D21 구현·검증·main 통합 완료"
-next_step: "실패 작업팩의 원문 대조·언어/의미 감수와 릴리스 체크리스트의 수동 확인을 별도 후속 범위로 진행한다."
+current_phase: "2026-09-23 D22 실물 추가 검증·RPG ASAR 옵션 계약 수정 완료(로컬)"
+next_step: "D22-04 실행 프로브 프로필 격리 → D22-05 실패 작업팩 대조 → D22-06 격리된 실게임 검증."
 repository: "Chiriri722/Tsukuru-Agent"
 baseline_branch: "main"
 baseline_commit: "17fa6e7108fca66eda5a436e19febc955c0acd9d"
 baseline_commit_date: "2026-08-12"
 target_path: "New-task-plan.md"
 created_at: "2026-08-15"
-last_updated: "2026-09-13"
+last_updated: "2026-09-23"
 ---
 
 # Tsukuru Agent 개선 작업 계획서
 
-## 현재 후속 단계 — D21 (2026-09-13)
+## 현재 후속 단계 — D22 (2026-09-23)
+
+신규 ElectronForMZ 샘플의 추출·검사·제목 1건 재포장과 원본/AppData 보존을 확인했다.
+RPG ASAR opt-in 스키마 누락을 수정하고 verify/order·benchmark를 통과했다.
+이동·수리된 작업팩의 변경 5개는 통과, 신규 1개는 해시·제어코드 오류로 실패했다.
+[D22 보고서](docs/reviews/2026-09-23-electron-corpus.md)와 [현재 작업표](task_plan.md)를 따른다.
+이번 변경은 미커밋이며 실행 프로브 프로필 격리·남은 4개 작업팩·실게임 검증이 후속 범위다.
+
+## D21 완료 기록 (2026-09-13)
 
 Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조했다.
 [검증 근거](docs/reviews/2026-09-13-daybreak-followup.md)와
@@ -29,7 +37,7 @@ Daybreak의 도구 개선 제안 7개를 main과 통합 작업트리에 대조�
 - 구조·기계적 무결성 통과는 의미 감수·실게임 합격을 뜻하지 않는다.
 
 > **범위:** v2.5 이후의 안정화, 보안, 유지보수성, 테스트 신뢰성, 배포 재현성, 후속 호환성 확장
-> **기존 문서와의 관계:** 이 문서는 장기 단계와 Exit Gate를 관리한다. 현재 D21의 검증된 실행 checklist는 `task_plan.md` 맨 위에 있으며, 그 아래와 `v2.5-validation-compatibility-plan.md`의 초기 개조·v2.5 이력은 보존한다.
+> **기존 문서와의 관계:** 이 문서는 장기 단계와 Exit Gate를 관리한다. 현재 D22의 실행 checklist는 `task_plan.md` 맨 위에 있으며, 그 아래와 `v2.5-validation-compatibility-plan.md`의 초기 개조·v2.5 이력은 보존한다.
 > **검토 기준:** `main@17fa6e7108fca66eda5a436e19febc955c0acd9d`
 > **검증 갱신:** 계획 초안은 GitHub 정적 검토로 작성했으나 2026-08-19 Phase 0 clean-room을 완료했다. 실행 결과는 `docs/baseline.md`, `findings.md`, `progress.md`에 기록한다.
 

@@ -173,6 +173,8 @@ ASAR 게임을 `extract`하면 작업본 루트에 `.tsukuru-container.json`이 
 
 정적 fuse·ASAR 해시·코드 서명 검사는 항상 실행됩니다. `launchProbe`는 추출된 Electron ASAR/NW.js 컨테이너 작업본의 apply에서만 사용할 수 있는 명시적 선택 기능이며 기본값은 `false`, 제한 시간은 250~15000ms입니다. loose directory apply에서 요청하면 dictionary patch나 출력 생성 전에 `E_NOT_IMPLEMENTED`로 거부합니다. 활성화하면 완성본과 분리된 임시 복사본에서 실행 파일을 관찰하고 `running` 또는 조기 정상 종료만 통과시킵니다. Windows에서는 관찰 종료 시 NW.js/Electron 자식 프로세스 트리까지 정리합니다. 네트워크·입력 자동화는 하지 않으며 실제 플레이테스트를 대체하지 않습니다.
 
+현재 실행 프로브는 Electron의 AppData 사용자 프로필까지 격리하지 않습니다. 게임 복사본도 같은 세이브·설정을 사용할 수 있으므로 해당 저장 방식을 쓰는 게임은 프로필 격리를 확인하기 전 `launchProbe`를 켜지 마십시오. 신규 실물 샘플의 정적 검사·재포장 결과와 후속 작업은 [D22 검증 기록](docs/reviews/2026-09-23-electron-corpus.md)에 있습니다.
+
 ## 작업 설명 (CLI 계약)
 
 | 작업 | 설명 | 출력 위치 |

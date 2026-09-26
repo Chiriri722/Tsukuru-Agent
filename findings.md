@@ -1,5 +1,10 @@
 # Post-v2.5 Hardening Findings
 
+> 2026-09-23 D22: [real-sample findings](docs/reviews/2026-09-23-electron-corpus.md).
+> Confirmed and fixed the RPG ASAR opt-in schema omission. Game copies share Electron
+> user-profile state unless isolated; launch was not attempted. Five changed workspaces
+> now pass, while the new workspace-16 still fails hash/control-code checks.
+
 > 2026-09-08 review: [current findings and reproductions](docs/reviews/2026-09-08.md) distinguish main from the committed hardening integration branch. The baseline and dated entries below remain historical evidence. Current paths, verification, and next steps are in [current-state.md](docs/current-state.md).
 
 ## Scope

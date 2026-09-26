@@ -1005,6 +1005,38 @@ test('malformed-metadata Electron ASAR extraction is diagnostic but repack requi
     assert.equal(response.result.container.invalidEntryCount, 0);
     assert.ok(response.result.warnings.some((warning) => warning.includes('1개')));
     assert.equal(crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'), sourceHash);
+
+    // A detected RPG engine must retain the same container opt-in through v2 dispatch.
+    const rpgSource = path.join(root, 'rpg-source');
+    const rpgGame = path.join(root, 'rpg-game');
+    const rpgArchive = path.join(rpgGame, 'resources', 'app.asar');
+    const rpgWorking = path.join(root, 'rpg-working');
+    const rpgOutput = path.join(root, 'rpg-output');
+    fs.mkdirSync(path.join(rpgSource, 'project', 'data'), { recursive: true });
+    fs.mkdirSync(path.join(rpgSource, 'project', 'js'), { recursive: true });
+    fs.mkdirSync(path.dirname(rpgArchive), { recursive: true });
+    fs.writeFileSync(path.join(rpgSource, 'project', 'data', 'Actors.json'), JSON.stringify([null, { id: 1, name: 'Alice', classId: 0 }]));
+    fs.writeFileSync(path.join(rpgSource, 'project', 'data', 'System.json'), JSON.stringify({ encryptionKey: '' }));
+    fs.writeFileSync(path.join(rpgSource, 'project', 'js', 'rmmz_core.js'), '// protected');
+    await asar.createPackage(rpgSource, path.join(root, 'rpg-clean.asar'));
+    addInvalidAsarEntry(path.join(root, 'rpg-clean.asar'), rpgArchive);
+    const rpgHash = crypto.createHash('sha256').update(fs.readFileSync(rpgArchive)).digest('hex');
+    response = await invoke('rpg-malformed-extract', request('extract', rpgGame, { outputPath: rpgWorking }));
+    assert.equal(response.status, 0, JSON.stringify(response.result));
+    assert.equal(response.result.engine.type, 'rpgmz');
+    response = await invoke('rpg-malformed-blocked', request('apply', rpgWorking, {
+        outputPath: rpgOutput, options: { containerSourcePath: rpgGame },
+    }));
+    assert.equal(response.result.error.code, 'E_EXPERIMENTAL_FEATURE_DISABLED');
+    assert.equal(fs.existsSync(rpgOutput), false);
+    response = await invoke('rpg-malformed-opted', request('apply', rpgWorking, {
+        outputPath: rpgOutput, options: { containerSourcePath: rpgGame, experimentalMalformedAsarRepack: true },
+    }));
+    assert.equal(response.status, 0, JSON.stringify(response.result));
+    assert.equal(response.result.container.invalidEntryCount, 0);
+    assert.equal(response.result.change.protectedScriptDamage, 0);
+    assert.equal(crypto.createHash('sha256').update(fs.readFileSync(rpgArchive)).digest('hex'), rpgHash);
+    assert.equal(asar.extractFile(path.join(rpgOutput, 'resources', 'app.asar'), path.join('project', 'js', 'rmmz_core.js')).toString(), '// protected');
 });
 
 test('ASAR apply rejects changed sources, protected scripts, unsafe outputs, and corrupt provenance', async () => {

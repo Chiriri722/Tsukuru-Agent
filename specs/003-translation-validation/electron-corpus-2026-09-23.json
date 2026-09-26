@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-22T16:18:30.071Z",
+  "records": [
+    {
+      "id": "electron-sample-02",
+      "engine": "rpgmz",
+      "wrapper": "ElectronForMZ",
+      "sourceSha256": "56fdf9fbc94d34083a3ec07182953ee0243d9caa0d6c525cfc43d046759cf68f",
+      "structural": {
+        "status": "passed",
+        "format": "rpgmz",
+        "score": 75,
+        "risk": "medium",
+        "errorCode": null,
+        "warnings": [
+          "번역 언어 감수가 필요합니다(진단 8959개)"
+        ]
+      },
+      "playtest": {
+        "status": "not-run",
+        "notes": "No launch: Electron user-profile isolation is a separate prerequisite. Structural results refer to the unmodified extracted workspace."
+      }
+    }
+  ]
+}

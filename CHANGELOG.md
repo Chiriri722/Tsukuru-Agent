@@ -40,6 +40,11 @@ synchronized from `tsukuru-agent/package.json` with `npm run sync:version`.
 - Made source preservation, rollback, and machine-readable errors the default
   behavior for automated workflows.
 
+### Fixed
+
+- Accept the documented malformed-ASAR repack opt-in after RPG MV/MZ detection,
+  while retaining default refusal, separate-copy output and integrity checks.
+
 ### Security
 
 - Publish loose RPG dictionary changes and final output as one rollback group.

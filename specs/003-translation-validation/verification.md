@@ -162,3 +162,31 @@ are separate. Source retention and name/credit fields carry review reasons; bala
 are informational. Pure semantic swaps cannot be identified solely from tokens, IDs or Japanese counts.
 The original external-message CSV is preserved in new Backup workspaces. Old expanded packs need their
 original CSV when no Backup CSV is present; absence is not a successful source verification.
+
+## D22 additional corpus and option compatibility (2026-09-23)
+
+Baseline: `main@a9690a6`; follow-up changes are local and uncommitted. The official
+Spec-kit prerequisites selected feature 003 and its requirements checklist passed 8/8.
+See the [D22 report](../../docs/reviews/2026-09-23-electron-corpus.md) for counts and limitations.
+
+- The existing v2 RPG option discriminator rejected `experimentalMalformedAsarRepack`
+  before dispatch. The contract and malformed-ASAR workflow regressions both failed RED;
+  adding the existing boolean option to `applyRpg` made both GREEN. Existing GDevelop
+  opt-in, default refusal, source hashes and protected-file checks remain covered.
+- New ElectronForMZ/MZ sample: 19,465 mappings extracted and verified; a staged dictionary
+  changed one title field, repacked all 3,994 valid entries and preserved all other payloads.
+  Source/copy/working, wrapper and actual AppData hashes were rechecked. The user removed
+  the expanded save backup while work was running; its retained ZIP and all eight members
+  match the initial hashes. No game process was launched.
+- [Standard corpus output](electron-corpus-2026-09-23.json) records the unmodified extracted
+  workspace. [Workspace recheck](corpus-recheck-2026-09-23.json) records five changed inputs
+  passing and one new input failing. Nine unchanged inputs retain D21 results, not fresh tests.
+- `npm run verify` and `npm run test:order`: 433/433 each, zero skips. `benchmark:check`:
+  all six pass. A concurrent benchmark/corpus attempt overlapped the order suite's build
+  recreation and failed module loading; both passed after the suite finished.
+- No GUI/lifecycle/package code changed. The historical D21 Electron/package evidence is
+  not relabeled as fresh, and the existing ZIP does not include this schema fix.
+
+Ignored evidence: `tsukuru-agent/tmp/d22/` (requests, RED/GREEN, verify/order/benchmark,
+private catalogs, workspace copies and source/round-trip snapshots). Launch-profile
+isolation and manual gameplay are follow-up tasks D22-04–06, not completed acceptance.

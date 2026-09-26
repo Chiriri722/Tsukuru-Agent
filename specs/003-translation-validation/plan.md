@@ -22,6 +22,13 @@ D21-01부터 D21-07까지 순차 구현하고 D21-08 회귀를 각 단계에 포
 설계 전/후 모두 통과: 원본 보존·계약 호환·RED 회귀·독립 조사/후보 리뷰·재현 증거·최소 데이터 노출.
 새 실험 엔진/의존성/원격 전송 없음. 파일 시스템 mutation은 기존 원자적 교체 도우미를 확장해 처리한다.
 
+## D22 follow-up (2026-09-23)
+새 Electron 실물 샘플과 이동·수리된 작업팩을 별도 복사본에서 재검증한다.
+RPG ASAR의 기존 `experimentalMalformedAsarRepack` 옵션이 탐지 후 스키마에서
+거부되는 결함만 계약 선언과 기존 synthetic 회귀로 수정한다. 기본 차단과
+provenance·보호 스크립트·런타임 무결성 검사는 유지한다. AppData를 사용하는
+게임 실행은 프로필 격리가 확인될 때까지 미실행으로 기록한다.
+
 ## Project Structure
 - `tsukuru-agent/src/cli/operations/apply.ts`: 사전 적용 조정 및 결과 전달.
 - `tsukuru-agent/src/cli/patcher.ts`: 전체 해시 사전 검사와 공유 lint.
