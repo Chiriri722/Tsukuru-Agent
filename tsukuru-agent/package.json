@@ -84,7 +84,7 @@
     "acorn": "8.18.0",
     "adm-zip": "^0.6.0",
     "electron-store": "^8.0.1",
-    "encoding-japanese": "^1.0.30",
+    "encoding-japanese": "^2.4.0",
     "fast-csv": "^4.3.6",
     "fast-glob": "^3.2.11",
     "fs-extra": "^10.0.1",
