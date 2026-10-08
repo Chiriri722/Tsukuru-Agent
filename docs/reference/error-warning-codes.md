@@ -41,7 +41,7 @@ code.
 | `E_VERIFY_FAILED` | Structural, mapping, protected-file, or output verification failed | Inspect `validation.issues` and correct the workspace |
 | `E_CONTAINER_PROVENANCE_INVALID` | `.tsukuru-container.json` is missing, malformed, or inconsistent | Re-extract from the original container |
 | `E_RUNTIME_INTEGRITY` | Electron fuse, embedded ASAR hash, or runtime integrity policy blocks publication | Rebuild with the legitimate runtime; do not patch around it |
-| `E_LAUNCH_PROBE_FAILED` | An explicitly requested launch observation failed or exited with error | Inspect runtime details, then test a disposable copy manually |
+| `E_LAUNCH_PROBE_FAILED` | Requested launch failed, entry/runtime cannot be isolated, or isolation/termination/cleanup proof is incomplete | Inspect runtime details; preserve retained probe roots until owned processes have stopped. Do not retry with an unisolated profile |
 | `E_ENCODING_UNREPRESENTABLE` | Translated text cannot be encoded in the source encoding without loss | Use representable text or a separately validated encoding migration |
 | `E_EXPERIMENTAL_FEATURE_DISABLED` | A detected layout is mutable only with its explicit v2 option | Review the feature document, then opt in on every required operation |
 | `E_EXPERIMENTAL_FEATURE_UNSAFE` | The sample is outside the experimental mutable subset | Keep it diagnostic-only; do not force or bypass the refusal |

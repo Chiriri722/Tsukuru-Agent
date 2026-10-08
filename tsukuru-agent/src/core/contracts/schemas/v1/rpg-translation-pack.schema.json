@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/rpg-translation-pack.schema.json",
+  "title": "Tsukuru RPG translation pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "engine", "extraction", "source", "immutable"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "rpg-translation-pack" },
+    "engine": { "enum": ["rpgmv", "rpgmz"] },
+    "extraction": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "ext_plugin": { "type": "boolean" }, "ext_src": { "type": "boolean" },
+        "ext_javascript": { "type": "boolean" }, "ext_note": { "type": "boolean" },
+        "exJson": { "type": "boolean" }, "autoline": { "type": "boolean" }
+      }
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "engineRoot", "inputs"],
+      "properties": {
+        "type": { "enum": ["directory", "electron-asar"] },
+        "engineRoot": { "type": "string" },
+        "archivePath": { "type": "string", "minLength": 1 },
+        "archiveSha256": { "$ref": "#/$defs/hash" },
+        "inputs": { "type": "array", "minItems": 1, "maxItems": 20000, "items": { "$ref": "#/$defs/file" } }
+      },
+      "allOf": [{
+        "if": { "properties": { "type": { "const": "electron-asar" } } },
+        "then": { "required": ["archivePath", "archiveSha256"] }
+      }]
+    },
+    "immutable": { "type": "array", "minItems": 2, "maxItems": 20002, "items": { "$ref": "#/$defs/file" } }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "file": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    }
+  }
+}

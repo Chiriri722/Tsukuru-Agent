@@ -12,6 +12,7 @@
     "stats": { "type": "object", "additionalProperties": true },
     "warnings": { "type": "array", "items": { "type": "string" } },
     "translationQuality": { "$ref": "https://tsukuru-agent.dev/schemas/v2/result.schema.json#/$defs/translationQuality" },
+    "runtime": { "$ref": "https://tsukuru-agent.dev/schemas/v2/result.schema.json#/$defs/runtime" },
     "error": { "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
   },
   "$defs": {

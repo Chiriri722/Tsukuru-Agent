@@ -7,6 +7,7 @@ import { VerifyEngineHandler } from './verify/common';
 import { verifyGdevelop } from './verify/gdevelop';
 import { verifyManifestProject } from './verify/manifest';
 import { verifyTyrano } from './verify/tyrano';
+import { OperationRuntime } from '../../core/operationRuntime';
 
 type VerifyEngineFamily = 'rpgmaker' | 'wolf' | 'tyrano' | 'gdevelop' | 'nwjs';
 
@@ -23,6 +24,7 @@ export async function handleVerify(
     request: AgentRequest,
     detected: DetectedProject,
     result: AgentResult,
+    runtime?: OperationRuntime,
 ): Promise<void> {
     const engine = selectEngineAdapter(detected);
     if (!engine.operations.includes('verify')) {
@@ -33,6 +35,9 @@ export async function handleVerify(
         );
     }
     if (detected.container?.type === 'electron-asar') {
+        if (request.schemaVersion === 2 && request.options.review) {
+            throw new OperationError(ErrorCodes.REQUEST_INVALID, 'review는 먼저 추출한 RPG 작업본에서 실행해야 합니다');
+        }
         await verifyAsarContainer(request, detected, result);
         return;
     }
@@ -44,5 +49,5 @@ export async function handleVerify(
             { format: detected.format },
         );
     }
-    await engineHandler(request, detected, result);
+    await engineHandler(request, detected, result, runtime);
 }

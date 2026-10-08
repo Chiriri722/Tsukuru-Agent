@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "operation": "verify",
+  "format": "auto",
+  "projectPath": "C:/Games/ExampleWorkspace",
+  "profile": "standard",
+  "options": {
+    "review": {
+      "reportPath": "C:/Reviews/example-review.json",
+      "limit": 100,
+      "preview": {
+        "sourceLanguage": "ja",
+        "targetLanguage": "ko",
+        "glossary": {
+          "version": "manual-1",
+          "entries": [{ "term": "城", "translation": "성", "priority": "user" }]
+        }
+      }
+    }
+  },
+  "patches": []
+}

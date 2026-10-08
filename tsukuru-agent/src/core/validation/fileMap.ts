@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from '../physicalFs';
 import path from 'path';
 import crypto from 'crypto';
 import { matchesProtectedPath } from './protectedPaths';

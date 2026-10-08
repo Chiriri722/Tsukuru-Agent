@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "ok": true,
+  "format": "rpgmz",
+  "artifacts": ["C:\\Output\\Game"],
+  "stats": {},
+  "warnings": [],
+  "warningDetails": [],
+  "error": null,
+  "runtime": {
+    "launchProbe": {
+      "status": "running",
+      "executable": "C:\\Output\\Game\\Game.exe",
+      "timeoutMs": 3000,
+      "elapsedMs": 4250,
+      "exitCode": null,
+      "signal": null,
+      "timedOut": true,
+      "terminatedByProbe": true,
+      "stdout": "",
+      "stderr": "",
+      "isolation": {
+        "strategy": "electron-bootstrap-v1",
+        "verified": true,
+        "processTreeTerminated": true,
+        "cleanup": "removed"
+      }
+    }
+  }
+}

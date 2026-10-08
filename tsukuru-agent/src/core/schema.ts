@@ -36,9 +36,30 @@ export interface CommonRequestOptions {
 export interface VerifyOptions extends CommonRequestOptions {
     verifyDepth?: 'shallow' | 'deep';
     humanSummary?: boolean;
+    review?: RpgReviewOptions;
+}
+
+export interface GlossaryTerm {
+    term: string;
+    translation: string;
+    priority: 'user' | 'manual' | 'derived';
+}
+
+export interface RpgReviewOptions {
+    reportPath: string;
+    entryIds?: string[];
+    offset?: number;
+    limit?: number;
+    preview?: {
+        sourceLanguage: string;
+        targetLanguage: string;
+        maxTerms?: number;
+        glossary?: { version: string; entries: GlossaryTerm[] };
+    };
 }
 
 export interface RpgExtractRequestOptions extends CommonRequestOptions {
+    translationPack?: boolean;
     force?: boolean;
     ext_plugin?: boolean;
     ext_src?: boolean;

@@ -9,6 +9,20 @@ synchronized from `tsukuru-agent/package.json` with `npm run sync:version`.
 
 ### Added
 
+- Opt-in v2 RPG translation packs for loose MV/MZ and Electron ASAR: select text
+  inputs without expanding runtime/media/Live2D assets, retain engine identity,
+  and reconnect a matching source for transactional game-copy apply. Plugin
+  registry approval is limited to source-bound mapped parameters; implementation
+  scripts remain protected. Repeated extraction resets event numbering; shared
+  container copies avoid native termination on Unicode paths in the local
+  Windows Node 24.14 runtime.
+- Profile-isolated optional Electron launch probes on Windows 10+: disposable
+  app/session/environment paths, native job ownership and confirmed cleanup.
+  Unsupported entries, protected/unknown runtimes and NW.js launch probes fail
+  before game execution. Source and published entry scripts remain unchanged.
+- Opt-in local RPG review artifacts for v2 verify: original message context,
+  explicit speaker evidence, source/current fingerprints and bounded offline
+  glossary request previews. No provider calls or alternative patch path.
 - Source-bound RPG translation diagnostics for control codes, placeholders,
   new blank text and replacement characters, with separate language/context
   review and an explicit unverified semantic status. Read-only `verify` keeps
@@ -42,6 +56,10 @@ synchronized from `tsukuru-agent/package.json` with `npm run sync:version`.
 
 ### Fixed
 
+- Use physical filesystem semantics for external game ASARs under Electron so
+  packaged detection, hashing, copying and cleanup agree with Node execution.
+- Treat names beginning with two dots as ordinary children when preventing
+  report writes inside a project; preserve legitimate sibling report destinations.
 - Accept the documented malformed-ASAR repack opt-in after RPG MV/MZ detection,
   while retaining default refusal, separate-copy output and integrity checks.
 

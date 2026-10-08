@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { copyExternalResources, extractContainer } from '../../core/container';
 import {
     CONTAINER_PROVENANCE_FILE,
@@ -19,6 +20,13 @@ import { DetectedProject } from '../formatDetect';
 import { buildOperationContext } from '../operationContext';
 import { resolveContainerOutputPath } from '../workspacePathPolicy';
 import { OperationRuntime, throwIfOperationAborted } from '../../core/operationRuntime';
+import { copyTreeWithoutLinks } from '../../core/container/fileSystemPolicy';
+import { ContainerInfo } from '../../core/container';
+import { removePathBestEffortSync } from '../../core/atomic';
+import {
+    assertRpgPackSourceUnchanged, RPG_PACK_ARTIFACTS, RPG_PACK_FILE, RPG_PACK_FLAGS,
+    RpgPackFlags, RpgTranslationPack, rpgPackImmutableFiles, stageRpgPackInputs,
+} from '../../core/rpgTranslationPack';
 
 function rpgExtractOptions(request: AgentRequest, dataDir: string): RpgExtractOptions {
     const options = request.options;
@@ -49,6 +57,65 @@ function rpgExtractOptions(request: AgentRequest, dataDir: string): RpgExtractOp
         };
     }
     return { dir: dataDir, force };
+}
+
+export function rpgPackFlags(request: AgentRequest): RpgPackFlags {
+    const options = rpgExtractOptions(request, '');
+    return Object.fromEntries(RPG_PACK_FLAGS.map(key => [key, options[key] === true]));
+}
+
+export async function prepareRpgTranslationPack(
+    info: ContainerInfo, flags: RpgPackFlags, engineStage: string, runtime: OperationRuntime,
+): Promise<{ pack: RpgTranslationPack; report: Awaited<ReturnType<RpgMakerService['extract']>>; dataDir: string }> {
+    throwIfOperationAborted(runtime, 'compact-inputs');
+    const source = stageRpgPackInputs(info, flags, engineStage);
+    const dataDir = path.join(engineStage, 'data');
+    const report = await new RpgMakerService(buildOperationContext(runtime)).extract({ dir: dataDir, ...flags });
+    assertRpgPackSourceUnchanged(info, source);
+    return {
+        dataDir, report,
+        pack: {
+            schemaVersion: 1, kind: 'rpg-translation-pack', engine: info.engine.type as 'rpgmv' | 'rpgmz',
+            extraction: flags, source, immutable: rpgPackImmutableFiles(dataDir),
+        },
+    };
+}
+
+async function extractTranslationPack(
+    request: AgentRequest, detected: DetectedProject, result: AgentResult, runtime: OperationRuntime,
+): Promise<void> {
+    if (request.schemaVersion !== 2 || !request.outputPath
+        || request.options.decryptImg === true || request.options.decryptAudio === true) {
+        throw new OperationError(ErrorCodes.REQUEST_INVALID,
+            '번역 작업팩은 v2의 별도 outputPath가 필요하며 이미지/음원 추출과 함께 사용할 수 없습니다');
+    }
+    if (!detected.container || detected.translationPack) {
+        throw new OperationError(ErrorCodes.FORMAT_MISMATCH, '번역 작업팩은 원본 게임에서 추출하세요');
+    }
+    const flags = rpgPackFlags(request);
+    const output = resolveContainerOutputPath(request, detected.container.rootPath);
+    const transaction = new WorkspaceTransaction({ outputPath: output, force: request.options.force === true, signal: runtime.signal });
+    const engineStage = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-rpg-input-'));
+    try {
+        const { pack, report, dataDir } = await prepareRpgTranslationPack(detected.container, flags, engineStage, runtime);
+        for (const artifact of RPG_PACK_ARTIFACTS) {
+            copyTreeWithoutLinks(path.join(dataDir, artifact), path.join(transaction.stagingPath, artifact));
+        }
+        fs.writeFileSync(path.join(transaction.stagingPath, RPG_PACK_FILE), JSON.stringify(pack, null, 2), 'utf8');
+        throwIfOperationAborted(runtime, 'compact-extract-commit');
+        transaction.commit();
+        result.artifacts = [output, ...RPG_PACK_ARTIFACTS.map(name => path.join(output, name)), path.join(output, RPG_PACK_FILE)];
+        result.stats = { files: report.extractedFiles.length, entries: report.manifestEntries ?? 0, textBytes: report.textBytes };
+        result.warnings.push('번역 작업팩에는 이미지·음원·Live2D 모델·플러그인 구현 JS가 포함되지 않습니다. 재적용 시 원본 게임을 지정하세요');
+        if (flags.ext_plugin || flags.ext_src || flags.ext_javascript || flags.exJson) {
+            result.warnings.push('확장 추출에는 모델명·모션명·파일명·명령어 등 비번역 설정이 섞입니다. 자동 일괄 번역하지 말고 검토하세요. 플러그인 구현 내부의 UI 문자열은 추출하지 않습니다');
+        }
+        result.ok = true;
+    } finally {
+        const cleanupError = removePathBestEffortSync(engineStage, { recursive: true, force: true });
+        if (cleanupError) result.warnings.push('번역 작업팩 임시 입력 정리에 실패했습니다');
+        transaction.dispose();
+    }
 }
 
 function wolfConfig(request: AgentRequest): { [key: string]: boolean } {
@@ -296,6 +363,7 @@ export async function handleExtract(
     result: AgentResult,
     runtime: OperationRuntime,
 ): Promise<void> {
+    if (request.options.translationPack === true) return extractTranslationPack(request, detected, result, runtime);
     const engine = selectEngineAdapter(detected);
     if (!engine.operations.includes('extract')) {
         throw new OperationError(

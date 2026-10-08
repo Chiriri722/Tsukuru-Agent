@@ -1,4 +1,5 @@
-import fs from 'fs';
+import type { Stats } from 'fs';
+import fs from '../../physicalFs';
 import path from 'path';
 import { finished } from 'stream/promises';
 import * as asar from '@electron/asar';
@@ -226,7 +227,7 @@ function assertAsarExtractable(info: ContainerInfo): void {
     if (!info.archivePath || !info.archive) throw new Error('ASAR 경로가 없습니다');
     const archiveLink = findLinkedPathComponent(info.archivePath);
     if (archiveLink) throw new Error('ASAR 경로에 심볼릭 링크/정션이 있습니다: ' + archiveLink);
-    let archiveStat: fs.Stats;
+    let archiveStat: Stats;
     try {
         archiveStat = fs.lstatSync(info.archivePath);
     } catch {

@@ -2,8 +2,10 @@
 
 Read `CONTRIBUTING.md`, `.specify/memory/constitution.md`, and
 `docs/development-workflow.md` before maintenance changes. Select the intended
-feature explicitly; the current maintenance feature is
-`specs/003-translation-validation`, integrated into `main`.
+feature explicitly; the current feature is `specs/006-compact-rpg-extraction`.
+Preserve the uncommitted `specs/004-review-preparation` and
+`specs/005-launch-profile-isolation` implementations alongside it.
+The prior `specs/003-translation-validation` maintenance work is integrated into `main`.
 
 Prefer codebase-memory-mcp graph tools for code discovery: `search_graph`,
 `trace_path`, `get_code_snippet`, `query_graph`, then `get_architecture`.

@@ -68,6 +68,15 @@
       "coverage": ["detect", "extract", "patch", "verify", "apply"]
     },
     {
+      "id": "rpg-compact-live2d",
+      "engine": "rpgmv/rpgmz",
+      "wrapper": "directory/electron-asar",
+      "kind": "generated",
+      "testFile": "tsukuru-agent/test/integration/rpg-translation-pack.test.js",
+      "recipe": "test('compact RPG packs extract without assets and round-trip mapped text and plugin parameters')",
+      "coverage": ["detect", "extract", "patch", "verify", "apply"]
+    },
+    {
       "id": "nwjs-package-nw",
       "engine": "gdevelop",
       "wrapper": "package.nw",

@@ -3,7 +3,8 @@
  * 완료·검증한 뒤 교체합니다"). 파일 단위는 같은 디렉터리의 임시 파일에 쓴 뒤
  * rename으로 교체한다(같은 볼륨 내 rename은 원자적).
  */
-import fs from 'fs';
+import type { Stats } from 'fs';
+import fs from './physicalFs';
 import path from 'path';
 import crypto from 'crypto';
 import { findLinkedPathComponent } from './pathSafety';
@@ -59,7 +60,7 @@ export function atomicWriteFilesSync(writes: AtomicFileWrite[]): void {
             if (parentStat.isSymbolicLink() || !parentStat.isDirectory()) {
                 throw new Error(`atomic write parent is not a regular directory: ${parent}`);
             }
-            let originalStat: fs.Stats | undefined;
+            let originalStat: Stats | undefined;
             if (fs.existsSync(file)) {
                 originalStat = fs.lstatSync(file);
                 if (originalStat.isSymbolicLink() || !originalStat.isFile()) {

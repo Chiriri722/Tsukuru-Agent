@@ -1,7 +1,7 @@
-import fs from 'fs';
+import fs from '../physicalFs';
 import path from 'path';
 import crypto from 'crypto';
-import { normalizeArchiveEntry } from './archivePolicy';
+import { isWithinPath, normalizeArchiveEntry } from './archivePolicy';
 import { findLinkedPathComponent } from '../pathSafety';
 
 export function isDirectory(value: string): boolean {
@@ -97,19 +97,34 @@ export function copyTreeWithoutLinks(
     options: CopyTreeWithoutLinksOptions = {},
 ): void {
     assertNoSymbolicLinks(sourcePath);
-    const { filter, ...copyOptions } = options;
-    fs.cpSync(sourcePath, targetPath, {
-        ...copyOptions,
-        recursive: true,
-        filter: (source, destination) => {
-            const stat = fs.lstatSync(source);
-            if (stat.isSymbolicLink()) {
-                throw new Error('복사 원본의 심볼릭 링크/정션은 지원하지 않습니다: ' + source);
+    if (isWithinPath(sourcePath, targetPath) || isWithinPath(targetPath, sourcePath)
+        || findLinkedPathComponent(targetPath)) throw new Error('복사 대상 경로가 원본과 겹치거나 링크입니다');
+    // Node 24.14 on Windows can terminate natively in cpSync for Unicode paths.
+    // Keep physical-fs access and the same copy policy with individual file operations.
+    const copy = (source: string, target: string): void => {
+        const stat = fs.lstatSync(source);
+        if (stat.isSymbolicLink() || (!stat.isDirectory() && !stat.isFile())) {
+            throw new Error('복사 원본은 링크가 아닌 일반 파일/디렉터리여야 합니다: ' + source);
+        }
+        if (options.filter && !options.filter(source, target)) return;
+        const existing = fs.lstatSync(target, { throwIfNoEntry: false });
+        if (existing && (existing.isSymbolicLink() || existing.isDirectory() !== stat.isDirectory()
+            || (!existing.isDirectory() && !existing.isFile()))) throw new Error('복사 대상 형식이 올바르지 않습니다: ' + target);
+        if (stat.isDirectory()) {
+            fs.mkdirSync(target, { recursive: true });
+            for (const child of fs.readdirSync(source)) copy(path.join(source, child), path.join(target, child));
+        } else {
+            if (existing && options.force === false) {
+                if (options.errorOnExist) throw new Error('복사 대상 파일이 이미 존재합니다: ' + target);
+                return;
             }
-            if (!stat.isDirectory() && !stat.isFile()) {
-                throw new Error('복사 원본의 일반 파일이 아닌 항목은 지원하지 않습니다: ' + source);
-            }
-            return filter ? filter(source, destination) : true;
-        },
-    });
+            if (existing?.dev === stat.dev && existing.ino === stat.ino) throw new Error('같은 파일로 복사할 수 없습니다');
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            if (existing) fs.unlinkSync(target);
+            fs.copyFileSync(source, target);
+            if (options.preserveTimestamps) fs.utimesSync(target, stat.atime, stat.mtime);
+            fs.chmodSync(target, stat.mode);
+        }
+    };
+    copy(sourcePath, targetPath);
 }

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import fs from 'fs';
+import fs from './physicalFs';
 import path from 'path';
 import { ErrorCodes, OperationError } from './types';
 import { throwIfSignalAborted } from './operationRuntime';

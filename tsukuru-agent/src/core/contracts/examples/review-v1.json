@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "kind": "rpg-review",
+  "workspaceHash": "42c9acf0d1e37a8b3658dae8bd576e79bd2e16353380830a85aa413cb60538dc",
+  "totalEntries": 1,
+  "omittedEntries": 0,
+  "entries": [
+    {
+      "id": "Actors.json#1.name",
+      "sourceFile": "Backup/Actors.json",
+      "dataPath": "1.name",
+      "extractFile": "Actors.txt",
+      "lineStart": 0,
+      "lineEnd": 1,
+      "category": "database",
+      "source": "城",
+      "text": "성",
+      "sourceHash": "76f47004cc1240c69cd11299f3295e4f8d05ce5bb679cdf7ebeff39624addd26",
+      "currentHash": "bb35ab6d24daaf2db64eb43bf943f7653ff4f0c84bda2dede78d9ba7680b3f92",
+      "supported": true,
+      "state": "changed",
+      "contextStatus": "not-applicable"
+    }
+  ],
+  "groups": [],
+  "preview": {
+    "mode": "offline",
+    "approved": false,
+    "sourceLanguage": "ja",
+    "targetLanguage": "ko",
+    "entryIds": [
+      "Actors.json#1.name"
+    ],
+    "glossaryVersion": "manual-1",
+    "glossaryHash": "1b1b789fe0430c5478a5c89078f1e17d47160875ea1ff6cb97c1c70ce90dfd3d",
+    "terms": [
+      {
+        "term": "城",
+        "translation": "성",
+        "priority": "user"
+      }
+    ],
+    "omittedTerms": 0,
+    "requestHash": "5ae8b6396b0da9cd018645c0dc0830d0df8e85fcfcf9360a032bea8940713706"
+  }
+}

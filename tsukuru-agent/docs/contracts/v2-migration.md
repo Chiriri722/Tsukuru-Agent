@@ -21,12 +21,38 @@ The v2 request is a discriminated union over `operation` and the requested or de
 | `verify` | every detectable format | `verifyDepth`, `humanSummary`, `operationTimeoutMs` |
 | `extract` | RPG MV/MZ, Wolf, Tyrano, GDevelop, NW.js | engine-specific extraction flags, `force`, `operationTimeoutMs` |
 | `patch` | every extracted format | RPG may use `translationDirectory`; otherwise explicit `patches` |
-| `apply` | every extracted format | `force`; RPG and RPG-container workflows may use `translationDirectory`; extracted Electron ASAR/NW.js container workspaces may use container source and launch-probe options |
+| `apply` | every extracted format | `force`; RPG and RPG-container workflows may use `translationDirectory`; extracted container workspaces may use container source options; supported Windows Electron ASAR workspaces may use launch-probe options |
 | `recover` | RPG MV/MZ only | `dryRun`, `conflictPolicy`, `operationTimeoutMs` |
 
-Defaults remain `format: "auto"`, `profile: "standard"`, `options: {}`, and `patches: []`. `launchTimeoutMs` requires `launchProbe: true`. `launchProbe` is implemented only for extracted Electron ASAR/NW.js container workspaces; loose directory apply rejects it with `E_NOT_IMPLEMENTED` before dictionary patching or output creation. Explicit `patches` and `translationDirectory` are mutually exclusive. An RPG container `apply` stages dictionary patching, engine apply, repack, and publication in one transaction. Recovery defaults to `dryRun: false` and `conflictPolicy: "backup-and-replace"`; `fail-if-present` rejects an existing manifest with `E_OUTPUT_CONFLICT`. `operationTimeoutMs` accepts 1–3,600,000 ms and applies to the complete operation.
+Defaults remain `format: "auto"`, `profile: "standard"`, `options: {}`, and `patches: []`. `launchTimeoutMs` requires `launchProbe: true`. `launchProbe` is implemented only for supported Windows Electron ASAR workspaces; loose directory and NW.js apply reject it before dictionary patching or output creation (`E_NOT_IMPLEMENTED` or the earlier v2 option-contract rejection). Explicit `patches` and `translationDirectory` are mutually exclusive. An RPG container `apply` stages dictionary patching, engine apply, repack, and publication in one transaction. Recovery defaults to `dryRun: false` and `conflictPolicy: "backup-and-replace"`; `fail-if-present` rejects an existing manifest with `E_OUTPUT_CONFLICT`. `operationTimeoutMs` accepts 1–3,600,000 ms and applies to the complete operation.
+
+## Local RPG review preparation
+
+V2 RPG verify accepts optional `options.review`: required `reportPath`, optional
+`entryIds` or `offset`/`limit`, and optional `preview` with explicit
+`sourceLanguage`/`targetLanguage`, a versioned glossary and `maxTerms`.
+Other operations/formats reject it; legacy v1 keeps but does not execute it.
+Raw archives must first be extracted. The separate `review:1` artifact contract
+and examples live in the canonical registry; ordinary result fields do not change.
+
+Preview is offline and unapproved. It contains selected IDs, glossary selection
+and fingerprints alongside the report's original/current entries and source
+groups. No credentials/provider endpoint are accepted. Report text is private;
+the inline review configuration is omitted wholesale from diagnostic reports.
+Targets must be fresh, outside inputs/output and free of links. Stale mappings,
+publication errors and cancellation preserve inputs and prior reports.
+See [the full contract](../../../specs/004-review-preparation/contracts/review.md).
 
 ## ASAR repack compatibility
+
+Optional `runtime.launchProbe.isolation` is additive in both result versions:
+`strategy: "electron-bootstrap-v1"`, `verified`, `processTreeTerminated`, and
+`cleanup: "removed" | "retained"`. When present, a successful probe requires both
+booleans true and cleanup removed. Legacy records without this field remain
+readable but provide no profile-isolation proof. Unsupported entries, unknown or
+integrity-protected Electron runtimes, missing bootstrap proof and cleanup
+failure use `E_LAUNCH_PROBE_FAILED`. See the
+[supported profile boundary](../../../specs/005-launch-profile-isolation/contracts/launch-probe.md).
 
 The existing `experimentalMalformedAsarRepack` boolean is accepted by RPG MV/MZ
 `apply`, including an automatically detected RPG engine. It remains false by
@@ -34,6 +60,24 @@ default and only enables rebuilding the valid entries of an ASAR container into
 a separate output. Source/provenance, protected-script and runtime integrity
 checks still apply. Earlier v2 RPG option discrimination incorrectly rejected
 this documented opt-in before dispatch; no request version or field meaning changed.
+
+## Compact RPG translation packs
+
+V2 RPG MV/MZ `extract` accepts the additive boolean `translationPack:true` with
+an explicit `outputPath`. It stages only the data inputs consumed by the selected
+profile and, when enabled, `js/plugins.js`. The separate
+`rpg-translation-pack:1` contract seals immutable backups/mappings and records
+relative source paths and hashes. Existing extraction requests keep their layout;
+v1, non-RPG engines and packaged NW archives do not support this mode.
+
+Use `format:"auto"` for a moved pack. Verify and patch work without the original
+game. Apply requires `containerSourcePath` plus a separate `outputPath`; it
+regenerates the source mapping before applying edits inside existing transactions.
+Recover, asset decryption and YAML output are not supported for this mode.
+ASAR malformed-entry opt-in and runtime/protected-file checks remain mandatory.
+Full-profile parameters/event scripts can include model names and command IDs;
+they need manual selection. Plugin implementation JavaScript is not extracted.
+See [the pack contract](../../../specs/006-compact-rpg-extraction/contracts/translation-pack.md).
 
 ## Cancellation and warnings
 

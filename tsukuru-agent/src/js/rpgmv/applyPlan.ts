@@ -185,7 +185,7 @@ function manifestCoreSignature(entry: ExtractManifest['entries'][number]): strin
     ]);
 }
 
-function isExtractionOnlyComment(entry: RpgApplyEntry): boolean {
+export function isExtractionOnlyComment(entry: RpgApplyEntry): boolean {
     return isRecord(entry.conf) && entry.conf.isComment === true;
 }
 

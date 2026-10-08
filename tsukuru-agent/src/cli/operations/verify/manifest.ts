@@ -17,9 +17,53 @@ import { DetectedProject } from '../../formatDetect';
 import { resolveExtractArtifactPath } from '../../patcher';
 import { writeHumanSummary } from '../../presenter';
 import { emptyChange, publicScores, structuralIssueMessage } from './common';
-import { loadRpgApplyPlan } from '../../../js/rpgmv/applyPlan';
-import { planRpgTranslations } from '../../../js/rpgmv/translation';
+import { loadRpgApplyPlan, RpgApplyPlan } from '../../../js/rpgmv/applyPlan';
+import { planRpgTranslations, RpgTranslation } from '../../../js/rpgmv/translation';
 import { inspectTranslations, addTranslationIssue, translationQualitySummary } from '../../../core/translationLint';
+import { assertReviewSize, buildRpgReview } from '../../../js/rpgmv/review';
+import { assertDiagnosticReportTarget, writeDiagnosticReport } from '../../../core/diagnostics';
+import { findLinkedPathComponent } from '../../../core/pathSafety';
+import { OperationRuntime, throwIfOperationAborted } from '../../../core/operationRuntime';
+import { validateContract } from '../../../core/contracts/schemaRegistry';
+
+export function assertReviewTarget(request: AgentRequest, dataDir?: string): string | undefined {
+    if (request.schemaVersion !== 2 || !request.options.review) return undefined;
+    const target = path.resolve(request.options.review.reportPath);
+    if (findLinkedPathComponent(target)) {
+        throw new OperationError(ErrorCodes.REQUEST_INVALID, 'review 출력 경로에 링크/정션이 있습니다');
+    }
+    for (const root of [request.projectPath, dataDir, request.outputPath].filter((value): value is string => !!value)) {
+        assertDiagnosticReportTarget(target, root);
+        if (fs.existsSync(root)) assertDiagnosticReportTarget(target, fs.realpathSync(root));
+    }
+    const diagnostic = request.options.diagnosticReportPath;
+    if (diagnostic && path.relative(target, path.resolve(diagnostic)) === '') {
+        throw new OperationError(ErrorCodes.REQUEST_INVALID, 'review와 진단 보고서 경로는 달라야 합니다');
+    }
+    return target;
+}
+
+async function publishReview(request: AgentRequest, detected: DetectedProject, result: AgentResult,
+    plan: RpgApplyPlan | undefined, manifest: ExtractManifest | undefined,
+    translations: RpgTranslation[], runtime: OperationRuntime | undefined): Promise<void> {
+    const target = assertReviewTarget(request, detected.dataDir);
+    if (!target) return;
+    if (!plan || !manifest || (result.validation?.invalidEntries ?? 1) > 0) {
+        throw new OperationError(ErrorCodes.MAPPING_CORRUPT, 'review에 필요한 원문/manifest 매핑이 유효하지 않습니다');
+    }
+    const report = buildRpgReview(plan, manifest, translations, request.options.review!);
+    assertReviewSize(report);
+    if (!validateContract('review', 1, report).ok) throw new OperationError(ErrorCodes.INTERNAL, 'review 결과 계약 검증 실패');
+    // Give pending abort/timeout events a turn after synchronous parsing, before any publication.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    if (runtime) throwIfOperationAborted(runtime, 'before-review-publication');
+    assertReviewTarget(request, detected.dataDir);
+    // Deliberately unredacted, explicitly requested private artifact; diagnostic request omits review options.
+    writeDiagnosticReport(target, report);
+    result.artifacts.push(target);
+    result.stats.review = { entries: report.entries.length, omittedEntries: report.omittedEntries };
+    if (runtime) throwIfOperationAborted(runtime, 'after-review-publication');
+}
 
 type EngineAdapter = ReturnType<typeof selectEngineAdapter>;
 type VerificationChange = ReturnType<typeof emptyChange>;
@@ -116,6 +160,7 @@ export async function verifyManifestProject(
     request: AgentRequest,
     detected: DetectedProject,
     result: AgentResult,
+    runtime?: OperationRuntime,
 ): Promise<void> {
     const engine = selectEngineAdapter(detected);
     const issues: string[] = [];
@@ -134,9 +179,15 @@ export async function verifyManifestProject(
     }
     const validationIssueEnd = issues.length;
     const qualityWarnings: string[] = [];
+    let reviewPlan: RpgApplyPlan | undefined;
+    let reviewTranslations: RpgTranslation[] = [];
     if (engine.family === 'rpgmaker' && manifest) {
         try {
-            result.translationQuality = planRpgTranslations(loadRpgApplyPlan(detected.dataDir)).quality;
+            const plan = loadRpgApplyPlan(detected.dataDir);
+            const planned = planRpgTranslations(plan);
+            result.translationQuality = planned.quality;
+            reviewPlan = plan;
+            reviewTranslations = planned.translations;
             if (result.translationQuality.mechanical === 'fail') issues.push('번역 무결성 검사에 실패했습니다');
             const summary = translationQualitySummary(result.translationQuality);
             if (summary) qualityWarnings.push(summary);
@@ -203,6 +254,7 @@ export async function verifyManifestProject(
             details: blockingIssues,
         };
     }
+    await publishReview(request, detected, result, reviewPlan, manifest, reviewTranslations, runtime);
     if (request.options.humanSummary === true) {
         writeHumanSummary(result, { protectedMetric: 'damage', damageAssessed: comparisonPerformed });
     }

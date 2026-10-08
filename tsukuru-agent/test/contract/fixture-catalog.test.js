@@ -45,6 +45,7 @@ test('fixture catalog covers every supported engine and wrapper with determinist
     'electron-asar-rpgmz',
     'gdevelop-strict',
     'nwjs-package-nw',
+    'rpg-compact-live2d',
     'rpgmv-basic',
     'rpgmz-basic',
     'tyrano-shift-jis',

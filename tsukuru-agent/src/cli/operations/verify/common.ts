@@ -1,11 +1,13 @@
 import { AgentRequest, AgentResult } from '../../../core/schema';
 import { scoreVerification, StructuralIssue } from '../../../core/validator';
 import { DetectedProject } from '../../formatDetect';
+import { OperationRuntime } from '../../../core/operationRuntime';
 
 export type VerifyEngineHandler = (
     request: AgentRequest,
     detected: DetectedProject,
     result: AgentResult,
+    runtime?: OperationRuntime,
 ) => Promise<void>;
 
 export function emptyChange(): NonNullable<AgentResult['change']> {

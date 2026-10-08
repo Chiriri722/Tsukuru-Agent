@@ -47,6 +47,12 @@ test('diagnostic reports are atomic, redacted, and never overwrite an existing f
       () => writeDiagnosticReport(path.join(project, 'diagnostics.json'), {}, { forbiddenRoot: project }),
       (error) => error && error.code === 'E_REQUEST_INVALID',
     );
+    for (const relative of ['..review.json', '..reports/report.json', './nested/../..review.json']) {
+      assert.throws(() => writeDiagnosticReport(path.join(project, relative), {}, { forbiddenRoot: project }),
+        error => error?.code === 'E_REQUEST_INVALID');
+    }
+    const sibling = path.join(root, '..outside', 'report.json');
+    assert.equal(writeDiagnosticReport(sibling, {}, { forbiddenRoot: project }), sibling);
     assert.equal(fs.readdirSync(path.dirname(reportPath)).some((name) => name.includes('.tmp-')), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

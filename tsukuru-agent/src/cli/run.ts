@@ -9,7 +9,7 @@ import { selectEngineAdapter } from './engineRegistry';
 import { runCli } from './entrypoint';
 import { detectProject, DetectedProject } from './formatDetect';
 import { handleApply } from './operations/apply';
-import { handleExtract } from './operations/extract';
+import { handleExtract, rpgPackFlags } from './operations/extract';
 import { handlePatch } from './operations/patch';
 import { handleRecover } from './operations/recover';
 import { handleVerify } from './operations/verify';
@@ -26,6 +26,9 @@ import os from 'os';
 import { assertDiagnosticReportTarget, writeDiagnosticReport } from '../core/diagnostics';
 import { inspectResourcePreflight } from '../core/resourcePolicy';
 import { publicErrorMessage } from '../core/publicError';
+import { assertReviewTarget } from './operations/verify/manifest';
+import { inspectContainer } from '../core/container';
+import { rpgPackEstimatedTempBytes } from '../core/rpgTranslationPack';
 
 function normalizeDetectionError(error: unknown): OperationError {
     if (error instanceof OperationError) return error;
@@ -137,6 +140,10 @@ export async function executeAgentRequest(
             if (diagnosticReportPath) assertDiagnosticReportTarget(diagnosticReportPath, request!.projectPath);
             const resolved = resolveProject(request);
             validateResolvedRequest(request, resolved.format);
+            if (resolved.translationPack && request.operation === 'recover') {
+                throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, '번역 작업팩의 원문/매핑 복구는 원본 게임에서 다시 추출하세요');
+            }
+            assertReviewTarget(request, resolved.dataDir);
             result.format = resolved.format;
             attachDiagnostics(resolved, result);
             return resolved;
@@ -144,12 +151,24 @@ export async function executeAgentRequest(
         resourceReport = await runOperationStage(runtime, 'preflight', () => (
             inspectResourcePreflight(request!.projectPath, request!.operation, request!.options.resourceLimits, {
                 signal: runtime!.signal,
+                ...(detected.translationPack && request!.operation === 'apply' && request!.options.containerSourcePath ? {
+                    additionalInputPaths: [inspectContainer(request!.options.containerSourcePath).rootPath],
+                } : {}),
+                ...(request!.operation === 'extract' && request!.options.translationPack === true && detected.container ? {
+                    estimatedTempBytes: rpgPackEstimatedTempBytes(detected.container, rpgPackFlags(request!)),
+                } : {}),
             })
         ));
         await runOperationStage(runtime, request.operation, () => (
             dispatchOperation(request, detected, result, operationHandlers, runtime!)
         ));
     } catch (error) {
+        const reviewPath = request?.schemaVersion === 2 && request.options.review?.reportPath;
+        if (reviewPath && result.artifacts.includes(path.resolve(reviewPath))) {
+            fs.rmSync(path.resolve(reviewPath), { force: true });
+            result.artifacts = result.artifacts.filter(artifact => artifact !== path.resolve(reviewPath));
+            delete result.stats.review;
+        }
         const operationError = toOperationError(error);
         result.ok = false;
         result.error = operationError.toJSON();
@@ -161,20 +180,26 @@ export async function executeAgentRequest(
         }
     }
     const diagnosticReportPath = request?.options.diagnosticReportPath;
-    if (request && diagnosticReportPath) {
+    const reviewReportPath = request?.schemaVersion === 2 ? request.options.review?.reportPath : undefined;
+    const reportCollision = diagnosticReportPath && reviewReportPath
+        && path.relative(path.resolve(diagnosticReportPath), path.resolve(reviewReportPath)) === '';
+    if (request && diagnosticReportPath && !reportCollision) {
         const resolvedReportPath = path.resolve(diagnosticReportPath);
         result.artifacts.push(resolvedReportPath);
         try {
             writeDiagnosticReport(resolvedReportPath, {
                 schemaVersion: 1,
                 createdAt: new Date().toISOString(),
-                request,
+                request: { ...request, options: { ...request.options,
+                    ...(request.options.review !== undefined ? { review: '<omitted-private-review-configuration>' } : {}),
+                } },
                 result,
             }, {
                 forbiddenRoot: request.projectPath,
                 protectedRoots: [
                     { path: request.projectPath, label: 'project' },
                     ...(request.outputPath ? [{ path: request.outputPath, label: 'output' }] : []),
+                    ...(reviewReportPath ? [{ path: reviewReportPath, label: 'review' }] : []),
                     { path: resolvedReportPath, label: 'diagnostics' },
                     { path: os.tmpdir(), label: 'temp' },
                 ],

@@ -10,6 +10,7 @@ const iconv = require('iconv-lite');
 const { Pickle } = require(path.join(path.dirname(require.resolve('@electron/asar')), 'pickle.js'));
 
 const { inspectContainer, extractContainer, packContainer, verifyContainerOutput, copyExternalResources } = require('../../.build/app/src/core/container.js');
+const copyPolicy = require('../../.build/app/src/core/container/fileSystemPolicy.js');
 const { scoreVerification, diffFileMaps, snapshotDirectory, inspectRpgProject, inspectWolfBinaryMappings, inspectTyranoProject } = require('../../.build/app/src/core/validator.js');
 const { applyPatches } = require('../../.build/app/src/cli/patcher.js');
 const { sha256Text } = require('../../.build/app/src/core/manifest.js');
@@ -236,21 +237,24 @@ test('rejects an ASAR external-resource link inserted during copy', async (t) =>
         return;
     }
     const info = inspectContainer(archive);
-    const originalCopy = fs.cpSync;
+    const originalCopy = copyPolicy.copyTreeWithoutLinks;
     let injected = false;
-    fs.cpSync = function patchedCopy(candidate, target, options) {
-        if (!injected && path.resolve(String(candidate)) === path.resolve(extras)) {
-            fs.symlinkSync(outside, path.join(extras, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
-            injected = true;
-        }
-        return originalCopy.call(fs, candidate, target, options);
-    };
+    copyPolicy.copyTreeWithoutLinks = (candidate, target, options = {}) => originalCopy(candidate, target, {
+        ...options,
+        filter: (file, destination) => {
+            if (!injected && path.resolve(file) === path.resolve(extras)) {
+                fs.symlinkSync(outside, path.join(extras, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
+                injected = true;
+            }
+            return options.filter ? options.filter(file, destination) : true;
+        },
+    });
     try {
         assert.throws(() => copyExternalResources(info, outputRoot), /link|junction|symbolic|심볼릭|정션/i);
         assert.equal(injected, true);
         assert.equal(fs.existsSync(path.join(outputRoot, 'resources', 'extras', 'late-link')), false);
     } finally {
-        fs.cpSync = originalCopy;
+        copyPolicy.copyTreeWithoutLinks = originalCopy;
         fs.rmSync(root, { recursive: true, force: true });
         fs.rmSync(work, { recursive: true, force: true });
     }
@@ -280,8 +284,8 @@ test('removes a partial output when container packing fails', async () => {
     fs.writeFileSync(path.join(staging, 'package.json'), '{}');
     const info = inspectContainer(source);
     const packError = new Error('simulated container pack failure');
-    const originalCopy = fs.cpSync;
-    fs.cpSync = (from, to, options) => {
+    const originalCopy = copyPolicy.copyTreeWithoutLinks;
+    copyPolicy.copyTreeWithoutLinks = (from, to, options) => {
         if (path.resolve(from) === path.resolve(staging) && path.resolve(to) === path.resolve(output)) {
             fs.mkdirSync(to, { recursive: true });
             fs.writeFileSync(path.join(to, 'partial.txt'), 'partial');
@@ -296,7 +300,7 @@ test('removes a partial output when container packing fails', async () => {
     } catch (error) {
         thrown = error;
     } finally {
-        fs.cpSync = originalCopy;
+        copyPolicy.copyTreeWithoutLinks = originalCopy;
     }
 
     assert.equal(thrown, packError);
@@ -371,9 +375,9 @@ test('rejects linked entries in directory staging before packing', async (t) => 
         t.skip(`symlink/junction creation unavailable: ${error.code}`);
         return;
     }
-    const originalCopy = fs.cpSync;
+    const originalCopy = fs.copyFileSync;
     let copyCalled = false;
-    fs.cpSync = (...args) => {
+    fs.copyFileSync = (...args) => {
         copyCalled = true;
         return originalCopy(...args);
     };
@@ -384,7 +388,7 @@ test('rejects linked entries in directory staging before packing', async (t) => 
         assert.equal(copyCalled, false);
         assert.equal(fs.existsSync(output), false);
     } finally {
-        fs.cpSync = originalCopy;
+        fs.copyFileSync = originalCopy;
         fs.rmSync(root, { recursive: true, force: true });
         fs.rmSync(work, { recursive: true, force: true });
     }
@@ -436,21 +440,24 @@ test('rejects a directory source link inserted during extraction copy', async (t
         return;
     }
     const info = inspectContainer(source);
-    const originalCopy = fs.cpSync;
+    const originalCopy = copyPolicy.copyTreeWithoutLinks;
     let injected = false;
-    fs.cpSync = function patchedCopy(candidate, target, options) {
-        if (!injected && path.resolve(String(candidate)) === path.resolve(source)) {
-            fs.symlinkSync(outside, path.join(source, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
-            injected = true;
-        }
-        return originalCopy.call(fs, candidate, target, options);
-    };
+    copyPolicy.copyTreeWithoutLinks = (candidate, target, options = {}) => originalCopy(candidate, target, {
+        ...options,
+        filter: (file, destination) => {
+            if (!injected && path.resolve(file) === path.resolve(source)) {
+                fs.symlinkSync(outside, path.join(source, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
+                injected = true;
+            }
+            return options.filter ? options.filter(file, destination) : true;
+        },
+    });
     try {
         await assert.rejects(extractContainer(info, staging), /link|junction|symbolic|심볼릭|정션/i);
         assert.equal(injected, true);
         assert.equal(fs.existsSync(staging), false);
     } finally {
-        fs.cpSync = originalCopy;
+        copyPolicy.copyTreeWithoutLinks = originalCopy;
         fs.rmSync(root, { recursive: true, force: true });
         fs.rmSync(work, { recursive: true, force: true });
     }
@@ -478,21 +485,24 @@ test('rejects a directory staging link inserted during pack copy', async (t) => 
         return;
     }
     const info = inspectContainer(source);
-    const originalCopy = fs.cpSync;
+    const originalCopy = copyPolicy.copyTreeWithoutLinks;
     let injected = false;
-    fs.cpSync = function patchedCopy(candidate, target, options) {
-        if (!injected && path.resolve(String(candidate)) === path.resolve(staging)) {
-            fs.symlinkSync(outside, path.join(staging, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
-            injected = true;
-        }
-        return originalCopy.call(fs, candidate, target, options);
-    };
+    copyPolicy.copyTreeWithoutLinks = (candidate, target, options = {}) => originalCopy(candidate, target, {
+        ...options,
+        filter: (file, destination) => {
+            if (!injected && path.resolve(file) === path.resolve(staging)) {
+                fs.symlinkSync(outside, path.join(staging, 'late-link'), process.platform === 'win32' ? 'junction' : 'dir');
+                injected = true;
+            }
+            return options.filter ? options.filter(file, destination) : true;
+        },
+    });
     try {
         await assert.rejects(packContainer(info, staging, output), /link|junction|symbolic|심볼릭|정션/i);
         assert.equal(injected, true);
         assert.equal(fs.existsSync(output), false);
     } finally {
-        fs.cpSync = originalCopy;
+        copyPolicy.copyTreeWithoutLinks = originalCopy;
         fs.rmSync(root, { recursive: true, force: true });
         fs.rmSync(work, { recursive: true, force: true });
     }

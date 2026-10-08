@@ -44,6 +44,8 @@ test('publishes every versioned machine contract through one immutable registry'
     'request:2',
     'result:1',
     'result:2',
+    'review:1',
+    'rpg-translation-pack:1',
   ]);
   assert.ok(Object.isFrozen(contractSchemaRegistry));
 
@@ -64,6 +66,24 @@ test('translation quality is additive in v1/v2 and validates bounded diagnostics
     assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, semantics: 'pass' } }).ok, false);
     assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, unknown: true } }).ok, false);
     assert.equal(validateContract('result', version, { ...result, translationQuality: { ...quality, issues: Array(101).fill(quality.issues[0]) } }).ok, false);
+  }
+});
+
+test('launch isolation is additive in v1/v2 and cannot claim success without cleanup proof', () => {
+  const example = JSON.parse(fs.readFileSync(path.join(appRoot, 'src/core/contracts/examples/result-v2-isolated-launch.json'), 'utf8'));
+  for (const version of [1, 2]) {
+    const result = { ...emptyResult(version), runtime: example.runtime };
+    assert.equal(validateContract('result', version, result).ok, true);
+    const launch = result.runtime.launchProbe;
+    for (const mutation of [{ verified: false }, { processTreeTerminated: false }, { cleanup: 'retained' }, { unknown: true }]) {
+      const invalid = { ...result, runtime: { launchProbe: { ...launch, isolation: { ...launch.isolation, ...mutation } } } };
+      assert.equal(validateContract('result', version, invalid).ok, false);
+    }
+    const { isolation, ...legacy } = launch;
+    assert.equal(validateContract('result', version, { ...result, runtime: { launchProbe: legacy } }).ok, true);
+    assert.equal(validateContract('result', version, { ...result, runtime: { launchProbe: null } }).ok, true);
+    const failed = { ...launch, status: 'failed', isolation: { ...isolation, verified: false, cleanup: 'retained', processTreeTerminated: false } };
+    assert.equal(validateContract('result', version, { ...result, runtime: { launchProbe: failed } }).ok, true);
   }
 });
 

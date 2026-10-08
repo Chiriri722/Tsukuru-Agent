@@ -1,0 +1,464 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsukuru-agent.dev/schemas/v1/review.schema.json",
+  "title": "Tsukuru local RPG review artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "workspaceHash",
+    "totalEntries",
+    "omittedEntries",
+    "entries",
+    "groups"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "rpg-review"
+    },
+    "workspaceHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "totalEntries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "omittedEntries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      },
+      "maxItems": 500
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/group"
+      },
+      "maxItems": 500
+    },
+    "preview": {
+      "$ref": "#/$defs/preview"
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "term": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "translation",
+        "priority"
+      ],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "translation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "\\S"
+        },
+        "priority": {
+          "enum": [
+            "user",
+            "manual",
+            "derived"
+          ]
+        }
+      }
+    },
+    "previewOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceLanguage",
+        "targetLanguage"
+      ],
+      "properties": {
+        "sourceLanguage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 35,
+          "pattern": "\\S"
+        },
+        "targetLanguage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 35,
+          "pattern": "\\S"
+        },
+        "maxTerms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "glossary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "entries"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/term"
+              },
+              "maxItems": 2000
+            }
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportPath"
+      ],
+      "properties": {
+        "reportPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "entryIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16384,
+            "pattern": "\\S"
+          },
+          "maxItems": 500,
+          "minItems": 1
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "preview": {
+          "$ref": "#/$defs/previewOptions"
+        }
+      },
+      "not": {
+        "required": [
+          "entryIds"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "offset"
+            ]
+          },
+          {
+            "required": [
+              "limit"
+            ]
+          }
+        ]
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceFile",
+        "dataPath",
+        "extractFile",
+        "lineStart",
+        "lineEnd",
+        "category",
+        "source",
+        "text",
+        "sourceHash",
+        "currentHash",
+        "state",
+        "contextStatus",
+        "supported"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sourceFile": {
+          "type": "string"
+        },
+        "dataPath": {
+          "type": "string"
+        },
+        "extractFile": {
+          "type": "string"
+        },
+        "lineStart": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lineEnd": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "category": {
+          "enum": [
+            "dialogue",
+            "choice",
+            "database",
+            "system",
+            "plugin",
+            "script",
+            "note",
+            "other"
+          ]
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "sourceHash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "state": {
+          "enum": [
+            "source-preserved",
+            "changed",
+            "unsupported"
+          ]
+        },
+        "contextStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "not-applicable"
+          ]
+        },
+        "supported": {
+          "type": "boolean"
+        },
+        "groupId": {
+          "type": "string"
+        },
+        "command": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "code",
+            "index",
+            "listPath"
+          ],
+          "properties": {
+            "code": {
+              "type": "integer"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "listPath": {
+              "type": "string"
+            },
+            "indent": {
+              "type": "integer"
+            },
+            "eventIndex": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pageIndex": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "listPath",
+        "headerIndex",
+        "lines",
+        "omittedLines",
+        "contextHash",
+        "speaker"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "listPath": {
+          "type": "string"
+        },
+        "headerIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "source"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          },
+          "maxItems": 50
+        },
+        "omittedLines": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contextHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "speaker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "basis"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "explicit",
+                "unknown"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "basis": {
+              "enum": [
+                "101.parameters.4",
+                "dynamic-name",
+                "no-explicit-name"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "approved",
+        "sourceLanguage",
+        "targetLanguage",
+        "entryIds",
+        "glossaryVersion",
+        "glossaryHash",
+        "terms",
+        "omittedTerms",
+        "requestHash"
+      ],
+      "properties": {
+        "mode": {
+          "const": "offline"
+        },
+        "approved": {
+          "const": false
+        },
+        "sourceLanguage": {
+          "type": "string"
+        },
+        "targetLanguage": {
+          "type": "string"
+        },
+        "entryIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500
+        },
+        "glossaryVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "glossaryHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/term"
+          },
+          "maxItems": 64
+        },
+        "omittedTerms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requestHash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    }
+  }
+}

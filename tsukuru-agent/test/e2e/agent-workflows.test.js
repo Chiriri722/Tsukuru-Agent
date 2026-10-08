@@ -679,7 +679,7 @@ test('refuses raw ASAR apply and patch without touching the original archive', a
     }
 });
 
-test('applies a patched ASAR working directory into a verified runnable copy', async () => {
+test('applies a patched ASAR copy and refuses an unrecognized launch wrapper in v1 and v2', async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-v25-repack-'));
     const source = path.join(root, 'source');
     const game = path.join(root, 'game');
@@ -734,7 +734,7 @@ test('applies a patched ASAR working directory into a verified runnable copy', a
     fs.writeFileSync(applyRequest, JSON.stringify({
         schemaVersion: 2, operation: 'apply', format: 'auto', projectPath: working,
         outputPath: output, profile: 'standard',
-        options: { containerSourcePath: game, launchProbe: true, launchTimeoutMs: 1000 }, patches: [],
+        options: { containerSourcePath: game }, patches: [],
     }));
     stdout = '';
     process.stdout.write = (chunk) => { stdout += String(chunk); return true; };
@@ -744,7 +744,7 @@ test('applies a patched ASAR working directory into a verified runnable copy', a
     assert.equal(result.ok, true);
     assert.equal(result.runtime.blocked, false);
     assert.equal(result.runtime.fuses.status, 'unavailable');
-    assert.match(result.runtime.launchProbe.status, /^(running|exited-ok)$/);
+    assert.equal(result.runtime.launchProbe, null);
 
     const outputArchive = path.join(output, 'resources', 'app.asar');
     assert.ok(fs.existsSync(outputArchive));
@@ -760,6 +760,23 @@ test('applies a patched ASAR working directory into a verified runnable copy', a
     assert.ok(!packedEntries.some((entry) => entry.endsWith('/.extracteddata')));
     assert.ok(!packedEntries.some((entry) => entry.endsWith('/.tsukuru-container.json')));
     assert.ok(result.artifacts.some((artifact) => path.resolve(artifact) === path.resolve(outputArchive)));
+    for (const schemaVersion of [1, 2]) {
+        const refusedOutput = path.join(root, 'refused-' + schemaVersion);
+        fs.writeFileSync(applyRequest, JSON.stringify({
+            schemaVersion, operation: 'apply', format: 'auto', projectPath: working,
+            outputPath: refusedOutput, profile: 'standard',
+            options: { containerSourcePath: game, launchProbe: true, launchTimeoutMs: 1000 }, patches: [],
+        }));
+        stdout = '';
+        process.stdout.write = (chunk) => { stdout += String(chunk); return true; };
+        try { status = await runAgent(['run', '--request', applyRequest]); } finally { process.stdout.write = originalWrite; }
+        const refused = JSON.parse(stdout);
+        assert.equal(status, 1);
+        assert.equal(refused.error.code, 'E_LAUNCH_PROBE_FAILED');
+        assert.equal(fs.existsSync(refusedOutput), false);
+        assert.equal(hash(archive), originalHash);
+        assert.equal(hash(path.join(output, 'Game.exe')), launcherHash);
+    }
 });
 
 test('atomically imports an RPG translation dictionary while repacking an ASAR working directory', async () => {

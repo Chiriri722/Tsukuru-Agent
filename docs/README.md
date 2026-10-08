@@ -1,11 +1,16 @@
 # 내부 문서 안내
 
-현재 상태는 [작업 재개 안내](current-state.md), 최신 우선 작업은 [D21 계획](../task_plan.md)과 [Daybreak 제안 검증](reviews/2026-09-13-daybreak-followup.md)부터 읽는다. [2026-09-08 코드 리뷰](reviews/2026-09-08.md)와 기존 계획서의 체크박스는 해당 시점과 브랜치의 기록이다.
+현재 상태는 [작업 재개 안내](current-state.md), 최신 우선 작업은 [현재 계획](../task_plan.md)과
+[006 작은 RPG 번역 작업팩](../specs/006-compact-rpg-extraction/spec.md)부터 읽는다.
+기존 날짜별 리뷰·체크박스는 해당 시점과 브랜치의 기록이다.
 
 ## 읽는 순서
 
 | 문서 | 용도 | 기준 |
 |---|---|---|
+| [006 작은 RPG 작업팩](../specs/006-compact-rpg-extraction/spec.md) / [검증](../specs/006-compact-rpg-extraction/verification.md) | 혼합 RPG·Live2D 선택 추출과 원본 재연결 | 2026-10-02 로컬 수락 완료 |
+| [005 프로필 격리](../specs/005-launch-profile-isolation/spec.md) / [검증](../specs/005-launch-profile-isolation/verification.md) | D22-04 실행 프로브·종료·정리 | 2026-09-30 로컬 수락 완료 |
+| [004 문맥·용어집 준비](../specs/004-review-preparation/spec.md) / [검증](../specs/004-review-preparation/verification.md) | Pro 제안 대조와 독립 구현 | 2026-09-29 로컬 변경 |
 | [D21 검증 결과](../specs/003-translation-validation/verification.md) / [D21 계획](../task_plan.md) | P0–P2 구현, 필수 검사, 실제 작업팩 결과 | 2026-09-13 수락 근거 |
 | [Daybreak 후속 검증](reviews/2026-09-13-daybreak-followup.md) | 원 제안 7개와 구현 전 상태 대조 | 2026-09-13, 합성 15개 사례 |
 | [작업 재개 안내](current-state.md) | 경로, 브랜치, 검증 결과, 다음 작업 | 2026-09-13, D21 수락 상태 |

@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from '../physicalFs';
 import path from 'path';
 import { removePathBestEffortSync } from '../atomic';
 import { findLinkedPathComponent } from '../pathSafety';

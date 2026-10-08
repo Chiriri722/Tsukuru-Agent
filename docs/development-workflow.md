@@ -1,9 +1,9 @@
 # 명세에서 검증까지
 
-최근 완료한 유지보수 기준은 `main`에 통합한
-[003-translation-validation](../specs/003-translation-validation/spec.md)입니다.
-[계획](../specs/003-translation-validation/plan.md)과
-[체크리스트](../specs/003-translation-validation/tasks.md)에 구현·검증 상태를 남깁니다.
+현재 기능 명세는 [006-compact-rpg-extraction](../specs/006-compact-rpg-extraction/spec.md)입니다.
+[계획](../specs/006-compact-rpg-extraction/plan.md)과
+[체크리스트](../specs/006-compact-rpg-extraction/tasks.md)에 구현·검증 상태를 남깁니다.
+이전 [003 유지보수](../specs/003-translation-validation/spec.md)는 `main`에 통합되어 있습니다.
 다른 worktree의 미완료 변경은 이 작업의 결과에 포함하지 않습니다.
 
 ## Spec-kit
@@ -33,8 +33,8 @@ uv pip install --python tmp/spec-kit-venv/Scripts/python.exe specify-cli==1.0.4
 전환하지 않으며, 무시되는 `.specify/feature.json`에 checkout별 선택을 보관합니다.
 
 ```powershell
-$env:SPECIFY_FEATURE = '003-translation-validation'
-$env:SPECIFY_FEATURE_DIRECTORY = Join-Path $PWD 'specs/003-translation-validation'
+$env:SPECIFY_FEATURE = '006-compact-rpg-extraction'
+$env:SPECIFY_FEATURE_DIRECTORY = Join-Path $PWD 'specs/006-compact-rpg-extraction'
 & ./.specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec -RequireTasks -IncludeTasks
 ```
 

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import * as acorn from 'acorn';
 import yaml from 'js-yaml';
-import { RpgApplyPlan, readRpgDataPath } from './applyPlan';
+import { RpgApplyPlan, readRpgDataPath, loadRpgApplyPlan, isExtractionOnlyComment } from './applyPlan';
 import { parseRpgMessageCsv, RpgTranslation } from './translation';
 import { ErrorCodes, OperationError } from '../../core/types';
 import { diagnosticLabel } from '../../core/translationLint';
@@ -62,6 +62,32 @@ export function canPreserveRpgPluginSource(script: string, expectedJson: string,
     try {
         return JSON.stringify(parsePluginOutput(script, JSON.parse(expectedJson), expectedJson, plan)) === expectedJson;
     } catch { return false; }
+}
+
+/** A container may approve only registry parameters already bound to its original source. */
+export function assertRpgPluginSourceMatchesBackup(dataRoot: string): boolean {
+    const plan = loadRpgApplyPlan(dataRoot);
+    if (!plan.backups.has('ext_plugins.json')) return false;
+    const source = readText(path.dirname(dataRoot), 'js/plugins.js');
+    const original = JSON.stringify(plan.backups.get('ext_plugins.json'));
+    if (!canPreserveRpgPluginSource(source, original, plan)) {
+        throw new OperationError(ErrorCodes.SOURCE_CHANGED, '플러그인 Backup이 원본 plugins.js와 일치하지 않습니다');
+    }
+    const ast: any = acorn.parse(source, { ecmaVersion: 'latest' });
+    const body = ast.body.filter((node: any) => node.type !== 'EmptyStatement');
+    const node = body[0];
+    const registryOnly = body.length === 1 && (
+        (node.type === 'VariableDeclaration' && node.declarations.length === 1
+            && node.declarations[0].id?.name === '$plugins')
+        || (node.type === 'ExpressionStatement' && node.expression?.type === 'AssignmentExpression'
+            && node.expression.operator === '=' && node.expression.left?.name === '$plugins')
+    );
+    if (!registryOnly) throw invalidOutput('js/plugins.js');
+    for (const bucket of plan.buckets) for (const entry of bucket.entries) {
+        if (entry.originFile !== 'ext_plugins.json' || isExtractionOnlyComment(entry)) continue;
+        if (!/^\d+\.parameters\./.test(entry.dataPath)) throw invalidOutput('ext_plugins.json', entry.dataPath);
+    }
+    return true;
 }
 
 function assertAllowedChanges(file: string, original: unknown, actual: unknown, translations: RpgTranslation[]): void {

@@ -2,6 +2,52 @@
 
 ## Current Phase
 
+2026-10-02 D24 is locally accepted. Compact extraction and all three private-corpus
+round trips pass, with source and unrelated asset hashes preserved. Final normal
+and fixed-order suites each pass 457/457; six benchmarks, actual Electron,
+rebuilt CLI package and packaged Unicode-path compact workflow pass.
+[006 evidence](specs/006-compact-rpg-extraction/verification.md).
+Prior 004/005 edits remain preserved; no commit, push or publication. Next:
+D22-05 failed-workpack comparison, then D22-06 private-game save/load.
+
+## D22-04 acceptance (historical)
+
+2026-09-30 D22-04 is locally accepted. Normal/fixed-order suites each pass
+449/449; six benchmarks, real Electron GUI and rebuilt CLI package gates pass.
+Three consecutive packaged extract/apply/isolated-probe flows preserve the
+same-name Roaming canary, original main and nested ASAR bytes, then remove all
+owned profiles. See [005 evidence](specs/005-launch-profile-isolation/verification.md)
+for an earlier transient packing slowdown and one unreproduced native exit.
+Next: D22-05 failed-workpack comparison, then D22-06 private-game save/load.
+Prior 004 edits remain preserved. No commit, push or publication.
+
+## D23 checkpoint (historical)
+
+D23 (2026-09-29), baseline `main@fc0e9ea`: official Spec-kit 004 specification,
+plan, research, contracts and task list created. Independent local review/context
+and glossary preview implementation is in the working tree. Initial RED: 4/5 new
+tests failed on unsupported review options; targeted GREEN now 7/7 plus diagnostics
+4/4 and lint 4/4. Source changes: schema/registry, shared message traversal, RPG
+review service, verify publication and diagnostic serialization. No dependencies,
+provider calls, GUI changes, game launch or release build. Final verify/order
+440/440 each and benchmark 6/6 pass. The first full run's sole failure was the
+CI contract's previous inventory literal; updated to 62 files / 433 declarations.
+Private extracted-sample report: 19,465 manifest entries, 5 dialogue rows / 2
+groups, all 47 workspace input hashes unchanged. [Evidence](specs/004-review-preparation/verification.md).
+
+## D22-04 checkpoint (2026-09-30)
+
+Spec-kit 005 implements disposable Electron profile/bootstrap isolation with
+atomic Windows job ownership. Real Electron canaries, normal/unpacked main,
+session storage, exit/timeout/cancel, forced owner death and unsupported wrappers
+have focused evidence. Final sequential gates and packaged probe verification
+pass. The shared physicalFs boundary fixes external-ASAR detection in Electron;
+the host's own schema/broker assets retain virtual fs reads. Prior 004 edits
+remain uncommitted and preserved.
+[Evidence](specs/005-launch-profile-isolation/verification.md).
+
+## D22 checkpoint (historical)
+
 D22 (2026-09-23): additional Electron corpus, RPG option fix and repaired-workspace
 recheck are complete locally on main@a9690a6. RED 2/2 → GREEN 2/2; verify/order
 433/433 each, benchmark 6/6. Private logs and copies are in tsukuru-agent/tmp/d22.

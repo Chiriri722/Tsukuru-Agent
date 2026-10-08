@@ -1,5 +1,61 @@
 # Post-v2.5 Hardening Findings
 
+## 2026-10-02 D24 compact mixed-RPG extraction
+
+The three supplied games need only top-level RPG data and optional plugin
+registry input for the existing extractor. Live2D models/runtime/media do not
+belong in a translation pack. A separate pack contract seals source inputs and
+mappings; apply regenerates this small view, then reuses full game-copy/repack
+checks. Plugin registry changes are limited to source-bound mapped parameters.
+Full-profile identifiers still need manual selection; plugin implementation
+bodies are not translation inputs.
+
+Real-game checks exposed persistent extraction event IDs and a local Windows
+Node 24.14 Unicode `cpSync` native termination. Focused regressions precede the
+shared fixes. All three source trees remain identical to their initial hashes;
+packs occupy 0.3304–1.2618% of source bytes and no-op/edit round trips pass.
+The prior 005 native-exit observation has not been causally linked to this
+reproduction. [006 evidence](specs/006-compact-rpg-extraction/verification.md).
+
+## 2026-09-30 D22-04 profile isolation
+
+Environment variables alone do not redirect Electron appData on Windows.
+A disposable ASAR bootstrap redirects app paths before unchanged CommonJS main;
+a native job owns descendants from process creation until confirmed termination.
+The packaged PowerShell script must be copied out of ASAR before execution.
+Packaged Electron also treated external game ASARs as virtual directories;
+shared physical file access fixes detection/copy/hash/cleanup while preserving
+virtual reads of the tool's own schema and broker assets. The full-flow fixture
+now runs the host CLI in actual Electron and reproduces that original failure.
+Main-module semantics require loading the original entry as main, including
+unpacked scripts. NW.js v1 had silently ignored launchProbe; it now refuses it.
+The nested-ASAR preservation regression passed without changing provenance
+Dirent handling. Final gates pass; standalone-library packing reproduced an
+earlier slowdown, then recovered without code/budget changes. One packaged
+native exit after success JSON did not recur in three subsequent full flows;
+its cause remains unknown and is not claimed fixed.
+See [005 research](specs/005-launch-profile-isolation/research.md) and
+[verification](specs/005-launch-profile-isolation/verification.md).
+
+## 2026-09-29 D23 independent feature adoption
+
+- Baseline `fc0e9ea`; only public READMEs and the user's local comparison informed
+  feature requirements. No foreign implementation source/dependency was imported.
+- Existing apply plan, manifest hashes and source message lint supply the trusted
+  mapping path. V2 verify opt-in is smaller than another operation.
+- Diagnostic redaction only covered paths. The new inline review configuration is
+  omitted wholesale from ordinary diagnostic serialization; explicit artifacts
+  retain exact private source/current text.
+- RED exposed dot-prefixed report names (`..review.json`) being mistaken for a
+  parent traversal. Fixed the shared containment predicate, covering review and
+  ordinary diagnostics while keeping real sibling output valid.
+- Candidate tests exposed diagnostic/review destination collision and delayed
+  timeout delivery after synchronous parsing. Collision emits neither report;
+  pending cancellation/timeout runs before exclusive publication.
+- Focused review 7/7, diagnostics 4/4 and shared message lint 4/4 passed. Final
+  verify/order 440/440 each, benchmark 6/6 and private-workspace preservation pass;
+  see the [004 verification document](specs/004-review-preparation/verification.md).
+
 > 2026-09-23 D22: [real-sample findings](docs/reviews/2026-09-23-electron-corpus.md).
 > Confirmed and fixed the RPG ASAR opt-in schema omission. Game copies share Electron
 > user-profile state unless isolated; launch was not attempted. Five changed workspaces

@@ -14,9 +14,51 @@
     "warnings": { "type": "array", "items": { "type": "string" } },
     "warningDetails": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
     "translationQuality": { "$ref": "#/$defs/translationQuality" },
+    "runtime": { "$ref": "#/$defs/runtime" },
     "error": { "anyOf": [{ "$ref": "#/$defs/error" }, { "type": "null" }] }
   },
   "$defs": {
+    "runtime": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "launchProbe": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/launchProbe" }] }
+      }
+    },
+    "launchProbe": {
+      "type": "object",
+      "required": ["status", "executable", "timeoutMs", "elapsedMs", "exitCode", "signal", "timedOut", "terminatedByProbe", "stdout", "stderr"],
+      "additionalProperties": true,
+      "properties": {
+        "status": { "enum": ["running", "exited-ok", "exited-error", "failed"] },
+        "executable": { "type": "string" },
+        "timeoutMs": { "type": "integer", "minimum": 0 },
+        "elapsedMs": { "type": "integer", "minimum": 0 },
+        "exitCode": { "type": ["integer", "null"] },
+        "signal": { "type": ["string", "null"] },
+        "timedOut": { "type": "boolean" },
+        "terminatedByProbe": { "type": "boolean" },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" },
+        "error": { "type": "string" },
+        "isolation": {
+          "type": "object", "additionalProperties": false,
+          "required": ["strategy", "verified", "processTreeTerminated", "cleanup"],
+          "properties": {
+            "strategy": { "const": "electron-bootstrap-v1" },
+            "verified": { "type": "boolean" },
+            "processTreeTerminated": { "type": "boolean" },
+            "cleanup": { "enum": ["removed", "retained"] }
+          }
+        }
+      },
+      "allOf": [{
+        "if": { "required": ["isolation", "status"], "properties": { "status": { "enum": ["running", "exited-ok"] } } },
+        "then": { "properties": { "isolation": { "properties": {
+          "verified": { "const": true }, "processTreeTerminated": { "const": true }, "cleanup": { "const": "removed" }
+        } } } }
+      }]
+    },
     "translationQuality": {
       "type": "object",
       "required": ["mechanical", "language", "context", "semantics", "entriesChecked", "sourcePreserved", "issueCount", "omittedCount", "issues"],

@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from './physicalFs';
 import os from 'os';
 import path from 'path';
 import type { Operation } from './schema';
@@ -21,6 +21,8 @@ export interface ResourcePreflightReport {
 }
 
 export interface ResourcePreflightOptions {
+    additionalInputPaths?: readonly string[];
+    estimatedTempBytes?: number;
     tempRoot?: string;
     signal?: AbortSignal;
     freeSpaceBytes?: (tempRoot: string) => number | null;
@@ -69,7 +71,7 @@ export function inspectResourcePreflight(
     limits: ResourceLimits = {},
     options: ResourcePreflightOptions = {},
 ): ResourcePreflightReport {
-    const pending = [path.resolve(inputPath)];
+    const pending = [path.resolve(inputPath), ...(options.additionalInputPaths ?? []).map(value => path.resolve(value))];
     let files = 0;
     let inputBytes = 0;
     while (pending.length > 0) {
@@ -94,7 +96,7 @@ export function inspectResourcePreflight(
             limitExceeded('maxInputBytes', limits.maxInputBytes, inputBytes);
         }
     }
-    const estimatedTempBytes = Math.min(Number.MAX_SAFE_INTEGER, inputBytes * tempMultiplier(operation));
+    const estimatedTempBytes = options.estimatedTempBytes ?? Math.min(Number.MAX_SAFE_INTEGER, inputBytes * tempMultiplier(operation));
     if (limits.maxTempBytes !== undefined && estimatedTempBytes > limits.maxTempBytes) {
         limitExceeded('maxTempBytes', limits.maxTempBytes, estimatedTempBytes);
     }

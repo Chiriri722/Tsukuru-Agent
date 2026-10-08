@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "rpg-translation-pack",
+  "engine": "rpgmz",
+  "extraction": { "ext_plugin": false, "ext_src": false, "ext_javascript": false, "ext_note": false, "exJson": false, "autoline": false },
+  "source": {
+    "type": "directory",
+    "engineRoot": "project",
+    "inputs": [{ "path": "project/data/Actors.json", "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945" }]
+  },
+  "immutable": [
+    { "path": ".extracteddata", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    { "path": "Backup/Actors.json", "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945" }
+  ]
+}

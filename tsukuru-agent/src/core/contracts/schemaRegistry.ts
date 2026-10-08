@@ -1,4 +1,4 @@
-export type ContractKind = 'request' | 'result' | 'manifest' | 'container-provenance' | 'engine-options';
+export type ContractKind = 'request' | 'result' | 'manifest' | 'container-provenance' | 'engine-options' | 'review' | 'rpg-translation-pack';
 
 export interface ContractValidationError {
     path: string;
@@ -21,6 +21,8 @@ const requestV2 = require('./schemas/v2/request.schema.json') as JsonSchema;
 const resultV2 = require('./schemas/v2/result.schema.json') as JsonSchema;
 const manifestV2 = require('./schemas/v2/manifest.schema.json') as JsonSchema;
 const engineOptionsV2 = require('./schemas/v2/engine-options.schema.json') as JsonSchema;
+const reviewV1 = require('./schemas/v1/review.schema.json') as JsonSchema;
+const rpgPackV1 = require('./schemas/v1/rpg-translation-pack.schema.json') as JsonSchema;
 
 export const contractSchemaRegistry: Readonly<Record<string, JsonSchema>> = Object.freeze({
     'request:1': requestV1,
@@ -31,6 +33,8 @@ export const contractSchemaRegistry: Readonly<Record<string, JsonSchema>> = Obje
     'manifest:2': manifestV2,
     'container-provenance:1': provenanceV1,
     'engine-options:2': engineOptionsV2,
+    'review:1': reviewV1,
+    'rpg-translation-pack:1': rpgPackV1,
 });
 
 function typeMatches(type: string, value: unknown): boolean {

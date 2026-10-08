@@ -1,6 +1,6 @@
 # Tsukuru Agent
 
-> **작업 재개 안내 (2026-09-13):** D21 번역 적용 무결성 개선을 반영했습니다. [현재 상태](docs/current-state.md), [Task Plan](task_plan.md), [검증 기록](specs/003-translation-validation/verification.md), [내부 문서 안내](docs/README.md)에서 구현과 검증 범위를 확인하세요.
+> **작업 재개 안내 (2026-10-02):** 작은 RPG 번역 작업팩 추출의 로컬 구현·검증을 완료했습니다. 세 게임의 추출·재적용과 원본 보존을 확인했습니다. [현재 상태](docs/current-state.md), [Task Plan](task_plan.md), [006 검증](specs/006-compact-rpg-extraction/verification.md), [내부 문서 안내](docs/README.md)에서 범위와 후속 작업을 확인하세요.
 
 RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스트 추출·패치·적용을 자동화하는 **Headless CLI**입니다. Electron `app.asar`와 NW.js `package.nw` 작업본도 원본 보존 방식으로 처리합니다.
 [Tsukuru Extractor](https://github.com/gramedcart/tsukuru_extractor) 2.3.0(GPLv3)의 추출·적용 로직을 UI 비의존 서비스 계층으로 리팩터링하고, 에이전트·CI 환경에서 호출할 수 있는 JSON 요청/응답 CLI를 추가했습니다. 기존 Electron GUI도 동일한 서비스 계층 위에서 동작합니다.
@@ -14,10 +14,12 @@ RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스�
 - **manifest 기반 번역 워크플로**: 안정 ID·원문 SHA-256·매핑 범위·경로를 쓰기 전에 검사합니다. 해시 충돌은 전체 수와 상한이 있는 파일·ID 목록으로 보고합니다.
 - **관련 산출물의 원자적 반영**: patch와 RPG 사전 적용을 staging에서 검증한 뒤 반영하며 후속 오류·취소·교체 실패 시 기존 작업본과 출력을 복구합니다.
 - **원문 기반 번역 검사**: 제어코드·자리표시자·새 빈 값·U+FFFD 손상을 차단하고 출력값과 허용 변경 경로를 재확인합니다. `translationQuality`는 기계적 무결성, 언어·메시지 문맥 감수, 미실행 의미 검증을 구분합니다.
+- **로컬 번역 준비**: RPG `verify.options.review`로 원문 이벤트 문맥·명시된 화자·현재 번역·해시와 관련 용어집을 별도 파일에서 확인합니다. 외부 서비스 호출이나 자동 번역은 수행하지 않습니다.
 - **원본 보존**: MV/MZ는 `Completed`로 출력하고 Wolf/Tyrano/GDevelop 및 ASAR/NW.js는 별도 게임 복사본에만 적용
 - **에이전트 친화적**: stdout은 최종 결과 JSON 전용, 모든 로그는 stderr
 - **기존 GUI 산출물과 호환**: `Extract` · `Backup` · `Completed` · `.extracteddata` · TXT 형식 유지
 - **휴대용 RPG 작업 팩 지원**: 원본 JSON 없이 `Backup` + `Extract/manifest.json` + `.extracteddata`만 옮긴 외부 작업 폴더도 자동 탐지하고, `Backup` JSON 구조·manifest 매핑을 검증한 뒤 `Completed`로 적용
+- **작은 RPG 번역 작업팩**: v2 `translationPack:true`는 MV/MZ 폴더·Electron ASAR에서 번역 입력만 선택한다. Live2D·미디어·런타임 없이 편집·검사하고, 원본을 다시 지정해 별도 게임 복사본에 적용한다.
 - **v2.5 컨테이너 진단**: Electron `resources/app.asar`와 NW.js `package.nw` 내부 nested engine을 confidence와 함께 보고하며 비정상 archive 엔트리를 별도 계수
 - **v2.5 검증 점수**: extraction/mapping/reinsertion/protected-script/container 5축 점수, 파일·텍스트·보호 스크립트 변형량, stderr human summary 제공
 - **원본 구조 검증**: MV/MZ JSON root·DB ID/index·핵심 데이터/맵 참조·manifest line/hash/dataPath, Wolf 바이너리 offset·길이 prefix·널 종료·인코딩·원문 해시, Tyrano KS/TJS 토큰과 UTF-8/Shift_JIS, GDevelop projectData JSON Pointer/source snapshot을 교차 검증
@@ -31,7 +33,7 @@ RPG Maker MV/MZ · Wolf RPG · TyranoScript · GDevelop 게임의 번역 텍스�
 ## CLI 빠른 시작
 
 유지보수 작업은 [Spec-kit·플러그인 워크플로](docs/development-workflow.md)와
-[진행 중인 명세](specs/003-translation-validation/spec.md)에서 이어갑니다.
+[최신 기능 명세](specs/006-compact-rpg-extraction/spec.md)에서 이어갑니다.
 
 요구 사항: Node.js 22.x 또는 24.x, npm 10.x 또는 11.x
 
@@ -65,6 +67,47 @@ Get-Content request.json -Raw | node .build/app/src/cli/main.js run --request -
   "patches": []
 }
 ```
+
+### 작은 RPG 번역 작업팩 만들기
+
+v2 `extract`에 `options.translationPack: true`와 별도 `outputPath`를 지정하면
+일반 MV/MZ 폴더와 Electron ASAR에서 필요한 데이터만 읽습니다. 이미지·음원·Live2D
+모델·모션·런타임을 임시 폴더에도 펼치지 않습니다. 결과는 `Backup`, `Extract`,
+`.extracteddata`, `.tsukuru-rpg-pack.json` 네 항목으로 이루어진 독립 작업팩입니다.
+[완전한 요청 예제](tsukuru-agent/src/core/contracts/examples/request-v2-translation-pack.json)를 사용할 수 있습니다.
+
+`profile`은 추출 내용의 범위이며 작업팩 크기 옵션과 별개입니다. `standard`로 시작하고,
+플러그인 매개변수·이벤트 명령/스크립트가 필요하면 `full` 또는 기존 `advanced` 옵션을
+명시하세요. 확장 결과에는 모델명·모션명·파일명과 내부 명령도 섞이므로 통째로 자동
+번역하면 안 됩니다. 플러그인 구현 JS 내부의 하드코딩된 UI는 이 기능의 추출 범위가 아닙니다.
+
+이동한 작업팩도 `verify`·`patch`·원문 문맥 보고서를 사용할 수 있습니다. `apply`에는
+원본 게임의 `options.containerSourcePath`와 별도 `outputPath`를 지정합니다. 원본에서
+작은 추출 데이터를 다시 만들어 원문·매핑을 확인한 뒤 게임 복사본에 적용합니다.
+플러그인 등록 목록은 원본과 대조하고 정확한 매개변수 변경만 허용합니다.
+ASAR 무결성·재포장 opt-in은 기존대로 적용됩니다. 재적용에는 전체 게임 복사 용량이 필요합니다.
+
+작업팩 모드는 이미지/음원 복호화·YAML 게임 출력과 함께 사용하지 않습니다. 작업팩의
+원문/매핑 복구는 원본에서 재추출하며, 기존 레거시 팩의 `recover`는 그대로입니다.
+`package.nw` 아카이브는 기존 전체 추출 경로를 사용하세요. 이 옵션을 생략한 기존 요청과
+GUI 추출은 종전 방식으로 동작합니다. [작업팩 계약](specs/006-compact-rpg-extraction/contracts/translation-pack.md).
+
+### RPG 원문 문맥·용어집 미리보기
+
+추출된 MV/MZ 작업본에 v2 `verify`를 실행하면서 `options.review`를 지정합니다.
+완전한 요청 예제는 [request-v2-review.json](tsukuru-agent/src/core/contracts/examples/request-v2-review.json)에 있습니다.
+기본 100개 항목이며 `offset`/`limit`로 페이지를 선택하거나 `entryIds`로 최대 500개 ID를 지정합니다.
+`preview`를 생략하면 문맥 보고서만 생성합니다. 포함할 때는 원문·번역 언어를 명시합니다.
+
+보고서 경로는 프로젝트·작업본·비교 출력 밖의 **새 파일**이어야 합니다.
+보고서에는 게임 본문이 포함되므로 로컬에서 검토하세요. stdout에는 경로와 건수만 반환하며
+일반 진단 파일에서는 review 설정을 제외합니다. [계약과 제한](specs/004-review-preparation/contracts/review.md)을 확인하세요.
+
+용어집은 ID별 번역 사전과 별개입니다. 원문·출력된 문맥에 있는 용어만 선택하고
+`user > manual > derived` 순위와 긴 용어 우선을 적용합니다. 메시지 문맥은 그룹당 50줄,
+용어는 기본 32개·최대 64개로 제한하며 생략 수를 표시합니다. 결과는 원문/현재 텍스트와
+문맥·용어집의 해시를 포함한 오프라인 준비 자료입니다. 의미 승인이나 patch/apply 요청이 아닙니다.
+매핑 손상은 보고서 생성을 막고, 기계적 번역 오류는 기존 실패 판정을 유지하면서 보고서를 제공합니다.
 
 ### 결과 예시 (stdout)
 
@@ -171,9 +214,11 @@ ASAR 게임을 `extract`하면 작업본 루트에 `.tsukuru-container.json`이 
 
 `containerSourcePath`는 provenance에 절대 원본 경로를 저장하지 않기 위한 명시적 권한입니다. CLI는 원본 archive 경로·SHA-256·엔진 루트·파일 목록을 교차 검증하고, staging에서 apply한 뒤 번역용 `Extract`/`Backup`/`Completed`/`.extracteddata`를 제외해 pack합니다. 필수 entry, 전체 파일 목록, unpacked 표식, 보호 스크립트, 런타임 무결성과 원본 해시가 모두 맞아야 최종 출력 디렉터리로 전환됩니다. 기존 출력이 있으면 기본적으로 거부하며 의도적인 교체에만 `options.force: true`를 사용합니다.
 
-정적 fuse·ASAR 해시·코드 서명 검사는 항상 실행됩니다. `launchProbe`는 추출된 Electron ASAR/NW.js 컨테이너 작업본의 apply에서만 사용할 수 있는 명시적 선택 기능이며 기본값은 `false`, 제한 시간은 250~15000ms입니다. loose directory apply에서 요청하면 dictionary patch나 출력 생성 전에 `E_NOT_IMPLEMENTED`로 거부합니다. 활성화하면 완성본과 분리된 임시 복사본에서 실행 파일을 관찰하고 `running` 또는 조기 정상 종료만 통과시킵니다. Windows에서는 관찰 종료 시 NW.js/Electron 자식 프로세스 트리까지 정리합니다. 네트워크·입력 자동화는 하지 않으며 실제 플레이테스트를 대체하지 않습니다.
+정적 fuse·ASAR 해시·코드 서명 검사는 항상 실행됩니다. `launchProbe`는 Windows 10 이상에서 추출된 Electron ASAR 작업본의 apply에 사용할 수 있는 선택 기능이며 기본값은 `false`, 관찰 시간은 250~15000ms입니다. loose directory와 NW.js apply에서는 실행 검증을 지원하지 않습니다. 요청은 계약 검사 또는 `E_NOT_IMPLEMENTED`로 출력 생성 전에 거부합니다. 실행 준비·종료 확인에는 별도 제한 시간이 적용됩니다.
 
-현재 실행 프로브는 Electron의 AppData 사용자 프로필까지 격리하지 않습니다. 게임 복사본도 같은 세이브·설정을 사용할 수 있으므로 해당 저장 방식을 쓰는 게임은 프로필 격리를 확인하기 전 `launchProbe`를 켜지 마십시오. 신규 실물 샘플의 정적 검사·재포장 결과와 후속 작업은 [D22 검증 기록](docs/reviews/2026-09-23-electron-corpus.md)에 있습니다.
+프로브마다 게임 복사본과 빈 프로필을 만들고, 원래 CommonJS 진입점 실행 전에 Electron의 `home/appData/userData/sessionData/temp/logs/crashDumps` 및 관련 환경변수를 변경·확인합니다. 기본 세션과 `persist:` 세션도 임시 프로필에 저장됩니다. Windows Job Object로 자식 프로세스까지 종료한 후 프로필을 제거하며, 격리·종료·정리 중 하나라도 확인하지 못하면 apply를 실패 처리합니다. `runtime.launchProbe.isolation`에 확인 결과를 반환합니다.
+
+인식 가능한 Electron fuse와 비활성 ASAR integrity, 내부 CommonJS 진입점이 필요합니다. HTML·ESM·미확인 런타임·integrity 활성 패키지는 실행 전에 거부하며 fuse를 변경하지 않습니다. 원본과 최종 산출물의 진입점은 그대로 유지합니다. 이 기능은 임의 절대 경로 쓰기·native API·명시적 `session.fromPath()`까지 막는 OS sandbox가 아닙니다. 실제 게임의 저장 방식 검토와 저장/불러오기 검증은 별도이며 게임 자체의 네트워크 접근도 차단하지 않습니다. [격리 계약](specs/005-launch-profile-isolation/contracts/launch-probe.md)과 [검증 기록](specs/005-launch-profile-isolation/verification.md)을 참고하세요.
 
 ## 작업 설명 (CLI 계약)
 
@@ -227,7 +272,7 @@ npm ci              # CI·릴리스: lockfile 그대로 재현
 npm run compile     # TypeScript와 정적 자산 → .build/app staging
 npm run styles      # SCSS → 배포 CSS 재생성
 npm run typecheck   # tsc --noEmit
-npm test            # node:test (61개 추적 테스트 파일)
+npm test            # node:test (inventory는 아래 목록 참조)
 npm run test:electron # Windows 실제 sandbox preload/IPC smoke
 npm run verify      # version + typecheck + style/complexity/test/generated/inventory/supply-chain drift
 npm audit --omit=dev # 릴리스용 프로덕션 의존성 감사
@@ -241,7 +286,7 @@ npm run agent -- run --request request.json
 
 ## 테스트
 
-`npm test`는 61개 테스트 파일에서 현재 426개 검사를 실행합니다. 이 inventory 수치는 top-level `test(...)` 선언 기준이며 nested subtest는 실행 결과에서 별도로 집계됩니다. 테스트는 책임별 디렉터리로 나뉘며 `test/helpers/`에는 공유 fixture·snapshot·INV-01~06 추적표만 둡니다. `npm run test:coverage`는 같은 suite의 전체 내장 coverage를 측정하고, `npm run test:coverage:core`는 안정화된 schema/path/transaction 경계에 core coverage 하한선 line 70%, branch 50%, function 85%를 적용합니다. `npm run test:order`는 고정 seed로 파일 순서를 섞어 재현 가능한 순서 의존성 검사를 수행합니다. Windows CI의 `npm run test:electron`은 실제 Electron에서 sandbox preload와 양방향 IPC뿐 아니라 RPG/Wolf 추출·적용 요청, 설정 저장·닫기, 화면 전환을 추가 검증합니다:
+`npm test`는 64개 테스트 파일에서 현재 448개 검사를 실행합니다. 이 inventory 수치는 top-level `test(...)` 선언 기준이며 nested subtest는 실행 결과에서 별도로 집계됩니다. 테스트는 책임별 디렉터리로 나뉘며 `test/helpers/`에는 공유 fixture·snapshot·INV-01~06 추적표만 둡니다. `npm run test:coverage`는 같은 suite의 전체 내장 coverage를 측정하고, `npm run test:coverage:core`는 안정화된 schema/path/transaction 경계에 core coverage 하한선 line 70%, branch 50%, function 85%를 적용합니다. `npm run test:order`는 고정 seed로 파일 순서를 섞어 재현 가능한 순서 의존성 검사를 수행합니다. Windows CI의 `npm run test:electron`은 실제 Electron에서 sandbox preload와 양방향 IPC뿐 아니라 RPG/Wolf 추출·적용 요청, 설정 저장·닫기, 화면 전환을 추가 검증합니다:
 
 - `test/contract/build-chain.test.js` — staging compile, target metadata, output 정리 allowlist, 패키지 입력 격리
 - `test/contract/ci-contract.test.js` — 지원 런타임, CI workflow, 계층 구조, 문서 inventory, generated/package drift 계약
@@ -270,7 +315,10 @@ npm run agent -- run --request request.json
 - `test/integration/manifest-recovery.test.js` — 빈 값·중복 ID·대형 mapping manifest 복구 경계
 - `test/integration/patch-mappings.test.js` — 누락 좌표·미수정 이웃 중첩·경로 별칭 거부, 실패 시 바이트 보존, v1 읽기 호환
 - `test/integration/project-convert.test.js` — 프로젝트 변환의 확장자 없는 파일 보존, 경로 경계, 원자적 rollback
+- `test/integration/rpg-review.test.js` — 원문 문맥·용어집·계약·비공개 출력·취소·원본 보존
 - `test/integration/rpg-smoke.test.js` — MV/MZ extract→번역→apply 합성 round-trip과 custom output conflict·atomic force 교체
+- `test/integration/launch-profile.test.js` — 실제 Electron 프로필·세션 격리, 기존 세이브 보존, 자식 프로세스 종료와 실패 거부
+- `test/integration/rpg-translation-pack.test.js` — 선택 추출, Live2D 자산 보존, 원본 재연결, 매핑 인증과 취소 rollback
 - `test/integration/runtime.test.js` — Electron fuse, PE 내장 ASAR 해시, Authenticode, 비ASCII 경로, opt-in launch probe
 - `test/integration/translation-dictionary.test.js` — 대형·중복·stale hash·빈 값 번역 사전 경계
 - `test/integration/tyrano.test.js` — Tyrano KS span, source snapshot, 보호 경계와 Shift_JIS 손실 차단

@@ -1,22 +1,29 @@
 import crypto from 'crypto';
-import fs from 'fs';
+import { isDeepStrictEqual } from 'util';
+import fs from '../../core/physicalFs';
 import os from 'os';
 import path from 'path';
 import * as asar from '@electron/asar';
 import { extractContainer, inspectContainer, packContainer, verifyContainerOutput } from '../../core/container';
+import { copyTreeWithoutLinks as copyContainerTree } from '../../core/container/fileSystemPolicy';
 import {
     CONTAINER_PROVENANCE_FILE,
     ContainerProvenance,
+    createContainerProvenance,
     readContainerProvenance,
 } from '../../core/containerProvenance';
 import { AgentRequest, AgentResult } from '../../core/schema';
-import { inspectElectronRuntime, runLaunchProbe } from '../../core/runtimeDiagnostics';
+import { inspectElectronRuntime } from '../../core/runtimeDiagnostics';
+import { runIsolatedElectronProbe } from '../../core/electronProfileProbe';
 import { loadRpgTranslationDictionary, TranslationDictionaryOutcome } from '../../core/translationDictionary';
 import { ErrorCodes, OperationError } from '../../core/types';
 import { diffFileMaps, isProtectedPath, snapshotDirectory } from '../../core/validator';
 import { WorkspaceTransaction } from '../../core/workspaceTransaction';
 import { GDevelopService } from '../../js/gdevelop/GDevelopService';
 import { RpgMakerService, assertRpgApplyOutputSafe } from '../../js/rpgmv/RpgMakerService';
+import { assertRpgPluginSourceMatchesBackup } from '../../js/rpgmv/outputValidation';
+import { assertRpgPackSourceUnchanged, rpgPackImmutableFiles, RpgTranslationPack } from '../../core/rpgTranslationPack';
+import { prepareRpgTranslationPack } from './extract';
 import { TyranoService } from '../../js/tyrano/TyranoService';
 import { WolfService } from '../../js/wolf/WolfService';
 import { extractionWorkspacePath, gdevelopProjectRoot, tyranoProjectRoot } from '../enginePaths';
@@ -121,30 +128,14 @@ function copyArchiveWorkingFiles(
 
 function copyTreeWithoutLinks(source: string, target: string, excludedRoots: readonly string[] = []): void {
     const exclusions = excludedRoots.map((candidate) => path.resolve(candidate));
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.cpSync(source, target, {
-        recursive: true,
-        preserveTimestamps: true,
-        filter: (candidate) => {
-            const stat = fs.lstatSync(candidate);
-            if (stat.isSymbolicLink()) {
-                throw new OperationError(
-                    ErrorCodes.VERIFY_FAILED,
-                    '심볼릭 링크/정션이 있는 게임 복사본은 만들 수 없습니다',
-                    { path: candidate },
-                );
-            }
-            if (!stat.isDirectory() && !stat.isFile()) {
-                throw new OperationError(
-                    ErrorCodes.VERIFY_FAILED,
-                    '일반 파일/디렉터리가 아닌 항목이 있는 게임 복사본은 만들 수 없습니다',
-                    { path: candidate },
-                );
-            }
-            if (exclusions.some((excluded) => isWithinPath(excluded, candidate))) return false;
-            return true;
-        },
-    });
+    try {
+        copyContainerTree(source, target, {
+            preserveTimestamps: true,
+            filter: candidate => !exclusions.some(excluded => isWithinPath(excluded, candidate)),
+        });
+    } catch (error) {
+        throw new OperationError(ErrorCodes.VERIFY_FAILED, '게임 복사본을 만들 수 없습니다', { cause: String(error) });
+    }
 }
 
 function copyApplyArtifacts(workingData: string, stagingData: string): void {
@@ -436,15 +427,16 @@ interface AsarEngineApplyResult {
     dictionaryOutcome?: ReturnType<typeof applyRpgTranslationDirectory>;
 }
 
-async function applyAsarEngine(
+async function applyContainerEngine(
     request: AgentRequest,
     detected: DetectedProject,
     result: AgentResult,
-    provenance: ContainerProvenance,
+    engineRelativeRoot: string,
     operationRuntime: OperationRuntime,
     engineRoot: string,
     workingEngineRoot: string,
     engineOutput: string,
+    compactDataDir?: string,
 ): Promise<AsarEngineApplyResult> {
     if (detected.format === 'gdevelop') {
         const extractArtifacts = path.join(workingEngineRoot, '_Extract');
@@ -467,13 +459,17 @@ async function applyAsarEngine(
             appliedFiles: applied.appliedFiles,
             validation: applied.validation,
             approvedProtectedPaths: new Set(applied.approvedCodeFiles.map((file) => normalizeRelative(
-                path.posix.join(provenance.engine.root, file),
+                path.posix.join(engineRelativeRoot, file),
             ))),
         };
     }
 
-    const dataDir = path.join(engineRoot, 'data');
-    copyApplyArtifacts(path.join(workingEngineRoot, 'data'), dataDir);
+    const dataDir = compactDataDir ?? path.join(engineRoot, 'data');
+    copyApplyArtifacts(compactDataDir ? request.projectPath : path.join(workingEngineRoot, 'data'), dataDir);
+    if (compactDataDir && !isDeepStrictEqual(rpgPackImmutableFiles(dataDir), detected.translationPack?.immutable)) {
+        throw new OperationError(ErrorCodes.SOURCE_CHANGED, '복사 중 작업팩 원문/매핑이 변경되었습니다');
+    }
+    const approvedPlugin = assertRpgPluginSourceMatchesBackup(dataDir);
     const translationDirectory = typeof request.options.translationDirectory === 'string'
         ? request.options.translationDirectory
         : undefined;
@@ -489,7 +485,7 @@ async function applyAsarEngine(
     });
     const completed = path.join(dataDir, 'Completed');
     attachTranslationQuality(result, report.translationQuality);
-    overlayDirectory(path.join(completed, 'data'), dataDir);
+    overlayDirectory(path.join(completed, 'data'), path.join(engineRoot, 'data'));
     overlayDirectory(path.join(completed, 'js'), path.join(engineRoot, 'js'));
     for (const artifact of ['Extract', 'Backup', 'Completed', '.extracteddata']) {
         fs.rmSync(path.join(dataDir, artifact), { recursive: true, force: true });
@@ -498,7 +494,7 @@ async function applyAsarEngine(
         appliedFiles: report.appliedFiles.length,
         elapsedMs: report.elapsedMs,
         validation: report.validation,
-        approvedProtectedPaths: new Set<string>(),
+        approvedProtectedPaths: new Set<string>(approvedPlugin ? [path.posix.join(engineRelativeRoot, 'js/plugins.js')] : []),
         dictionaryOutcome,
     };
 }
@@ -510,6 +506,8 @@ async function runElectronApplyLaunchProbe(
     runtime: ElectronRuntimeReport,
     outputStaging: string,
     result: AgentResult,
+    archive: string,
+    operationRuntime: OperationRuntime,
 ): Promise<void> {
     if (request.options.launchProbe !== true) return;
     if (!runtime.executable) {
@@ -522,12 +520,15 @@ async function runElectronApplyLaunchProbe(
     const executableRelative = path.relative(outputStaging, runtime.executable);
     const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-agent-launch-'));
     const probePayload = path.join(probeRoot, 'payload');
+    let isolationOwnsRoot = false;
     try {
         copyTreeWithoutLinks(outputStaging, probePayload);
-        runtime.launchProbe = await runLaunchProbe(
+        isolationOwnsRoot = true;
+        runtime.launchProbe = await runIsolatedElectronProbe(
             path.join(probePayload, executableRelative),
-            [],
-            { timeoutMs: request.options.launchTimeoutMs as number | undefined },
+            path.join(probePayload, path.relative(outputStaging, archive)),
+            probeRoot,
+            { timeoutMs: request.options.launchTimeoutMs as number | undefined, signal: operationRuntime.signal },
         );
         if (runtime.launchProbe.status === 'failed' || runtime.launchProbe.status === 'exited-error') {
             throw new OperationError(
@@ -537,17 +538,19 @@ async function runElectronApplyLaunchProbe(
             );
         }
     } finally {
-        cleanupTemporaryPath(probeRoot, 'Electron 실행 프로브 임시 경로', result);
+        if (!isolationOwnsRoot) cleanupTemporaryPath(probeRoot, 'Electron 실행 프로브 임시 경로', result);
+        else if (runtime.launchProbe?.isolation?.cleanup !== 'removed') {
+            result.warnings.push(`실행 프로브의 종료 또는 정리를 확인하지 못해 임시 경로를 보존했습니다: ${probeRoot}`);
+        }
     }
 }
 
-async function applyAsarWorking(
+function resolveAsarApplySource(
     request: AgentRequest,
     detected: DetectedProject,
-    result: AgentResult,
-    provenance: ContainerProvenance,
-    operationRuntime: OperationRuntime,
-): Promise<void> {
+    provenance: ContainerProvenance | undefined,
+    compactPack?: RpgTranslationPack,
+) {
     if (detected.format !== 'rpgmv' && detected.format !== 'rpgmz' && detected.format !== 'gdevelop') {
         throw new OperationError(
             ErrorCodes.FORMAT_MISMATCH,
@@ -579,31 +582,51 @@ async function applyAsarWorking(
         );
     }
     const sourceArchiveRelative = normalizeRelative(path.relative(sourceInfo.rootPath, sourceInfo.archivePath));
-    if (sourceArchiveRelative !== provenance.archiveRelativePath
-        || sourceInfo.archive.sha256 !== provenance.archiveSha256) {
-        throw new OperationError(
-            ErrorCodes.SOURCE_CHANGED,
-            '지정한 원본 ASAR가 작업본 provenance와 일치하지 않습니다',
-            {
-                expectedPath: provenance.archiveRelativePath,
-                actualPath: sourceArchiveRelative,
-                expectedSha256: provenance.archiveSha256,
-                actualSha256: sourceInfo.archive.sha256,
-            },
-        );
+    if (compactPack && (sourceInfo.archive.sha256 !== compactPack.source.archiveSha256
+        || sourceArchiveRelative !== compactPack.source.archivePath
+        || sourceInfo.engine.type !== compactPack.engine || sourceInfo.engine.root !== compactPack.source.engineRoot)) {
+        throw new OperationError(ErrorCodes.SOURCE_CHANGED, '재연결 후 원본 ASAR가 변경되었습니다');
     }
-    if (sourceInfo.engine.type !== provenance.engine.type || sourceInfo.engine.root !== provenance.engine.root) {
-        throw new OperationError(
-            ErrorCodes.SOURCE_CHANGED,
-            '원본 ASAR 엔진 프로파일이 작업본 provenance와 일치하지 않습니다',
-            { expected: provenance.engine, actual: sourceInfo.engine },
-        );
-    }
-    if (!equalPathLists(sourceInfo.archive.fileEntries, provenance.archiveFiles)
-        || !equalPathLists(sourceInfo.archive.unpackedEntries, provenance.unpackedFiles)) {
-        throw new OperationError(ErrorCodes.SOURCE_CHANGED, '원본 ASAR 파일 목록이 작업본 provenance와 일치하지 않습니다');
+    if (provenance) {
+        if (sourceArchiveRelative !== provenance.archiveRelativePath
+            || sourceInfo.archive.sha256 !== provenance.archiveSha256) {
+            throw new OperationError(
+                ErrorCodes.SOURCE_CHANGED,
+                '지정한 원본 ASAR가 작업본 provenance와 일치하지 않습니다',
+                {
+                    expectedPath: provenance.archiveRelativePath,
+                    actualPath: sourceArchiveRelative,
+                    expectedSha256: provenance.archiveSha256,
+                    actualSha256: sourceInfo.archive.sha256,
+                },
+            );
+        }
+        if (sourceInfo.engine.type !== provenance.engine.type || sourceInfo.engine.root !== provenance.engine.root) {
+            throw new OperationError(
+                ErrorCodes.SOURCE_CHANGED,
+                '원본 ASAR 엔진 프로파일이 작업본 provenance와 일치하지 않습니다',
+                { expected: provenance.engine, actual: sourceInfo.engine },
+            );
+        }
+        if (!equalPathLists(sourceInfo.archive.fileEntries, provenance.archiveFiles)
+            || !equalPathLists(sourceInfo.archive.unpackedEntries, provenance.unpackedFiles)) {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, '원본 ASAR 파일 목록이 작업본 provenance와 일치하지 않습니다');
+        }
     }
 
+    return sourceInfo;
+}
+
+async function applyAsarWorking(
+    request: AgentRequest,
+    detected: DetectedProject,
+    result: AgentResult,
+    provenance: ContainerProvenance | undefined,
+    operationRuntime: OperationRuntime,
+    compact?: { dataDir: string; pack: RpgTranslationPack },
+): Promise<void> {
+    const compactDataDir = compact?.dataDir;
+    const sourceInfo = resolveAsarApplySource(request, detected, provenance, compact?.pack);
     const workingRoot = path.resolve(request.projectPath);
     const output = containerApplyOutputPath(request, sourceInfo.rootPath, workingRoot);
     const packStaging = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-agent-pack-'));
@@ -616,8 +639,14 @@ async function applyAsarWorking(
     });
     const outputStaging = transaction.stagingPath;
     try {
-        copyArchiveWorkingFiles(workingRoot, packStaging, provenance);
-        verifyProtectedWorkingFiles(workingRoot, sourceInfo.archivePath, provenance);
+        if (compactDataDir) {
+            await extractContainer(sourceInfo, packStaging);
+            provenance = createContainerProvenance(sourceInfo, packStaging);
+        } else {
+            if (!provenance) throw new OperationError(ErrorCodes.CONTAINER_PROVENANCE_INVALID, 'ASAR 작업본 provenance가 없습니다');
+            copyArchiveWorkingFiles(workingRoot, packStaging, provenance);
+            verifyProtectedWorkingFiles(workingRoot, sourceInfo.archivePath, provenance);
+        }
         const before = snapshotDirectory(packStaging);
         const engineRoot = path.join(packStaging, ...provenance.engine.root.split('/').filter(Boolean));
         const workingEngineRoot = path.join(workingRoot, ...provenance.engine.root.split('/').filter(Boolean));
@@ -627,15 +656,16 @@ async function applyAsarWorking(
             validation,
             approvedProtectedPaths,
             dictionaryOutcome,
-        } = await applyAsarEngine(
+        } = await applyContainerEngine(
             request,
             detected,
             result,
-            provenance,
+            provenance.engine.root,
             operationRuntime,
             engineRoot,
             workingEngineRoot,
             engineOutput,
+            compactDataDir,
         );
         fs.rmSync(path.join(packStaging, CONTAINER_PROVENANCE_FILE), { force: true });
 
@@ -679,7 +709,7 @@ async function applyAsarWorking(
                 runtime,
             );
         }
-        await runElectronApplyLaunchProbe(request, runtime, outputStaging, result);
+        await runElectronApplyLaunchProbe(request, runtime, outputStaging, result, outputArchive, operationRuntime);
         if (sha256File(sourceInfo.archivePath) !== provenance.archiveSha256) {
             throw new OperationError(
                 ErrorCodes.SOURCE_CHANGED,
@@ -939,12 +969,70 @@ export const looseApplyHandlerRegistry: Readonly<Record<LooseApplyFamily, LooseA
     gdevelop: applyLooseGdevelop,
 });
 
+async function applyRpgTranslationPack(
+    request: AgentRequest, detected: DetectedProject, result: AgentResult, runtime: OperationRuntime,
+    pack: RpgTranslationPack,
+): Promise<void> {
+    const sourcePath = request.options.containerSourcePath;
+    if (!request.outputPath || typeof sourcePath !== 'string' || sourcePath.trim() === '') {
+        throw new OperationError(ErrorCodes.REQUEST_INVALID, '번역 작업팩 apply에는 원본 containerSourcePath와 별도 outputPath가 필요합니다');
+    }
+    if (request.options.useYaml === true) {
+        throw new OperationError(ErrorCodes.REQUEST_INVALID, '번역 작업팩의 게임 복사본 적용은 JSON 출력만 지원합니다');
+    }
+    const info = inspectContainer(sourcePath);
+    if (info.type !== pack.source.type || info.engine.type !== pack.engine || info.engine.root !== pack.source.engineRoot
+        || (info.archive && (info.archive.sha256 !== pack.source.archiveSha256
+            || normalizeRelative(path.relative(info.rootPath, info.archivePath!)) !== pack.source.archivePath))) {
+        throw new OperationError(ErrorCodes.SOURCE_CHANGED, '지정한 원본이 번역 작업팩과 일치하지 않습니다');
+    }
+    const output = containerApplyOutputPath(request, info.rootPath, request.projectPath);
+    if (info.type !== 'electron-asar' && request.options.launchProbe === true) {
+        throw new OperationError(ErrorCodes.NOT_IMPLEMENTED, '격리 실행 프로브는 Electron ASAR에서만 지원합니다');
+    }
+    const engineStage = fs.mkdtempSync(path.join(os.tmpdir(), 'tsukuru-rpg-reconnect-'));
+    try {
+        const prepared = await prepareRpgTranslationPack(info, pack.extraction, engineStage, runtime);
+        if (!isDeepStrictEqual(prepared.pack, pack)) {
+            throw new OperationError(ErrorCodes.SOURCE_CHANGED, '작업팩 원문/매핑이 현재 원본에서 재생성한 결과와 일치하지 않습니다');
+        }
+        if (info.type === 'electron-asar') {
+            await applyAsarWorking(request, detected, result, undefined, runtime, { dataDir: prepared.dataDir, pack });
+            return;
+        }
+        const transaction = new WorkspaceTransaction({ outputPath: output, force: request.options.force === true, signal: runtime.signal });
+        try {
+            const before = snapshotDirectory(info.rootPath);
+            copyTreeWithoutLinks(info.rootPath, transaction.stagingPath);
+            const engineRoot = path.join(transaction.stagingPath, info.engine.root);
+            const applied = await applyContainerEngine(request, detected, result, info.engine.root, runtime,
+                engineRoot, request.projectPath, path.join(engineStage, 'output'), prepared.dataDir);
+            const change = diffFileMaps(before, snapshotDirectory(transaction.stagingPath), applied.approvedProtectedPaths);
+            if (change.protectedScriptDamage > 0) {
+                throw new OperationError(ErrorCodes.VERIFY_FAILED, '보호된 RPG 스크립트가 변경되었습니다', { change });
+            }
+            assertRpgPackSourceUnchanged(info, pack.source);
+            if (diffFileMaps(before, snapshotDirectory(info.rootPath)).filesChanged > 0) {
+                throw new OperationError(ErrorCodes.SOURCE_CHANGED, '적용 중 원본 게임 파일이 변경되었습니다');
+            }
+            throwIfOperationAborted(runtime, 'compact-apply-commit');
+            transaction.commit();
+            result.artifacts = [output];
+            result.change = change;
+            result.validation = applied.validation;
+            result.stats = { files: applied.appliedFiles, elapsedMs: Math.round(applied.elapsedMs ?? 0) };
+            result.ok = true;
+        } finally { transaction.dispose(); }
+    } finally { cleanupTemporaryPath(engineStage, '번역 작업팩 재연결 임시 경로', result); }
+}
+
 export async function handleApply(
     request: AgentRequest,
     detected: DetectedProject,
     result: AgentResult,
     runtime: OperationRuntime,
 ): Promise<void> {
+    if (detected.translationPack) return applyRpgTranslationPack(request, detected, result, runtime, detected.translationPack);
     const engine = selectEngineAdapter(detected);
     if (!engine.operations.includes('apply')) {
         throw new OperationError(
@@ -962,6 +1050,11 @@ export async function handleApply(
             rejectUnsupportedDictionary(request);
         }
         if (provenance.containerType === 'nwjs-package') {
+            if (request.options.launchProbe === true) {
+                throw new OperationError(ErrorCodes.NOT_IMPLEMENTED,
+                    'launchProbe 프로필 격리는 Electron ASAR 작업본에서만 지원합니다',
+                    { container: provenance.containerType });
+            }
             await applyNwWorking(request, detected, result, provenance, runtime);
         } else {
             await applyAsarWorking(request, detected, result, provenance, runtime);
@@ -978,7 +1071,7 @@ export async function handleApply(
     if (request.options.launchProbe === true) {
         throw new OperationError(
             ErrorCodes.NOT_IMPLEMENTED,
-            'launchProbe는 Electron ASAR/NW.js 컨테이너 작업본 apply에서만 지원합니다',
+            'launchProbe는 Electron ASAR 컨테이너 작업본 apply에서만 지원합니다',
             { format: detected.format, container: detected.container?.type ?? 'directory' },
         );
     }

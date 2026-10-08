@@ -6,5 +6,10 @@
   { "file": "manifest-v1.json", "kind": "manifest", "version": 1 },
   { "file": "manifest-v2.json", "kind": "manifest", "version": 2 },
   { "file": "container-provenance-v1.json", "kind": "container-provenance", "version": 1 },
-  { "file": "engine-options-v2.json", "kind": "engine-options", "version": 2 }
+  { "file": "engine-options-v2.json", "kind": "engine-options", "version": 2 },
+  { "file": "request-v2-review.json", "kind": "request", "version": 2 },
+  { "file": "review-v1.json", "kind": "review", "version": 1 },
+  { "file": "result-v2-isolated-launch.json", "kind": "result", "version": 2 },
+  { "file": "request-v2-translation-pack.json", "kind": "request", "version": 2 },
+  { "file": "rpg-translation-pack-v1.json", "kind": "rpg-translation-pack", "version": 1 }
 ]

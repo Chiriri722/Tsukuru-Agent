@@ -521,6 +521,17 @@ test('round-trips a GDevelop package.nw through CLI provenance without modifying
     }));
     assert.equal(response.status, 0, JSON.stringify(response.result));
 
+    const refusedOutput = path.join(root, 'unsupported-probe');
+    response = await invoke('nw-probe', request('apply', working, {
+        schemaVersion: 1,
+        outputPath: refusedOutput,
+        options: { containerSourcePath: wrapper, experimentalGdevelopCodeStrings: true, launchProbe: true },
+    }));
+    assert.equal(response.status, 1);
+    assert.equal(response.result.error.code, 'E_NOT_IMPLEMENTED');
+    assert.equal(fs.existsSync(refusedOutput), false);
+    assert.equal(crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'), sourceHash);
+
     response = await invoke('nw-apply', request('apply', working, {
         outputPath: output,
         options: { containerSourcePath: wrapper, experimentalGdevelopCodeStrings: true },

@@ -17,7 +17,28 @@ Structural validation, a launch probe, and manual gameplay are separate forms
 of evidence. A structurally valid package can still fail in an engine-specific
 scene that the automated checks did not run.
 
+Optional `launchProbe` is limited to Windows 10+ Electron ASAR workspaces with
+a contained CommonJS main and recognized fuses with embedded ASAR integrity
+disabled. A disposable bootstrap sets and verifies app/profile/session paths
+before the original entry; a native job owns descendants through termination.
+HTML/ESM, protected/unknown runtimes and NW.js probes are refused. Default and
+`persist:` sessions are redirected; arbitrary native/absolute writes and
+explicit `session.fromPath()` locations are outside this boundary. See the
+[profile contract](../specs/005-launch-profile-isolation/contracts/launch-probe.md).
+
 ## Match engines to operations
+
+RPG v2 `extract.options.translationPack:true` produces a portable text/mapping
+pack from loose MV/MZ folders or Electron ASAR without expanding media, Live2D
+assets or runtime files. A separate outputPath is required. Pack `apply` reconnects
+`containerSourcePath`, authenticates original inputs/mapping, and creates a full
+game copy. Exact mapped registry parameters may change; plugin implementation
+scripts and assets remain protected. Full/advanced profiles include resource
+identifiers and need manual review; hard-coded plugin-body UI is not extracted.
+Packaged NW archives, asset decryption and YAML game output are excluded from
+this mode. Immutable mapping recovery requires re-extraction. Existing full
+workspaces and legacy portable packs retain their contracts.
+See [006 contract](../specs/006-compact-rpg-extraction/contracts/translation-pack.md).
 
 | Engine and layout | `verify` | `extract` | `patch` | `apply` | `recover` | Level and notes |
 |---|---:|---:|---:|---:|---:|---|

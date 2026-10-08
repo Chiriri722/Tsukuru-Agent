@@ -1,4 +1,5 @@
-import fs from 'fs';
+import type { Stats } from 'fs';
+import fs from './physicalFs';
 import path from 'path';
 
 export type ContainedPathFailure = 'invalid' | 'outside' | 'linked';
@@ -7,7 +8,7 @@ export type ContainedPathResolution =
     | { ok: true; path: string }
     | { ok: false; reason: ContainedPathFailure };
 
-function lstatIfPresent(target: string): fs.Stats | null {
+function lstatIfPresent(target: string): Stats | null {
     try {
         return fs.lstatSync(target);
     } catch (error) {

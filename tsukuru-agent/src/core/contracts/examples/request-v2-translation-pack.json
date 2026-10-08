@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "operation": "extract",
+  "format": "auto",
+  "projectPath": "./game",
+  "outputPath": "./translation-pack",
+  "profile": "standard",
+  "options": { "translationPack": true },
+  "patches": []
+}

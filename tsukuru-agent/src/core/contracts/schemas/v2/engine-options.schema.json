@@ -12,6 +12,10 @@
   },
   "allOf": [
     {
+      "if": { "properties": { "options": { "required": ["review"] } }, "required": ["options"] },
+      "then": { "properties": { "operation": { "const": "verify" }, "format": { "enum": ["auto", "rpgmv", "rpgmz", "rpgmz-electron"] } } }
+    },
+    {
       "if": { "properties": { "operation": { "const": "verify" } }, "required": ["operation"] },
       "then": { "properties": { "options": { "$ref": "#/$defs/verify" } } }
     },
@@ -148,6 +152,7 @@
       "additionalProperties": false,
       "properties": {
         "verifyDepth": { "enum": ["shallow", "deep"], "default": "shallow" },
+        "review": { "$ref": "https://tsukuru-agent.dev/schemas/v1/review.schema.json#/$defs/options" },
         "humanSummary": { "type": "boolean", "default": false },
         "operationTimeoutMs": { "$ref": "#/$defs/operationTimeoutMs" },
         "diagnosticReportPath": { "type": "string", "minLength": 1 },
@@ -161,6 +166,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "translationPack": { "type": "boolean", "default": false },
         "force": { "type": "boolean", "default": false },
         "ext_plugin": { "type": "boolean", "default": false },
         "ext_src": { "type": "boolean", "default": false },
@@ -192,6 +198,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "translationPack": { "type": "boolean", "default": false },
         "force": { "type": "boolean", "default": false },
         "ext_plugin": { "type": "boolean", "default": false },
         "ext_src": { "type": "boolean", "default": false },

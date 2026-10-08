@@ -108,7 +108,9 @@ function strNullSafe(d){
 }
 
 export const init_extract = (arg) => {
+    eventID = 0
     hadComment = false
+    hadMemoComment = false
     function c(fileName){
         ctx().rpg.gb[fileName] = {data: {}}
         ctx().rpg.gb[fileName].outputText = ''

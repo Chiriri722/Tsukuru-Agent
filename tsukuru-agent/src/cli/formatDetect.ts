@@ -12,6 +12,7 @@ import path from 'path';
 import { DetectedFormat } from '../core/schema';
 import { ContainerInfo, inspectContainer } from '../core/container';
 import { ContainerLimits } from '../core/container/types';
+import { readRpgTranslationPack, RpgTranslationPack } from '../core/rpgTranslationPack';
 
 export interface DetectedProject {
     format: DetectedFormat;
@@ -19,6 +20,7 @@ export interface DetectedProject {
     dataDir: string;
     /** v2 컨테이너 진단. v1 호출에서는 생략될 수 있다. */
     container?: ContainerInfo;
+    translationPack?: RpgTranslationPack;
 }
 
 function isDir(p: string): boolean {
@@ -107,6 +109,8 @@ export function detectFormat(projectPath: string): DetectedProject | null {
 
 /** v2 탐지: loose directory와 Electron/NW.js wrapper를 엔진 프로파일로 정규화한다. */
 export function detectProject(projectPath: string, limits: ContainerLimits = {}): DetectedProject | null {
+    const pack = readRpgTranslationPack(projectPath);
+    if (pack) return { format: pack.engine, dataDir: projectPath, translationPack: pack };
     const container = inspectContainer(projectPath, limits);
     const engine = container.engine.type;
     if (engine !== 'unknown') {

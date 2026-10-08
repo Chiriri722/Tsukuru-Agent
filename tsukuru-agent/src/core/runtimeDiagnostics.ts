@@ -74,6 +74,12 @@ export interface LaunchProbeResult {
     stdout: string;
     stderr: string;
     error?: string;
+    isolation?: {
+        strategy: 'electron-bootstrap-v1';
+        verified: boolean;
+        processTreeTerminated: boolean;
+        cleanup: 'removed' | 'retained';
+    };
 }
 
 export interface ElectronRuntimeInspection {
@@ -261,7 +267,7 @@ export function inspectWindowsSignature(executablePath: string): WindowsSignatur
     }
 }
 
-function appendBounded(current: string, chunk: Buffer | string, maxBytes: number): string {
+export function appendBounded(current: string, chunk: Buffer | string, maxBytes: number): string {
     if (Buffer.byteLength(current, 'utf8') >= maxBytes) return current;
     const available = maxBytes - Buffer.byteLength(current, 'utf8');
     return current + Buffer.from(chunk).subarray(0, available).toString('utf8');
